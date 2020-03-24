@@ -9,3 +9,4 @@
 - Translation measurements for samples infected or mock control for 2,6,10,24 hours in triplicates.
 - Fold change = Infected / Ctrl (log2).
 - P value = P value from two-sided unpaired students t with equal variance assumed
+TODO Clean up csv by changing the excel equation errors to NAN
