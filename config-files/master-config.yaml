@@ -1,0 +1,112 @@
+
+input_settings:
+
+    # Base directory where datasets will be placed
+    datasets_dir: "/data/jeff-law/projects/2020-03-covid-19/SARS-CoV-19-network-analysis/datasets"
+    # Base directory where the inputs to the FastSinkSource pipeline will be placed
+    fss_inputs_dir: "inputs"
+    # list of mapping files, one per species. Will be placed in datasets/mapping/species/
+    mappings:
+      #### Mapping options:
+      # *mapping_file*: path to file. Can be gzipped
+      # *species*: the name of the species 
+      # *url*: the url of the file to download
+      # *file_type*: type of mapping file. Current can be: 
+      #     'list': a list of mappings (i.e., many-to-many) where the first column is a uniprot ID, second is the namespace, and third is the ID of the other namespace
+      #     'table': a table of 1-to-1 mappings.
+      # *namespaces*: namespaces to keep from the file. If 'all' is given, then keep all of the mappings. If *file_type* is table, should be the column names. 
+          - mapping_file: "HUMAN_9606_idmapping.dat.gz"
+            species: "human"
+            url: "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
+            type: "list"
+            #namespaces: ["all"]
+            namespaces: ["ensembl", "gene_name", "string", "biogrid"]
+
+          - mapping_file: "uniprot-reviewed-status.tab.gz"
+            species: "human"
+            url: "https://www.uniprot.org/uniprot/?query=*&format=tab&force=true&columns=id,reviewed,genes,organism-id&fil=organism:9606&compress=yes"
+            type: "table"
+            namespaces: ["Status"]
+
+    # Can download and parse *gene_sets*, and *networks*
+    datasets_to_download:
+      # TODO 
+        #gene_sets:
+        #  - name: ""
+
+      #### Network options:
+      # *name*: name of this network. Will be used as the directory
+      # *file_name*: the name of the file to download
+      # *network_collection*: T/F. Specifies if the downloaded file is an archive containing many networks
+      # *collection_settings*: settings to apply to each of the individual networks.
+      # *weighted*: T/F. If False, add a column of all 1s (i.e., unweighted) after the first two columns. 
+      #     If True, the first column in *columns_to_keep* should be the weights
+      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
+      # *namespace*: the namespace of the nodes in the networks
+      # *url*: the url of the file to download
+      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
+      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
+      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+      # *gzip_files*: gzip the individual files
+      # *remove_filename_spaces*: if there are spaces in the file names, remove them
+      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
+      #     If not specified, all columns will be kept
+      # *sep*: the delimiter of columns in the files
+        networks:
+          - name: "tissuenet-v2/hpa-protein"
+            file_name: "hpa-protein.zip"
+            network_collection: True
+            collection_settings:
+              gzip_files: True
+              remove_filename_spaces: True
+            weighted: False
+            unpack_command: "unzip"
+            namespace: "ensembl"
+            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-Protein.zip"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              #keep_multiple: False
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            columns_to_keep: []
+            sep: "\t"
+
+          - name: "tissuenet-v2/hpa-rnaseq"
+            file_name: "hpa-rnaseq.zip"
+            network_collection: True
+            collection_settings:
+              gzip_files: True
+              remove_filename_spaces: True
+            weighted: False
+            unpack_command: "unzip"
+            namespace: "ensembl"
+            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-RNA-Seq.zip"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              #keep_multiple: False
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            columns_to_keep: []
+            sep: "\t"
+
+          - name: "tissuenet-v2/gtex-rnaseq"
+            file_name: "gtex-rnaseq.zip"
+            network_collection: True
+            collection_settings:
+              gzip_files: True
+              remove_filename_spaces: True
+            weighted: False
+            unpack_command: "unzip"
+            namespace: "ensembl"
+            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/GTEx-RNA-Seq.zip"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              #keep_multiple: False
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            columns_to_keep: []
+            sep: "\t"
+
