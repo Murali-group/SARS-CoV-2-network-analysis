@@ -26,7 +26,7 @@ dataset_settings:
             type: "table"
             namespaces: ["Status"]
 
-    # Can download and parse *gene_sets*, and *networks*
+    # Download and parse *gene_sets*, *networks*, *drug targets*, etc.
     datasets_to_download:
       # TODO 
         #gene_sets:
@@ -108,6 +108,40 @@ dataset_settings:
             columns_to_keep: []
             sep: "\t"
 
+      #### Gene-drug dataset options:
+      # *name*: name of this network. Will be used as the directory name
+      # *file_name*: the name of the file to download
+      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
+      # *namespace*: the namespace of the nodes in the networks
+      # *url*: the url of the file to download
+      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
+      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
+      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+      # *gzip_files*: gzip the individual files
+      # *remove_filename_spaces*: if there are spaces in the file names, remove them
+      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
+      #     If not specified, all columns will be kept
+      # *sep*: the delimiter of columns in the files
+        drug-targets:
+         # Note that PharmGKB requires the user to fill a form when clicking on the download link on their web page. The form has an option to skip the form and go directly down to the download step. 
+          - name: "pharmgkb"
+            file_name: "relationships.zip"
+            network_collection: False
+            collection_settings:
+              gzip_files: True
+              remove_filename_spaces: True
+            weighted: False
+            unpack_command: "unzip"
+            namespace: "ensembl"
+            url: "https://www.pharmgkb.org/downloads/relationships.zip"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              #keep_multiple: False
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            columns_to_keep: []
+            sep: "\t"
 
 fastsinksource_pipeline_settings:
     # Base directory where the inputs to the FastSinkSource pipeline will be placed
