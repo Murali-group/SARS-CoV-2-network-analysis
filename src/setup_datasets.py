@@ -13,7 +13,7 @@ import shutil
 
 def setup_mappings(datasets_dir, mapping_settings, **kwargs):
     """
-    Download and build mappings to/from UniProt
+    Download and build mappings to/from UniProt protein ids.
     """
 
     namespace_mappings = defaultdict(set)
@@ -101,7 +101,7 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
 
 def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs):
     """
-    Download all specified network files, and map them to uniprot if necessary
+    Download all specified network files, and map the identifiers of the proteins in them to UniProt, if necessary
     """
     #global namespace_mappings
     for network in network_settings:
@@ -330,7 +330,6 @@ def run_command(command, chdir=None):
     if chdir is not None:
         curr_dir = os.getcwd()
         os.chdir(chdir)
-
     print("Running: %s" % (command))
     subprocess.check_output(command, shell=True)
 
