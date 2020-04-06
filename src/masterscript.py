@@ -81,7 +81,7 @@ def main(config_map, **kwargs):
     print("\nRunning the FastSinkSource pipeline on %d config files" % (len(config_files)))
     for config_file in config_files:
         log_file = config_file.replace('.yaml', '.log')
-        command = "/data/jeff-law/tools/anaconda3/bin/python -u FastSinkSource/run_eval_algs.py "  + \
+        command = "python -u src/FastSinkSource/run_eval_algs.py "  + \
                   " --config %s " % (config_file) + \
                   " >> %s 2>&1 " % (log_file)
         run_command(command) 
