@@ -96,6 +96,8 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
         setup_networks(networks_dir, dataset_settings['networks'], namespace_mappings, **kwargs)
     if 'gene_sets' in dataset_settings:
         print("WARNING: downloading and parsing of 'gene_sets' is not yet implemented. Skipping.")
+
+    print("Finished downloading/setting up datasets")
     return
 
 
@@ -124,7 +126,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         unpack_command = network.get('unpack_command')
         # if its a zip file, unzip first
         if unpack_command is not None and unpack_command != "":
-            command = "%s %s" % (unpack_command, network_file)
+            command = "%s %s" % (unpack_command, os.path.basename(network_file))
             run_command(command, chdir=os.path.dirname(network_file))
 
         mapping_settings = network.get('mapping_settings', {})
