@@ -37,6 +37,8 @@ def setup_opts():
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="config-files/master-config.yaml",
                        help="Configuration file for this script.")
+    group.add_argument('--download-only', action='store_true', default=False,
+                       help="Stop once files are downloaded and mapped to UniProt IDs.")
     group.add_argument('--force-download', action='store_true', default=False,
                        help="Force re-downloading and parsing of the input files")
 
@@ -65,6 +67,9 @@ def main(config_map, **kwargs):
     # Download, parse, and map (to uniprot) the network files 
     setup_dataset_files(datasets_dir, dataset_settings['datasets_to_download'], dataset_settings.get('mappings'), **kwargs)
 
+    if kwargs.get('download_only'):
+        return
+
     # Now setup the config file to run the FastSinkSource pipeline using the specified networks
     # For now I will assume some of the essential structure is already setup (i.e., committed to the repo) 
     # TODO setup the pos-neg file(s) automatically (the file containing the positive and negative examples for which to use when running FSS)
@@ -75,8 +80,10 @@ def main(config_map, **kwargs):
     # TODO allow for parallelization of multiple networks / algorithms
     print("\nRunning the FastSinkSource pipeline on %d config files" % (len(config_files)))
     for config_file in config_files:
-        command = "python FastSinkSource/run_eval_algs.py "  + \
-                  " --config %s " % (config_file)
+        log_file = config_file.replace('.yaml', '.log')
+        command = "/data/jeff-law/tools/anaconda3/bin/python -u FastSinkSource/run_eval_algs.py "  + \
+                  " --config %s " % (config_file) + \
+                  " >> %s 2>&1 " % (log_file)
         run_command(command) 
 
 
@@ -95,8 +102,19 @@ def setup_fss_config(datasets_dir, fss_settings):
         'output_settings': {'output_dir': fss_settings['output_dir']},
         'algs': fss_settings['algs'],
     }
+    eval_str = ""
     if fss_settings.get('eval_settings'):
-        config_map['eval_settings'] = fss_settings.get('eval_settings')
+        eval_s = fss_settings.get('eval_settings')
+        config_map['eval_settings'] = eval_s
+        # append a string of the evaluation settings specified to the yaml file so you can run multiple in parallel.
+        # TODO also add a postfix parameter
+        eval_str = "%s%s%s%s" % (
+            "-cv%s" % eval_s['cross_validation_folds'] if 'cross_validation_folds' in eval_s else "",
+            "-nf%s" % eval_s['sample_neg_examples_factor'] if 'sample_neg_examples_factor' in eval_s else "",
+            "-nr%s" % eval_s['num_reps'] if 'num_reps' in eval_s else "",
+            "-seed%s" % eval_s['cv_seed'] if 'cv_seed' in eval_s else "",
+            )
+
     base_dataset_settings = {
         'exp_name': fss_settings['exp_name'],
         'pos_neg_file': fss_settings['pos_neg_file']}
@@ -118,7 +136,7 @@ def setup_fss_config(datasets_dir, fss_settings):
                     net_file, net_settings=net_settings)
                 net_config_map['input_settings']['datasets'].append(curr_settings) 
         # now write the config file 
-        config_file = "%s/%s.yaml" % (config_dir, name)
+        config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
         write_yaml_file(config_file, net_config_map)
         config_files.append(config_file)
     return config_files
@@ -144,7 +162,7 @@ def setup_net_settings(
     if not os.path.isfile(new_net_file):
         print("\tadding symlink from %s to %s" % (net_file, new_net_file))
         os.makedirs(os.path.dirname(new_net_file), exist_ok=True)
-        os.symlink(net_file, new_net_file)
+        os.symlink(os.path.abspath(net_file), new_net_file)
     dataset_settings['net_version'] = "networks/"+net_version
     dataset_settings['net_files'] = [file_name]
     dataset_settings['exp_name'] += "-%s" % (file_name.split('.')[0])
