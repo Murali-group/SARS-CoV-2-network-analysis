@@ -1,0 +1,12 @@
+pandas
+numpy 
+scipy 
+networkx 
+# python package to read yaml files
+pyyaml
+# progress bar
+tqdm
+# used for plotting
+seaborn 
+# used for CV and to compute the AUPRC and AUROC
+sklearn 
