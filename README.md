@@ -2,7 +2,7 @@
 Analysis of SARS-CoV-2 molecular networks
 
 ## Getting Started
-Required packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, tqdm
+Required packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, wget, tqdm
 
 To install the required packages:
 
