@@ -138,7 +138,7 @@ def get_output_prefix(
         # if an integer is passed in, then make sure the string doesn't include the ".0" at the end of the number
         if int(sample_neg_examples_factor) == sample_neg_examples_factor:
             sample_neg_examples_factor = int(sample_neg_examples_factor) 
-    out_pref = "cv-%dfolds-rep%d%s%s" % (
+    out_pref = "cv-%dfolds-rep%s%s%s" % (
         folds, rep,
         "-nf%s"%sample_neg_examples_factor if sample_neg_examples_factor is not None else "",
         "-seed%s"%curr_seed if curr_seed is not None else "")

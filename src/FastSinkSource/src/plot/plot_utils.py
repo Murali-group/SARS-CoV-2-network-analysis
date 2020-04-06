@@ -43,10 +43,10 @@ import src.evaluate.cross_validation as cv
 
 ALG_NAMES = {
     'localplus': 'Local+', 'local': 'Local',
-    'sinksource': 'SinkSource', 'sinksourceplus': 'SinkSource+',
+    'sinksource': 'SS', 'sinksourceplus': 'SS+',
     'sinksource_bounds': 'SinkSource_Bounds',
     'fastsinksource': 'FSS', 'fastsinksourceplus': 'FSS+',
-    'genemania': 'GeneMANIA',  
+    'genemania': 'GM', 'genemaniaplus': 'GM+',
     'logistic_regression': 'LogReg',
     'svm': 'SVM',
     }
@@ -58,7 +58,7 @@ param_map = {'alpha': r'$\rm \alpha$'}
 # tried to be fancy :P
 # colors: https://coolors.co/ef6e4a-0ec9aa-7c9299-5d88d3-96bd33
 #my_palette = ["#EF6E4A", "#0EC9AA", "#7C9299", "#5D88D3", "#96BD33", "#937860", "#EFD2B8"]
-my_palette = ["#EF6E4A", "#0EC9AA", "#8e71d0", "#5D88D3", "#96BD33", "#937860", "#EFD2B8"]
+my_palette = ["#EF6E4A", "#0EC9AA", "#8e71d0", "#5D88D3", "#96BD33", "#937860", "#EFD2B8", "#844685", "#00a8cc", "#9c5518"]
 alg_colors = {
     'fastsinksource': my_palette[0],
     'genemania': my_palette[1],
@@ -104,6 +104,8 @@ def setup_opts():
                      help="If --only-terms is specified, use this option to append a name to the file. Default is to use the # of terms")
     group.add_argument('--postfix', type=str, 
                      help="Postfix to add to the end of the files")
+    group.add_argument('--verbose', action="store_true", default=False,
+                     help="Print more information when reading files")
 
     group = parser.add_argument_group("Evaluation options")
     group.add_argument('--cross-validation-folds', '-C', type=int,
@@ -151,6 +153,8 @@ def setup_opts():
                      help="Exclude extra information from the title and make the labels big and bold")
     group.add_argument('--horiz','-H', dest="horizontal", action='store_true', default=False,
                      help="Flip the plot so the measure is on the y-axis (horizontal). Default is x-axis (vertical)")
+    group.add_argument('--ylim', type=float, nargs=2,
+                     help="Set the y axis min and max to these two values")
     group.add_argument('--png', action='store_true', default=False,
                      help="Write a png in addition to a pdf")
     group.add_argument('--term-stats', type=str, action='append',
@@ -518,9 +522,11 @@ def plot_multi_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, *
             'axes.spines.right': True, 'axes.spines.top': True,})
     df['Algorithm'] = df['Algorithm'].astype(str)
     df = df[['Algorithm', measure, 'plot_exp_name']]
-    g = sns.catplot(x=measure, y='Algorithm', row='plot_exp_name', data=df,  # hue='Algorithm',
-                    height=1., aspect=4, palette=curr_palette, 
+    g = sns.catplot(x=measure, y='Algorithm', data=df,  # hue='Algorithm',
+                    col='plot_exp_name', col_wrap=5, #row='plot_exp_name',  
+                    height=2, aspect=4, palette=curr_palette, 
                     #orient='v' if not kwargs.get('horizontal') else 'h',
+                    fliersize=1,  
                     kind='box',)
                     #kind="violin", cut=0, inner='quartile',)
     # put less space between the plots
@@ -572,6 +578,9 @@ def plot_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, **kwarg
     # for some reason sharex/sharey wasn't working, so I just removed the label
     if kwargs.get('share_measure') is True:
         ylabel = ""
+    if kwargs.get('ylim'):
+        y1, y2 = kwargs['ylim']
+        ax.set_ylim(y1, y2)
     set_labels(ax, title, xlabel, ylabel, **kwargs)
 
     if out_pref is not None:
@@ -829,30 +838,17 @@ def load_all_results(input_settings, alg_settings, output_settings, prec_rec_str
             if alg not in alg_settings:
                 print("%s not found in config file. Skipping" % (alg))
                 continue
-            alg_params = alg_settings[alg]
             if kwargs.get('cross_validation_folds'):
-                folds = kwargs.get('cross_validation_folds')
-                cv_seed = kwargs.get('cv_seed')
-                neg_factor = kwargs.get('sample_neg_examples_factor')
-                for rep in range(1,kwargs.get('num_reps',1)+1):
-                    if cv_seed is not None:
-                        curr_seed = cv_seed + rep-1
-                    eval_type = cv.get_output_prefix(folds, rep, neg_factor, curr_seed)
-                    df = load_alg_results(
-                        dataset, alg, alg_params, prec_rec_str=prec_rec_str,
-                        results_dir=output_settings['output_dir'],
-                        eval_type=eval_type, **kwargs,
-                        #only_terms=kwargs.get('only_terms'), postfix=kwargs.get('postfix',''),
-                    )
-                    add_dataset_settings(dataset, df) 
-                    df['rep'] = rep
-                    df_all = pd.concat([df_all, df])
+                df = read_cv_results(
+                    dataset, alg, alg_settings[alg], output_settings['output_dir'],
+                    prec_rec_str=prec_rec_str, **kwargs)
+                df_all = pd.concat([df_all, df])
             else:
                 eval_type = "" 
                 if kwargs.get('loso'):
                     eval_type = 'loso'
                 df = load_alg_results(
-                    dataset, alg, alg_params, prec_rec_str=prec_rec_str, 
+                    dataset, alg, alg_settings[alg], prec_rec_str=prec_rec_str, 
                     results_dir=output_settings['output_dir'],
                     eval_type=eval_type, **kwargs,
                     #only_terms=kwargs.get('only_terms'), postfix=kwargs.get('postfix',''),
@@ -860,6 +856,49 @@ def load_all_results(input_settings, alg_settings, output_settings, prec_rec_str
                 add_dataset_settings(dataset, df) 
                 df_all = pd.concat([df_all, df])
     return df_all
+
+
+def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
+    """
+    Small helper function to load the results specifically for cross-validation
+    """
+    folds = kwargs.get('cross_validation_folds')
+    cv_seed = kwargs.get('cv_seed')
+    neg_factor = kwargs.get('sample_neg_examples_factor')
+    # for 100+ reps, loading each individual file is taking a while, so store them in a secondary file
+    if kwargs.get('num_reps',1) > 1:
+        #rep_file = get_rep_file(
+        #    dataset, alg, alg_params, results_dir=output_settings['output_dir'],
+        #    eval_type=eval_type, **kwargs,)
+        eval_type = cv.get_output_prefix(folds, "1-%s"%kwargs['num_reps'], neg_factor, cv_seed)
+        combos = [dict(zip(alg_params.keys(), val)) for val in itertools.product(
+                *(alg_params[param] for param in alg_params))]
+        params_str = "%dparam-combos" % (len(combos))
+        if len(combos) == 1:
+            params_str = runner.get_runner_params_str(alg, dataset, combos[0])
+        out_dir = "%s/%s/%s" % (
+            results_dir, dataset['net_version'], dataset['exp_name'])
+        rep_file = "%s/%s/%s%s%s%s.txt" % (
+            out_dir, alg, eval_type, params_str, kwargs.get('postfix', ''), kwargs.get('prec_rec_str'))
+        if os.path.isfile(rep_file):
+            print("reading processed repetition files from %s" % (rep_file))
+            reps_df = pd.read_csv(rep_file, sep='\t')
+            return reps_df
+    reps_df = pd.DataFrame()
+    for rep in range(1,kwargs.get('num_reps',1)+1):
+        if cv_seed is not None:
+            curr_seed = cv_seed + rep-1
+        eval_type = cv.get_output_prefix(folds, rep, neg_factor, curr_seed)
+        df = load_alg_results(
+            dataset, alg, alg_params, 
+            results_dir=results_dir, eval_type=eval_type, **kwargs)
+        add_dataset_settings(dataset, df) 
+        df['rep'] = rep
+        reps_df = pd.concat([reps_df, df])
+    if kwargs.get('num_reps',1) > 1:
+        print("Writing %s" % (rep_file)) 
+        reps_df.to_csv(rep_file, sep='\t')
+    return reps_df
 
 
 def add_dataset_settings(dataset, df):
@@ -899,7 +938,8 @@ def load_alg_results(
     combos = [dict(zip(alg_params.keys(), val))
         for val in itertools.product(
             *(alg_params[param] for param in alg_params))]
-    print("%d combinations for %s" % (len(combos), alg))
+    if kwargs.get('verbose'):
+        print("%d combinations for %s" % (len(combos), alg))
     # load the CV file for each parameter combination for this algorithm
     df_all = pd.DataFrame()
     for param_combo in combos:
@@ -909,7 +949,8 @@ def load_alg_results(
         if not os.path.isfile(cv_file):
             print("\tnot found %s - skipping" % (cv_file))
             continue
-        print("\treading %s" % (cv_file))
+        if kwargs.get('verbose'):
+            print("\treading %s" % (cv_file))
         df = pd.read_csv(cv_file, sep='\t')
         # remove any duplicate rows
         df.drop_duplicates(inplace=True)

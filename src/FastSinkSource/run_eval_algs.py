@@ -245,7 +245,7 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
         sparse_ann_file = "%s/%s/sparse-anns/%s.npz" % (input_dir, dataset['net_version'], pos_neg_str)
         pos_neg_file_eval = "%s/%s" % (input_dir, dataset['pos_neg_file_eval'])
         eval_ann_obj = setup.create_sparse_ann_and_align_to_net(
-                obo_file, pos_neg_file_eval, sparse_ann_file, prots, **kwargs)
+                pos_neg_file_eval, sparse_ann_file, prots, **kwargs)
         # also limit the terms in the eval_ann_obj to those from the pos_neg_file
         eval_ann_obj.limit_to_terms(selected_terms)
     ann_obj.selected_terms = selected_terms
