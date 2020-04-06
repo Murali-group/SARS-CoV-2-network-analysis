@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:jlaw9/FastSinkSource.git
+	branch = no-ontology
+	commit = fa99a01000a3cf0f10e34ed20b165a7cb65b16fd
+	parent = 8dd59d036c5dd7d3b3964aa3960e0707ef0a788b
+	method = merge
+	cmdver = 0.4.1

@@ -1,0 +1,21 @@
+#taxonomy ID	Bacteria species strain
+242231	Neisseria gonorrhoeae FA 1090
+272563	Peptoclostridium difficile / Clostridioides difficile 630
+85962	Helicobacter pylori 85962
+272620	Klebsiella pneumoniae
+333849	Enterococcus faecium DO
+83333	Escherichia coli K-12
+71421	Haemophilus influenzae RD KW20
+257313	Bordetella pertussis Tohama I
+269482	Burkholderia cepacia
+441771	Clostridium botulinum A str. Hall
+509170	Acinetobacter baumannii
+93061	Staphylococcus aureus
+243277	Vibrio cholerae O1 biovar El Tor str. N16961
+632	Yersinia pestis
+301447	Streptococcus pyogenes
+208964	Pseudomonas aeruginosa
+99287	Salmonella typhimurium / Salmonella enterica
+#623	Shigella flexneri
+300267	Shigella dysenteriae serotype 1 (strain Sd197) 
+83332	Mycobacterium tuberculosis
