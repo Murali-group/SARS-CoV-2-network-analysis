@@ -25,10 +25,12 @@ To download additional datasets and map various namespaces to UniProt IDs, use t
 python src/masterscript.py --config config-files/master-config.yaml --download-only
 ```
 
-The YAML config file contains the list of datasets to download and is self-documented. Currently the following types of datasets are supported:
-  - networks
+The YAML config file contains the list of datasets to download and is self-documented. The following types of datasets are supported:
+  - Networks
+  - Gene sets (coming soon)
+  - Drug targets (coming soon)
 
-To add more datasets, copy one of the existing datasets and modify the fields accordingly. If your dataset is not yet supported, add to an existing issue ([#5](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/5)), or make an issue and we'll try to add it as soon as we can. 
+To download additional datasets, copy one of the existing dataset sections in the config file and modify the fields accordingly. If your dataset is not yet supported, add to an existing issue ([#5](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/5)), or make an issue and we'll try to add it as soon as we can. 
 
 ## Run the FastSinkSource Pipeline
   Coming soon...
