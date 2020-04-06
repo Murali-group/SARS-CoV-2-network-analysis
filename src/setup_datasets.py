@@ -8,6 +8,7 @@ import wget
 import pandas as pd
 import subprocess
 import glob
+import requests
 import shutil
 
 
@@ -116,9 +117,15 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         elif os.path.isfile(network_file) and kwargs['force_download']:
             print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
             continue
+        # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
+        if network.get('network_collection') is True:
+            downloaded_file = network_file
+        # If this isn't a network collection, then download the file and keep the original filename
+        else:
+            downloaded_file = "%s/%s" % (os.path.dirname(network_file), network['url'].split('/')[-1])
         # download the file 
         #try:
-        download_file(network['url'], network_file)
+        download_file(network['url'], downloaded_file)
         #except:
         #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
         #    continue
@@ -126,12 +133,12 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         unpack_command = network.get('unpack_command')
         # if its a zip file, unzip first
         if unpack_command is not None and unpack_command != "":
-            command = "%s %s" % (unpack_command, os.path.basename(network_file))
-            run_command(command, chdir=os.path.dirname(network_file))
+            command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
+            run_command(command, chdir=os.path.dirname(downloaded_file))
 
         mapping_settings = network.get('mapping_settings', {})
         opts = network.get('collection_settings', {})
-        if network['network_collection'] is True:
+        if network.get('network_collection') is True:
             setup_network_collection(
                 network_file, namespace_mappings,
                 namespace=network.get('namespace'), gzip_files=opts.get('gzip_files'),
@@ -141,24 +148,18 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
                 sep=network.get('sep')
             ) 
         else:
-            file_end = network_file[-4]
-            new_f = network_file.replace(file_end, "-parsed"+file_end)
             mapping_stats = setup_network(
-                network_file, new_f, namespace_mappings,
+                downloaded_file, network_file, namespace_mappings,
                 namespace=network.get('namespace'), 
                 prefer_reviewed=mapping_settings.get('prefer_reviewed'),
                 columns_to_keep=network.get('columns_to_keep'), sep=network.get('sep')
             )
 
-            if opts.get('gzip_files'):
-                gzip_file(new_f, new_f+'.gz', remove_orig=True)
-                new_f += ".gz"
-
             if mapping_stats is not None:
-                all_mapping_stats = {os.path.basename(new_f).split('.')[0]: mapping_stats}
+                all_mapping_stats = {os.path.basename(network_file).split('.')[0]: mapping_stats}
                 df = pd.DataFrame(all_mapping_stats).T
                 print(df)
-                stats_file = "%s/mapping-stats.tsv" % (os.path.dirname(new_f))
+                stats_file = "%s/mapping-stats.tsv" % (os.path.dirname(network_file))
                 print("Writing network mapping statistics to %s" % (stats_file))
                 df.to_csv(stats_file, sep='\t')
     return 
@@ -250,8 +251,10 @@ def setup_network(
     # store the specified extra columns
     extra_cols = []
     print("Reading %s" % (network_file))
-    with open(network_file, 'r') as f:
+    open_command = gzip.open if '.gz' in network_file else open
+    with open_command(network_file, 'r') as f:
         for line in f:
+            line = line.decode() if '.gz' in network_file else line
             if line[0] == '#':
                 continue
             line = line.rstrip().split(sep)
@@ -270,13 +273,14 @@ def setup_network(
 
     print("\twriting %s" % (new_file))
     # and re-write the file with the specified columns to keep
-    with open(new_file, 'w') as out:
+    open_command = gzip.open if '.gz' in new_file else open
+    with open_command(new_file, 'wb' if '.gz' in new_file else 'w') as out:
         for i, e in enumerate(new_edges):
             new_line = "%s%s%s\n" % (
                 '\t'.join(e), "\t1\t" if weighted is False else "",
                 # if weighted is True, then the first column in new_extra_cols should be the weight
                 '\t'.join(new_extra_cols[i]))
-            out.write(new_line)
+            out.write(new_line.encode() if '.gz' in new_file else new_line)
     # keep track of the mapping statistics
     return mapping_stats
 
@@ -353,6 +357,19 @@ def download_file(url, file_path):
     # make sure the directory exists
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
     print("Downloading to file '%s' from '%s'" % (file_path, url))
-    wget.download(url, file_path)
+    try:
+        wget.download(url, file_path)
+    # TODO catch specific errors
+    #except urllib.error:
+    except Exception as e:
+        print(e)
+        print("WARNING: wget failed. Attempting to use the requests library")
+        # wget didn't work for STRING, gave a 403 error. Using the requests library is working
+        r = requests.get(url, stream=True)
+        if r.status_code == 200:
+            with open(file_path, 'wb') as f:
+                r.raw.decode_content = True
+                shutil.copyfileobj(r.raw, f)
+        print("\tdone")
     # TODO also add the date of download and url to a README file
     print("")

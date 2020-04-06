@@ -37,7 +37,7 @@ dataset_settings:
       # *file_name*: the name of the file to download
       # *network_collection*: T/F. Specifies if the downloaded file is an archive containing many networks
       # *collection_settings*: settings to apply to each of the individual networks.
-      # *weighted*: T/F. If False, add a column of all 1s (i.e., unweighted) after the first two columns. 
+      # *weighted*: T/F. If False, a column of all 1s (i.e., unweighted) will be added after the first two columns. 
       #     If True, the first column in *columns_to_keep* should be the weights
       # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
       # *namespace*: the namespace of the nodes in the networks
@@ -51,6 +51,24 @@ dataset_settings:
       #     If not specified, all columns will be kept
       # *sep*: the delimiter of columns in the files
         networks:
+          - name: "stringv11"
+            file_name: "9606-uniprot-links-full-v11.txt.gz"
+            # This flag indicates the downloaded file has all string channels (i.e., "full")
+            string_networks: True
+            network_collection: False
+            weighted: True
+            #unpack_command: "gunzip"
+            namespace: "string"
+            url: "https://stringdb-static.org/download/protein.links.full.v11.0/9606.protein.links.full.v11.0.txt.gz"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            # keep all of the columns
+            #columns_to_keep: []
+            sep: " "
+
           - name: "tissuenet-v2/hpa-protein"
             file_name: "hpa-protein.zip"
             network_collection: True
