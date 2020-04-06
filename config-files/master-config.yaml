@@ -18,7 +18,7 @@ dataset_settings:
             url: "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
             type: "list"
             #namespaces: ["all"]
-            namespaces: ["ensembl", "gene_name", "string", "biogrid"]
+            namespaces: ["ensembl", "gene_name", "string", "biogrid", "pharmgkb"]
 
           - mapping_file: "uniprot-reviewed-status.tab.gz"
             species: "human"
@@ -123,7 +123,6 @@ dataset_settings:
       #     If not specified, all columns will be kept
       # *sep*: the delimiter of columns in the files
         drug-targets:
-         # Note that PharmGKB requires the user to fill a form when clicking on the download link on their web page. The form has an option to skip the form and go directly down to the download step. 
           - name: "pharmgkb"
             file_name: "relationships.zip"
             network_collection: False
@@ -133,7 +132,8 @@ dataset_settings:
             weighted: False
             unpack_command: "unzip"
             namespace: "ensembl"
-            url: "https://www.pharmgkb.org/downloads/relationships.zip"
+            # available at https://www.pharmgkb.org/downloads
+            url: "https://s3.pgkb.org/data/relationships.zip"
             taxon: 9606
             species: "human"
             mapping_settings:
