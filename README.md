@@ -35,7 +35,7 @@ To download additional datasets, copy one of the existing dataset sections in th
 ## Run the FastSinkSource Pipeline
 This master script will generate a config file specific to the [FastSinkSource pipeline](https://github.com/jlaw9/FastSinkSource/tree/no-ontology), which will then be used to generate predictions, and/or run cross validation.
 
-> Note that the FastSinkSource code was added as a `git-subrepo`, so to make changes to that code, please commit them to that repository directly, and then pull them with `git subrepo pull src/FastSinkSource/`
+> Note that the FastSinkSource code was added as a [git-subrepo](https://github.com/ingydotnet/git-subrepo), so to make changes to that code, please commit them to that repository directly, and then pull them with `git subrepo pull src/FastSinkSource/`, or follow the suggestions in the git-subrepo documentation.
 
 ### Generate predictions
 The script will automatically generate predictions from each of the given methods in the config file. The default number of predictions stored is 10. To write more, either set the `num_pred_to_write` or `fator_pred_to_write` flags under `fastsinksource_pipeline_settings -> eval_settings`, or, after the config file is generated, call the `run_eval_algs.py` script directly and add either the `--num-pred-to-write` or `--factor-pred-to-write` options (see `python src/FastSinkSource/run_eval_algs.py --help`)
