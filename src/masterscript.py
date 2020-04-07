@@ -14,8 +14,7 @@ import pandas as pd
 # packages in this repo
 # add this file's directory to the path so these imports work from anywhere
 sys.path.insert(0,os.path.dirname(__file__))
-from src.setup_datasets import setup_dataset_files, run_command
-#from src import setup_sparse_networks as setup
+from setup_datasets import setup_dataset_files, run_command
 
 
 def parse_args():
