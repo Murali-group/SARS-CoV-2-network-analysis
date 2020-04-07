@@ -224,7 +224,7 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
                        .replace('/','-').replace('pos-neg-','') \
                        .replace('.txt','').replace('.tsv','').replace('.gz','')
     pos_neg_str += '-Yneg' if kwargs.get('youngs_neg') else ''
-    sparse_ann_file = "%s/%s/sparse-anns/%s.npz" % (input_dir, dataset['net_version'], pos_neg_str)
+    sparse_ann_file = "%s/%s/sparse-anns/%s-%s.npz" % (input_dir, dataset['net_version'], dataset['net_files'][0].split('.')[0], pos_neg_str)
     # now build the annotation matrix
     pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
     ann_obj = setup.create_sparse_ann_and_align_to_net(
