@@ -265,11 +265,13 @@ def setup_network(
             else:
                 extra_cols.append(line[2:] if len(line) > 2 else [])
     # map to uniprot if its in a different namespace
+    new_edges, new_extra_cols = edges, extra_cols
+    mapping_stats = None
     if namespace is not None and namespace.lower() not in ['uniprot', 'uniprotkb']:
-        new_edges, new_extra_cols, mapping_stats = map_network(edges, extra_cols, namespace_mappings, prefer_reviewed=prefer_reviewed)
-    else:
-        new_edges, new_extra_cols = edges, extra_cols
-        mapping_stats = None
+        if namespace_mappings is None:
+            print("WARNING: mappings not supplied. Unable to map from '%s' to UniProt IDs." % (namespace))
+        else:
+            new_edges, new_extra_cols, mapping_stats = map_network(edges, extra_cols, namespace_mappings, prefer_reviewed=prefer_reviewed)
 
     print("\twriting %s" % (new_file))
     # and re-write the file with the specified columns to keep
