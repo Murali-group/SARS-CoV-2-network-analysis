@@ -5,6 +5,7 @@ from collections import defaultdict
 import os
 import sys
 #from tqdm import tqdm
+import copy
 import time
 #import numpy as np
 #from scipy import sparse
@@ -121,8 +122,12 @@ def setup_fss_config(datasets_dir, fss_settings):
 
     config_files = []
     for net in fss_settings['networks_to_run']:
-        net_config_map = config_map.copy()
+        net_config_map = copy.deepcopy(config_map)
         name = net['name']
+        # if specified, use the given net_version
+        net_version = net.get('net_version')
+        if net_version is not None:
+            name = net_version
         net_settings = net.get('net_settings')
         if net.get('network_collection'):
             base_dir = "%s/networks/%s" % (datasets_dir, name)
@@ -132,9 +137,17 @@ def setup_fss_config(datasets_dir, fss_settings):
 
             for net_file in net_files:
                 curr_settings = setup_net_settings(
-                    fss_dir, base_dataset_settings.copy(), name,
+                    fss_dir, copy.deepcopy(base_dataset_settings), name,
                     net_file, net_settings=net_settings)
                 net_config_map['input_settings']['datasets'].append(curr_settings) 
+        else:
+            # this is a single file
+            net_file = "%s/networks/%s/%s" % (datasets_dir, net['name'], net['file_name'])
+            curr_settings = setup_net_settings(
+                fss_dir, copy.deepcopy(base_dataset_settings), name,
+                net_file, string_networks=net.get('string_networks'),
+                net_settings=net_settings)
+            net_config_map['input_settings']['datasets'].append(curr_settings) 
         # now write the config file 
         config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
         write_yaml_file(config_file, net_config_map)
@@ -152,7 +165,7 @@ def write_yaml_file(yaml_file, config_map):
 
 def setup_net_settings(
         input_dir, dataset_settings, net_version,
-        net_file, net_settings=None):
+        net_file, string_networks=False, net_settings=None):
     """
     Add the network file and all other network settings to this config file
     Will create a symbolic link from the original dataset 
@@ -164,7 +177,11 @@ def setup_net_settings(
         os.makedirs(os.path.dirname(new_net_file), exist_ok=True)
         os.symlink(os.path.abspath(net_file), new_net_file)
     dataset_settings['net_version'] = "networks/"+net_version
-    dataset_settings['net_files'] = [file_name]
+    # The FSS pipeline uses this to distinguish the file with all individual string channels
+    if string_networks is True:
+        dataset_settings['string_net_files'] = [file_name]
+    else:
+        dataset_settings['net_files'] = [file_name]
     dataset_settings['exp_name'] += "-%s" % (file_name.split('.')[0])
     if net_settings is not None:
         dataset_settings['net_settings'] = net_settings
