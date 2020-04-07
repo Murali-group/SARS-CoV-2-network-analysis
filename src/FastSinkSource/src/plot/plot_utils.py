@@ -886,6 +886,7 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
             return reps_df
     reps_df = pd.DataFrame()
     for rep in range(1,kwargs.get('num_reps',1)+1):
+        curr_seed = None
         if cv_seed is not None:
             curr_seed = cv_seed + rep-1
         eval_type = cv.get_output_prefix(folds, rep, neg_factor, curr_seed)
