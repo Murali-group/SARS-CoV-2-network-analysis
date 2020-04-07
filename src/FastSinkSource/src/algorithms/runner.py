@@ -61,6 +61,11 @@ class Runner(object):
         self.setupParamsStr(net_obj.weight_str, params, name)
         self.out_pref = kwargs.get('out_pref', self.out_dir+'pred-scores'+self.params_str)
 
+        # for the supervised classification methods, train_mat and test_mat are set during cross validation  
+        # leave them as None so they are ignored during prediction mode
+        self.train_mat = None
+        self.test_mat = None
+
 
     # if the algorithm is not inmplemented in Python (e.g., MATLAB, R)
     # use this function to setup files and such
