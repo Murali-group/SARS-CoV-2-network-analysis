@@ -67,8 +67,8 @@ def parse_mapping_file(mapping_file, file_type='list', namespaces=['all'], sep='
                     continue
                 uniprot, namespace, alt_id = line.rstrip().split(sep)[:3]
                 if 'all' in namespaces or namespace.lower() in namespaces:
-                    to_uniprot[uniprot].add(alt_id)
-                    from_uniprot[alt_id].add(uniprot)
+                    from_uniprot[uniprot].add(alt_id)
+                    to_uniprot[alt_id].add(uniprot)
     elif file_type == "table":
         df = pd.read_csv(mapping_file, sep=sep, header=0) 
         for namespace in namespaces:
