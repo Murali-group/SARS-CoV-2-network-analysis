@@ -219,6 +219,12 @@ fastsinksource_pipeline_settings:
 
         genemania:
             should_run: [True]
+            alpha: [1.0]
+            tol: [1e-05]
+
+        genemaniaplus:
+            should_run: [True]
+            alpha: [1.0]
             tol: [1e-05]
 
         fastsinksource:
