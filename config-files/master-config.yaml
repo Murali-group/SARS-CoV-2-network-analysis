@@ -174,22 +174,24 @@ fastsinksource_pipeline_settings:
     networks_to_run:
       - name: "stringv11"
         file_name: "9606-uniprot-links-full-v11.txt.gz"
-        # This flag indicates the downloaded file has all string channels (i.e., "full")
         string_networks: True
-        net_version: "stringv11-indv/400"
-        net_settings:
-            weight_method: 'gmw'
-            string_nets: 'all'
-            string_cutoff: 400
-      - name: "stringv11"
-        file_name: "9606-uniprot-links-full-v11.txt.gz"
-        string_networks: True
-        # also run using only the "combined" channel (last column)
+        # run using only the "combined" channel (last column)
         net_version: "stringv11/400"
         net_settings:
+            # the weight_method will not be used, since we're passing a single network
             weight_method: 'gmw'
             string_nets: 'combined_score'
             string_cutoff: 400
+#      # leaving out combining all STRING channels using GeneMANIA-Weighting (GMW) since using the 'combined_score' does just as well
+#      - name: "stringv11"
+#        file_name: "9606-uniprot-links-full-v11.txt.gz"
+#        # This flag indicates the downloaded file has all string channels (i.e., "full")
+#        string_networks: True
+#        net_version: "stringv11-indv/400"
+#        net_settings:
+#            weight_method: 'gmw'
+#            string_nets: 'all'
+#            string_cutoff: 400
       - name: "tissuenet-v2/hpa-protein"
         network_collection: True
       - name: "tissuenet-v2/gtex-rnaseq"
