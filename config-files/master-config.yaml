@@ -204,9 +204,10 @@ fastsinksource_pipeline_settings:
     output_dir: "outputs/"
 
     # evaluation settings to use when running the pipeline
-    eval_settings: 
-      cross_validation_folds: 5
-      sample_neg_examples_factor: 1
+    # uncomment these settings to run cross validation
+    #eval_settings: 
+      #cross_validation_folds: 5
+      #sample_neg_examples_factor: 1
       #num_reps: 1
       #cv_seed: 1
 
