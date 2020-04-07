@@ -33,7 +33,7 @@ The YAML config file contains the list of datasets to download and is self-docum
 To download additional datasets, copy one of the existing dataset sections in the config file and modify the fields accordingly. If your dataset is not yet supported, add to an existing issue ([#5](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/5)), or make an issue and we'll try to add it as soon as we can. 
 
 ## Run the FastSinkSource Pipeline
-This master script will generate a config file specific to the FastSinkSource pipeline, which will then be used to generate predictions, and/or run cross validation.
+This master script will generate a config file specific to the [FastSinkSource pipeline](https://github.com/jlaw9/FastSinkSource/tree/no-ontology), which will then be used to generate predictions, and/or run cross validation.
 
 > Note that the FastSinkSource code was added as a `git-subrepo`, so to make changes to that code, please commit them to that repository directly, and then pull them with `git subrepo pull src/FastSinkSource/`
 
@@ -55,7 +55,7 @@ python src/FastSinkSource/run_eval_algs.py  --config fss_inputs/config_files/str
 ### Cross Validation
 Similar to the previous section, the options to run cross validation can either be set in the config file under `fastsinksource_pipeline_settings -> eval_settings`, or passed directly to `run_eval_algs.py`. The relevant options are below. See `python src/FastSinkSource/run_eval_algs.py --help` for more details.
   - `cross_validation_folds`
-    - # folds to use for cross validation. Specifying this parameter will also run CV
+    - Number of folds to use for cross validation. Specifying this parameter will also run CV
   - `sample_neg_examples_factor`
     - ratio of negatives to positives to randomly sample from the nodes of the given network
   - `num_reps`
