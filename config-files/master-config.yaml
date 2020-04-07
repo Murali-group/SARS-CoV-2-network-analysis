@@ -53,8 +53,6 @@ dataset_settings:
         networks:
           - name: "stringv11"
             file_name: "9606-uniprot-links-full-v11.txt.gz"
-            # This flag indicates the downloaded file has all string channels (i.e., "full")
-            string_networks: True
             network_collection: False
             weighted: True
             #unpack_command: "gunzip"
@@ -161,18 +159,43 @@ dataset_settings:
             columns_to_keep: []
             sep: "\t"
 
+# This section contains settings which will be used to create another config file
+# in order to run the FastSinkSource pipeline.
+# See https://github.com/jlaw9/FastSinkSource/tree/no-ontology for more info
 fastsinksource_pipeline_settings:
     # Base directory where the inputs to the FastSinkSource pipeline will be placed
-    input_dir: "inputs"
+    input_dir: "fss_inputs"
     exp_name: "2020-03-sarscov2-human-ppi" 
     pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi/pos.txt"
+    # *name*: name of the corresponding downloaded network under "datasets_to_download"
+    # *network_collection*: T/F use this flag to run all of the networks in the collection
+    # *net_version*: if multiple network comparisons will be run, use this to distinguish between them
+    # *net_settings*: will be passed directly to the FSS pipeline. See that repo's config file for more info
     networks_to_run:
+      - name: "stringv11"
+        file_name: "9606-uniprot-links-full-v11.txt.gz"
+        # This flag indicates the downloaded file has all string channels (i.e., "full")
+        string_networks: True
+        net_version: "stringv11-indv/400"
+        net_settings:
+            weight_method: 'gmw'
+            string_nets: 'all'
+            string_cutoff: 400
+      - name: "stringv11"
+        file_name: "9606-uniprot-links-full-v11.txt.gz"
+        string_networks: True
+        # also run using only the "combined" channel (last column)
+        net_version: "stringv11/400"
+        net_settings:
+            weight_method: 'gmw'
+            string_nets: 'combined_score'
+            string_cutoff: 400
       - name: "tissuenet-v2/hpa-protein"
         network_collection: True
-      #- name: "tissuenet-v2/gtex-rnaseq"
-      #  network_collection: True
-      #- name: "tissuenet-v2/hpa-rnaseq"
-      #  network_collection: True
+      - name: "tissuenet-v2/gtex-rnaseq"
+        network_collection: True
+      - name: "tissuenet-v2/hpa-rnaseq"
+        network_collection: True
 
     # the outputs will follow this structure:
     # outputs/<net_version>/<exp_name>/<alg_name>/output_files
