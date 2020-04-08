@@ -28,9 +28,33 @@ dataset_settings:
 
     # Download and parse *gene_sets*, *networks*, *drug targets*, etc.
     datasets_to_download:
-      # TODO 
-        #gene_sets:
-        #  - name: ""
+      #### Gene set options
+      # *name*: the name of this geneset or collection. Will be used as the directory
+      # *file_name*: name to give the parsed file
+      # *url*: the url of the file to download
+      # *file_type*: the format of the file. If not gmt, will be converted to gmt
+      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
+      # *geneset_collection*: T/F. Specifies if the downloaded file contains many networks
+      # *namespace*: if specified, map to uniprot from the given namespace
+      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
+      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
+      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+      # *sep*: the delimiter of columns in the files
+        genesets:
+          # This is a collection of COVID-19 related gene sets submitted by the crowd
+          - name: "covid19-crowd"
+            file_name: "genesets-uniprotids.gmt"
+            file_type: "gmt"
+            namespace: "gene_name"
+            url: "https://amp.pharm.mssm.edu/covid19/genesets.gmt"
+            # some of these gene sets appear to be from mouse. Their website does not yet have that information available.
+            # see https://github.com/MaayanLab/covid19_crowd_library/issues/58
+            #taxon: 9606
+            #species: "human"
+            mapping_settings:
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            sep: "\t"
 
       #### Network options:
       # *name*: name of this network. Will be used as the directory

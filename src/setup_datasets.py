@@ -92,29 +92,184 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
     if mapping_settings is not None:
         namespace_mappings = setup_mappings(datasets_dir, mapping_settings, **kwargs)
 
+    if 'genesets' in dataset_settings:
+        genesets_dir = "%s/genesets" % (datasets_dir)
+        setup_genesets(genesets_dir, dataset_settings['genesets'], namespace_mappings, **kwargs)
     if 'networks' in dataset_settings:
         networks_dir = "%s/networks" % (datasets_dir)
         setup_networks(networks_dir, dataset_settings['networks'], namespace_mappings, **kwargs)
-    if 'gene_sets' in dataset_settings:
-        print("WARNING: downloading and parsing of 'gene_sets' is not yet implemented. Skipping.")
 
     print("Finished downloading/setting up datasets")
     return
 
 
+def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs):
+    """
+    Download all specified geneset files, and map the genes in them to UniProt IDs, if specified.
+    Will write the parsed files in gmt format.
+    Currently supports the following file types: gmt
+    """
+    for geneset in geneset_settings:
+        geneset_file = "%s/%s/%s" % (
+            genesets_dir, geneset['name'], geneset['file_name'])
+
+        if not kwargs.get('force_download') and os.path.isfile(geneset_file):
+            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (geneset_file))
+            continue
+        # if this is a geneset collecton, then geneset file should be the name to give to the zip file with the collection inside
+        if geneset.get('geneset_collection') is True:
+            downloaded_file = geneset_file
+        # If this isn't a geneset collection, then download the file and keep the original filename
+        else:
+            downloaded_file = "%s/%s" % (os.path.dirname(geneset_file), geneset['url'].split('/')[-1])
+        # download the file 
+        #try:
+        download_file(geneset['url'], downloaded_file)
+        #except:
+        #    print("Failed to download '%s' using the url '%s'. Skipping" % (geneset_file, geneset['url']))
+        #    continue
+
+        unpack_command = geneset.get('unpack_command')
+        # if its a zip file, unzip first
+        if unpack_command is not None and unpack_command != "":
+            command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
+            run_command(command, chdir=os.path.dirname(downloaded_file))
+
+        # TODO parse multiple gene sets and put them in a gmt file
+        if geneset.get('geneset_collection') is True:
+            print("WARNING: 'geneset_collection' not yet implemented. Skipping")
+            continue
+        else:
+            mapping_settings = geneset.get('mapping_settings', {})
+            all_mapping_stats = setup_geneset(
+                downloaded_file, geneset_file, namespace_mappings,
+                namespace=geneset.get('namespace'), 
+                prefer_reviewed=mapping_settings.get('prefer_reviewed'),
+                file_type=geneset.get('file_type'),
+                sep=geneset.get('sep')
+            )
+            if all_mapping_stats is not None:
+                write_mapping_stats(all_mapping_stats, os.path.dirname(geneset_file)) 
+
+
+def setup_geneset(
+        geneset_file, new_file, namespace_mappings,
+        namespace=None, prefer_reviewed=True,
+        file_type='gmt', sep='\t'):
+    """
+    *geneset_file*: path/to/original geneset file in edge-list format. First two columns should be the tail and head of the edge
+    *new_file*: path/to/new file to write. Should be a .gmt file since that's the format that will be used
+        i.e., 1st column: geneset name, 2nd column: description, then a tab-separated list of genes 
+    *namespace_mappings*: a dictionary of IDs each mapped to a set of uniprot IDs
+    *namespace*: the namespace of the nodes in the genesets.
+    *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+    *sep*: the delimiter of columns in the files
+
+    *returns*: a dictionary of mapping statistics
+    """
+    mapping_stats = None
+    if file_type != 'gmt':
+        print("WARNING: file_type '%s' not yet implemented. Skipping" % (file_type))
+        return mapping_stats
+
+    genesets, descriptions = parse_gmt_file(geneset_file)
+
+    if namespace is not None and namespace.lower() not in ['uniprot', 'uniprotkb']:
+        if namespace_mappings is None:
+            print("WARNING: mappings not supplied. Unable to map from '%s' to UniProt IDs." % (namespace))
+            namespace = None
+
+    print("\twriting %s" % (new_file))
+    all_mapping_stats = {}
+    # and re-write the file with the specified columns to keep
+    open_command = gzip.open if '.gz' in new_file else open
+    with open_command(new_file, 'wb' if '.gz' in new_file else 'w') as out:
+        for name, genes in genesets.items():
+            prots = genes
+            if namespace is not None:
+                prots, mapping_stats = map_nodes(genes, namespace_mappings, prefer_reviewed=prefer_reviewed)
+                all_mapping_stats[name] = mapping_stats
+            new_line = "%s\t%s\t%s\n" % (
+                name, descriptions.get(name, ""), '\t'.join(prots))
+            out.write(new_line.encode() if '.gz' in new_file else new_line)
+    # keep track of the mapping statistics
+    return all_mapping_stats if len(all_mapping_stats) > 0 else None
+
+
+def map_nodes(nodes, namespace_mappings, prefer_reviewed=True):
+    num_unmapped_nodes = 0
+    if prefer_reviewed: 
+        # get all of the reviewed prots 
+        reviewed_prots = namespace_mappings.get('reviewed')
+        if reviewed_prots is None:
+            print("\tWarning: 'prefer_reviewed' was specified, but the reviewed status of the UniProt IDs was not given. Skipping this option.")
+    new_nodes = []
+    for n in nodes:
+        new_ns = namespace_mappings.get(n)
+        if new_ns is None or len(new_ns) == 0:
+            num_unmapped_nodes += 1
+            continue
+        if prefer_reviewed and reviewed_prots is not None:
+            # if any of the mapped UniProt IDs are reviewed, keep only those
+            ns_to_keep = new_ns & reviewed_prots
+            new_ns = ns_to_keep if len(ns_to_keep) > 0 else new_ns
+        # keep the nodes in the same order they were originally in
+        new_nodes += list(new_ns)
+    #print("\t%d nodes map to %d new nodes" % (len(nodes), len(new_nodes)))
+    #print("\t%d unmapped edges" % (num_unmapped_edges))
+    mapping_stats = {'num_nodes': len(nodes), 'num_mapped_nodes': len(new_nodes),
+                     'num_unmapped_nodes': num_unmapped_nodes}
+    return new_nodes, mapping_stats
+
+
+def parse_gmt_file(gmt_file):
+    """
+    Parse a gmt file and return a dictionary of the geneset names mapped to the list of genes 
+    """
+    print("Reading %s" % (gmt_file))
+    genesets = {}
+    descriptions = {}
+    open_command = gzip.open if '.gz' in gmt_file else open
+    with open_command(gmt_file, 'r') as f:
+        for line in f:
+            line = line.decode() if '.gz' in gmt_file else line
+            if line[0] == '#':
+                continue
+            line = line.rstrip().split('\t')
+            name, description = line[:2]
+            genes = line[2:]
+            genesets[name] = genes
+            descriptions[name] = description 
+    print("\t%d gene sets" % (len(genesets)))
+    return genesets, descriptions
+
+
+def write_mapping_stats(all_mapping_stats, out_dir):
+    """
+    *all_mapping_stats*: a dictionary from the network name or gene set to the mapping statistics 
+        e.g., # nodes, # edges before and after mapping
+    *out_dir*: folder in which to place the 'mapping-stats.tsv' file
+    """
+    df = pd.DataFrame(all_mapping_stats).T
+    print(df)
+    stats_file = "%s/mapping-stats.tsv" % (out_dir)
+    print("Writing mapping statistics to %s" % (stats_file))
+    df.to_csv(stats_file, sep='\t')
+
+
 def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs):
     """
-    Download all specified network files, and map the identifiers of the proteins in them to UniProt, if necessary
+    Download all specified network files, and map the identifiers of the proteins in them to UniProt IDs, if necessary
     """
     #global namespace_mappings
     for network in network_settings:
         network_file = "%s/%s/%s" % (
             networks_dir, network['name'], network['file_name'])
 
-        if not kwargs['force_download'] and os.path.isfile(network_file):
+        if not kwargs.get('force_download') and os.path.isfile(network_file):
             print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
             continue
-        elif os.path.isfile(network_file) and kwargs['force_download']:
+        elif kwargs.get('force_download') and os.path.isfile(network_file):
             print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
             continue
         # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
@@ -157,11 +312,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
 
             if mapping_stats is not None:
                 all_mapping_stats = {os.path.basename(network_file).split('.')[0]: mapping_stats}
-                df = pd.DataFrame(all_mapping_stats).T
-                print(df)
-                stats_file = "%s/mapping-stats.tsv" % (os.path.dirname(network_file))
-                print("Writing network mapping statistics to %s" % (stats_file))
-                df.to_csv(stats_file, sep='\t')
+                write_mapping_stats(all_mapping_stats, os.path.dirname(network_file)) 
     return 
 
 
@@ -191,6 +342,7 @@ def setup_network_collection(
     files = [f for f in glob.glob("%s/*.*" % (collection_dir)) if f != collection_file]
     # keep track of the network files and the mapping statistics
     net_files = [] 
+    # this will be a dictionary from the network name to the mapping statistics (i.e., # nodes, # edges)
     all_mapping_stats = {}
     for f in files:
         new_f = f
@@ -220,11 +372,7 @@ def setup_network_collection(
     with open('%s/net-files.txt' % (collection_dir), 'w') as out:
         out.write('\n'.join(net_files)+'\n')
     if len(all_mapping_stats) > 0:
-        df = pd.DataFrame(all_mapping_stats).T
-        print(df)
-        stats_file = "%s/mapping-stats.tsv" % (collection_dir)
-        print("Writing network mapping statistics to %s" % (stats_file))
-        df.to_csv(stats_file, sep='\t')
+        write_mapping_stats(all_mapping_stats, collection_dir) 
     print("")
     return df
 
@@ -323,10 +471,6 @@ def map_network(edges, extra_cols, namespace_mappings, prefer_reviewed=True):
                      'edges': len(edges), 'new_edges': len(new_edges),
                      'unmapped_edges': num_unmapped_edges}
     return new_edges, new_extra_cols, mapping_stats
-
-
-def setup_genesets():
-    pass
 
 
 def run_command(command, chdir=None):
