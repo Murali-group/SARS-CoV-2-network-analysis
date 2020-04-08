@@ -122,6 +122,9 @@ def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs)
         # If this isn't a geneset collection, then download the file and keep the original filename
         else:
             downloaded_file = "%s/%s" % (os.path.dirname(geneset_file), geneset['url'].split('/')[-1])
+        if kwargs.get('force_download') and os.path.isfile(downloaded_file):
+            print("Deleting %s" % (downloaded_file))
+            os.remove(downloaded_file)
         # download the file 
         #try:
         download_file(geneset['url'], downloaded_file)
