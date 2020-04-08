@@ -33,7 +33,7 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to download and parse input files, and (TODO) run the FastSinkSource pipeline using them.")
+    parser = argparse.ArgumentParser(description="Script to pull together predictions from multiple datasets and/or algorithms, and sort them by avg rank")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
@@ -79,6 +79,8 @@ def main(config_map, **kwargs):
     input_dir = input_settings['input_dir']
     alg_settings = config_map['algs']
     output_settings = config_map['output_settings']
+    if config_map.get('eval_settings'):
+        kwargs.update(config_map['eval_settings'])
     postfix = kwargs.get("postfix")
     postfix = "" if postfix is None else postfix
     algs = plot_utils.get_algs_to_run(alg_settings, **kwargs)
@@ -114,6 +116,7 @@ def main(config_map, **kwargs):
         out_dir = "%s/%s/%s/" % (output_settings['output_dir'], dataset['net_version'], dataset['exp_name'])
         for alg in algs:
             alg_params = alg_settings[alg]
+            # generate all combinations of parameters specified
             combos = [dict(zip(alg_params.keys(), val))
                 for val in itertools.product(
                     *(alg_params[param] for param in alg_params))]
@@ -121,8 +124,12 @@ def main(config_map, **kwargs):
                 # first get the parameter string for this runner
                 params_str = runner.get_runner_params_str(alg, dataset, param_combo)
                 eval_str = "-rep%s-nf%s" % (num_reps, neg_factor) \
-                           if 'plus' not in alg and neg_factor is not None else ""
+                            if 'plus' not in alg and neg_factor is not None else ""
                 pred_file = "%s/%s/pred-scores%s%s%s.txt" % (out_dir, alg, eval_str, params_str, postfix)
+                alg_name = plot_utils.ALG_NAMES.get(alg,alg)
+                alg_name += eval_str
+                if len(combos) > 1: 
+                    alg_name = alg_name + params_str
                 if not os.path.isfile(pred_file):
                     print("not found: %s" % (pred_file))
                     continue
@@ -135,14 +142,19 @@ def main(config_map, **kwargs):
                 df = df[['prot', 'score']]
                 # reset the index again to store the current rank as a column
                 df.reset_index(inplace=True)
-                df.columns = ['rank', 'prot', 'score']
-                df['rank'] += 1
+                df.columns = ['Rank', 'Prot', 'Score']
+                df['Rank'] += 1
 
                 # now set the index as the uniprot ID 
-                df.set_index('prot', inplace=True)
+                df.set_index('Prot', inplace=True)
 
                 # add the dataset-specific settings to the column headers
-                df.columns = ["%s-%s" % (plot_exp_name, col) for col in ["Rank", "Score"]]
+                #df.columns = ["%s-%s" % (curr_name, col) for col in ["Rank", "Score"]]
+                # UPDATE: add levels to the column index
+                tuples = [(plot_exp_name, alg_name, col) for col in df.columns]
+                index = pd.MultiIndex.from_tuples(tuples)
+                df.columns = index
+                print(df.head())
 
                 # now add the columns to the master dataframe
                 df_all = pd.concat([df_all, df], axis=1)
@@ -168,21 +180,18 @@ def main(config_map, **kwargs):
     # for each dataset, keep the top k predictions, with ties
     for dataset in input_settings['datasets']:
         name = dataset['plot_exp_name']
-        cols = [col for col in df_all.columns if name in col]
-        sub_df = df_all[cols]
-        sub_df.sort_values(by=name+'-Rank', inplace=True)
+        curr_algs = df_all[name].columns.levels[0]
+        for alg in curr_algs:
+            sub_df = df_all[(name, alg)]
+            sub_df.sort_values(by='Rank', inplace=True)
 
-        topk = int(min(len(sub_df), num_pred_to_write))
-        score_topk = sub_df.iloc[topk-1][name+'-Score']
-        sub_df = sub_df[sub_df[name+'-Score'] >= score_topk]
-        for col in cols:
-            if 'Score' in col:
-                df_all[col] = sub_df[col].round(kwargs.get('round', 3)) 
-            elif 'Rank' in col:
-                # use object to keep the value as an integer in the output
-                df_all[col] = sub_df[col].astype(int).astype(object)
-            else:
-                df_all[col] = sub_df[col]
+            topk = int(min(len(sub_df), num_pred_to_write))
+            score_topk = sub_df.iloc[topk-1]['Score']
+            sub_df = sub_df[sub_df['Score'] >= score_topk]
+            sub_df['Score'] = sub_df['Score'].round(kwargs.get('round', 3))
+            # use object to keep the value as an integer in the output
+            sub_df['Rank'] = sub_df['Rank'].astype(int).astype(object)
+            df_all[[(name, alg, col) for col in ['Rank', 'Score']]] = sub_df
 
     # now remove rows that are NA for all values
     df_all.dropna(how='all', inplace=True)
@@ -201,7 +210,7 @@ def main(config_map, **kwargs):
     #for alg, df in alg_dfs.items():
     out_file = "%s%s.tsv" % (kwargs['out_pref'], '-'.join(algs))
     print("\nWriting %s" % (out_file))
-    df_all.to_csv(out_file, sep='\t', index_label="UniProtID")
+    df_all.to_csv(out_file, sep='\t')
 
 
 if __name__ == "__main__":
