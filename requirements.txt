@@ -4,6 +4,9 @@ scipy
 networkx 
 # python package to read yaml files
 pyyaml
+# used to download files
+wget
+requests
 # progress bar
 tqdm
 # used for plotting
