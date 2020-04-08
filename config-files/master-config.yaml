@@ -22,7 +22,7 @@ dataset_settings:
 
           - mapping_file: "uniprot-reviewed-status.tab.gz"
             species: "human"
-            url: "https://www.uniprot.org/uniprot/?query=*&format=tab&force=true&columns=id,reviewed,genes,organism-id&fil=organism:9606&compress=yes"
+            url: "https://www.uniprot.org/uniprot/?query=*&format=tab&force=true&columns=id,reviewed,genes,protein%20names,organism-id&fil=organism:9606&compress=yes"
             type: "table"
             namespaces: ["Status"]
 
@@ -34,7 +34,7 @@ dataset_settings:
       # *url*: the url of the file to download
       # *file_type*: the format of the file. If not gmt, will be converted to gmt
       # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
-      # *geneset_collection*: T/F. Specifies if the downloaded file contains many networks
+      # *geneset_collection*: T/F. Specifies if the downloaded file contains many files. Not yet implemented.
       # *namespace*: if specified, map to uniprot from the given namespace
       # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
       # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
