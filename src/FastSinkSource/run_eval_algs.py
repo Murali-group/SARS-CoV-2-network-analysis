@@ -5,10 +5,10 @@ import itertools
 from collections import defaultdict
 import os
 import sys
-from tqdm import tqdm
+from tqdm import tqdm, trange
 import time
 import numpy as np
-from scipy import sparse
+from scipy import sparse as sp
 # packages in this repo
 # add this file's directory to the path so these imports work from anywhere
 sys.path.insert(0,os.path.dirname(__file__))
@@ -303,10 +303,18 @@ def run_algs(alg_runners, **kwargs):
     Runs all of the specified algorithms with the given network and annotations.
     Each runner should return the GO term prediction scores for each node in a sparse matrix.
     """
+    # if no negative examples are given and an algorithm needs negative examples,
+    # sample negative examples 
+    neg_factor = kwargs.get('sample_neg_examples_factor')
+    num_reps = kwargs.get('num_reps', 1)
     # first check to see if the algorithms have already been run
     # and if the results should be overwritten
     for run_obj in alg_runners:
-        out_file = "%s/pred-scores%s.txt" % (run_obj.out_dir, run_obj.params_str)
+        # TODO add this to the "params_str"
+        eval_str = "" 
+        if 'plus' not in run_obj.name and neg_factor is not None:
+            eval_str = "-rep%s-nf%s" % (num_reps, neg_factor)
+        out_file = "%s/pred-scores%s%s.txt" % (run_obj.out_dir, eval_str, run_obj.params_str)
         run_obj.out_file = out_file
         run_obj.out_pref = out_file.replace(".txt","")
     if kwargs['forcealg'] is True or kwargs['num_pred_to_write'] == 0:
@@ -321,18 +329,33 @@ def run_algs(alg_runners, **kwargs):
 
     params_results = {}
 
-    print("Generating inputs")
+    print("Generating inputs and running the algorithms")
     # now setup the inputs for the runners
     for run_obj in runners_to_run:
-        run_obj.setupInputs()
-
-    print("Running the algorithms")
-    # run the algs
-    # TODO storing all of the runners scores simultaneously could be costly (too much RAM).
-    for run_obj in runners_to_run:
-        run_obj.run()
-        print(run_obj.params_results)
-        params_results.update(run_obj.params_results)
+        # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
+        if 'plus' not in run_obj.name and neg_factor is not None:
+            orig_ann_obj = run_obj.ann_obj
+            # sample negative examples, repeat the method the given number of times,
+            # and then average the resulting scores
+            avg_term_scores = sp.lil_matrix(orig_ann_obj.ann_matrix.shape, dtype=np.float)
+            print("Sampling negative examples and averaging the scores over %d runs of %s" % (num_reps, run_obj.name))
+            for rep in trange(1,num_reps+1):
+                new_ann_matrix = eval_utils.sample_neg_examples(
+                    orig_ann_obj, sample_neg_examples_factor=neg_factor)
+                run_obj.ann_obj.ann_matrix = new_ann_matrix
+                run_obj.setupInputs()
+                run_obj.run()
+                avg_term_scores += run_obj.term_scores 
+            # finally, divide by the number of repetitions to get the average
+            avg_term_scores = avg_term_scores / num_reps 
+            run_obj.term_scores = avg_term_scores
+        else:
+            # run the method like normal
+            run_obj.setupInputs()
+            # TODO storing all of the runners scores simultaneously could be costly (too much RAM).
+            run_obj.run()
+            print(run_obj.params_results)
+            params_results.update(run_obj.params_results)
 
     # parse the outputs. Only needed for the algs that write output files
     for run_obj in runners_to_run:
