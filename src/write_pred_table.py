@@ -15,6 +15,7 @@ import pandas as pd
 sys.path.insert(0,os.path.dirname(__file__))
 #from FastSinkSource.run_eval_algs import setup_runners
 from FastSinkSource.src.plot import plot_utils
+from FastSinkSource.src.utils import config_utils
 from FastSinkSource.src.algorithms import runner
 from setup_datasets import parse_mapping_file
 
@@ -33,7 +34,7 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to pull together predictions from multiple datasets and/or algorithms, and sort them by avg rank")
+    parser = argparse.ArgumentParser(description="Script to pull together predictions from multiple datasets and/or algorithms, and sort them by med rank")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
@@ -84,14 +85,16 @@ def main(config_map, **kwargs):
     postfix = kwargs.get("postfix")
     postfix = "" if postfix is None else postfix
     algs = plot_utils.get_algs_to_run(alg_settings, **kwargs)
+    del kwargs['algs']  # remove algs from kwargs
     uniprot_to_gene = None
+    # also add the protein name
+    uniprot_to_prot_names = None
     if kwargs.get('id_mapping_file'):
         df = pd.read_csv(kwargs['id_mapping_file'], sep='\t', header=0) 
         ## keep only the first gene for each UniProt ID
         uniprot_to_gene = {p: genes.split(' ')[0] for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
-
-    neg_factor = kwargs.get('sample_neg_examples_factor')
-    num_reps = kwargs.get('num_reps', 1)
+        if 'Protein names' in df.columns:
+            uniprot_to_prot_names = dict(zip(df['Entry'], df['Protein names'].astype(str)))
 
     # for each dataset, get the prediction scores from each method
     # store a single df for each alg
@@ -101,107 +104,100 @@ def main(config_map, **kwargs):
         pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
         df = pd.read_csv(pos_neg_file, sep='\t')
         orig_pos = df[df['2020-03-sarscov2-human-ppi'] == 1]['prots']
-        # figure out how many predictions to keep
-        num_pred_to_write = kwargs.get('num_pred_to_write', 100) 
-        if kwargs.get('factor_pred_to_write') is not None:
-            num_pred_to_write = kwargs['factor_pred_to_write']*len(orig_pos)
-        print('keeping %d predictions (with ties) from each alg' % (num_pred_to_write))
 
-        # if a name is given this experiment, then use that
-        plot_exp_name = "%s %s" % (dataset['net_version'], dataset['exp_name'])
-        if 'plot_exp_name' in dataset:
-            plot_exp_name = dataset['plot_exp_name']
-        dataset['plot_exp_name'] = plot_exp_name
+        dataset_name = config_utils.get_dataset_name(dataset) 
+        alg_pred_files = config_utils.get_dataset_alg_prediction_files(
+            output_settings['output_dir'], dataset, alg_settings, algs, **kwargs)
+        for alg, pred_file in alg_pred_files.items():
+            if not os.path.isfile(pred_file):
+                print("Warning: %s not found. skipping" % (pred_file))
+                continue
+            print("reading: %s" % (pred_file))
+            df = pd.read_csv(pred_file, sep='\t')
+            # remove the original positives
+            df = df[~df['prot'].isin(orig_pos)]
+            df.reset_index(inplace=True, drop=True)
 
-        out_dir = "%s/%s/%s/" % (output_settings['output_dir'], dataset['net_version'], dataset['exp_name'])
-        for alg in algs:
-            alg_params = alg_settings[alg]
-            # generate all combinations of parameters specified
-            combos = [dict(zip(alg_params.keys(), val))
-                for val in itertools.product(
-                    *(alg_params[param] for param in alg_params))]
-            for param_combo in combos:
-                # first get the parameter string for this runner
-                params_str = runner.get_runner_params_str(alg, dataset, param_combo)
-                eval_str = "-rep%s-nf%s" % (num_reps, neg_factor) \
-                            if 'plus' not in alg and neg_factor is not None else ""
-                pred_file = "%s/%s/pred-scores%s%s%s.txt" % (out_dir, alg, eval_str, params_str, postfix)
-                alg_name = plot_utils.ALG_NAMES.get(alg,alg)
-                alg_name += eval_str
-                if len(combos) > 1: 
-                    alg_name = alg_name + params_str
-                if not os.path.isfile(pred_file):
-                    print("not found: %s" % (pred_file))
-                    continue
-                print("reading: %s" % (pred_file))
-                df = pd.read_csv(pred_file, sep='\t')
-                # remove the original positives
-                df = df[~df['prot'].isin(orig_pos)]
-                df.reset_index(inplace=True, drop=True)
+            df = df[['prot', 'score']]
+            # reset the index again to store the current rank as a column
+            df.reset_index(inplace=True)
+            df.columns = ['Rank', 'Prot', 'Score']
+            df['Rank'] += 1
 
-                df = df[['prot', 'score']]
-                # reset the index again to store the current rank as a column
-                df.reset_index(inplace=True)
-                df.columns = ['Rank', 'Prot', 'Score']
-                df['Rank'] += 1
+            # now set the index as the uniprot ID 
+            df.set_index('Prot', inplace=True)
 
-                # now set the index as the uniprot ID 
-                df.set_index('Prot', inplace=True)
+            # add the dataset-specific settings to the column headers
+            #df.columns = ["%s-%s" % (curr_name, col) for col in ["Rank", "Score"]]
+            # UPDATE: add levels to the column index
+            tuples = [(dataset_name, alg, col) for col in df.columns]
+            index = pd.MultiIndex.from_tuples(tuples)
+            df.columns = index
+            print(df.head())
 
-                # add the dataset-specific settings to the column headers
-                #df.columns = ["%s-%s" % (curr_name, col) for col in ["Rank", "Score"]]
-                # UPDATE: add levels to the column index
-                tuples = [(plot_exp_name, alg_name, col) for col in df.columns]
-                index = pd.MultiIndex.from_tuples(tuples)
-                df.columns = index
-                print(df.head())
-
-                # now add the columns to the master dataframe
-                df_all = pd.concat([df_all, df], axis=1)
-                #for col in df.columns:
-                #    alg_dfs[alg][col] = df[col]
+            # now add the columns to the master dataframe
+            df_all = pd.concat([df_all, df], axis=1)
+            #for col in df.columns:
+            #    alg_dfs[alg][col] = df[col]
 
     print(df_all.head())
 
     # sort the dataframe by the average rank
     # first compute the ranks, then add them to the dataframe later
     print("Sorting genes by average rank")
-    df_ranks = df_all[[col for col in df_all.columns if 'Rank' in col]] \
-               .rank(method='average', na_option='bottom')
+    # for each dataset, replace NA with the highest rank in that network
+    df_ranks = df_all[[col for col in df_all.columns if 'Rank' in col]]
+    df_ranks.fillna(df_ranks.max(axis=0), inplace=True)
+    # not exactly sure what the "bottom" option does from pandas
+    #           .rank(method='average', na_option='bottom')
+
     #nan_rank_val = len(orig_pos)*2
     #print("\tempty ranks getting a value of %d" % (nan_rank_val))
     #df_ranks = df_all[[col for col in df_all.columns if 'Rank' in col]].fillna(nan_rank_val)
     #print(df_ranks.head())
-    avg_rank = df_ranks.mean(axis=1).sort_values()
-    avg_rank = avg_rank.round(1)
-    #print(avg_rank)
-    #print(len(avg_rank))
+    med_rank = df_ranks.median(axis=1).sort_values()
+    med_rank = med_rank.round(1)
+    #print(med_rank)
+    #print(len(med_rank))
 
-    # for each dataset, keep the top k predictions, with ties
-    for dataset in input_settings['datasets']:
-        name = dataset['plot_exp_name']
-        curr_algs = df_all[name].columns.levels[0]
-        for alg in curr_algs:
-            sub_df = df_all[(name, alg)]
-            sub_df.sort_values(by='Rank', inplace=True)
+    # figure out how many predictions to keep
+    num_pred_to_write = kwargs.get('num_pred_to_write', 100) 
+    if kwargs.get('factor_pred_to_write') is not None:
+        num_pred_to_write = kwargs['factor_pred_to_write']*len(orig_pos)
 
-            topk = int(min(len(sub_df), num_pred_to_write))
-            score_topk = sub_df.iloc[topk-1]['Score']
-            sub_df = sub_df[sub_df['Score'] >= score_topk]
-            sub_df['Score'] = sub_df['Score'].round(kwargs.get('round', 3))
-            # use object to keep the value as an integer in the output
-            sub_df['Rank'] = sub_df['Rank'].astype(int).astype(object)
-            df_all[[(name, alg, col) for col in ['Rank', 'Score']]] = sub_df
+    if num_pred_to_write == -1:
+        print("Keeping all predictions from each method")
+    else:
+        print('Keeping %d predictions (with ties) from each alg' % (num_pred_to_write))
+        # for each dataset, keep the top k predictions, with ties
+        for dataset in input_settings['datasets']:
+            name = dataset['plot_exp_name']
+            curr_algs = df_all[name].columns.levels[0]
+            for alg in curr_algs:
+                sub_df = df_all[(name, alg)]
+                sub_df.sort_values(by='Rank', inplace=True)
+
+                topk = int(min(len(sub_df), num_pred_to_write))
+                score_topk = sub_df.iloc[topk-1]['Score']
+                sub_df = sub_df[sub_df['Score'] >= score_topk]
+                # TODO for some reason this doesn't work if that are nan or inf in the column.
+                sub_df['Score'] = sub_df['Score'].round(kwargs.get('round', 3))
+                # use object to keep the value as an integer in the output
+                sub_df['Rank'] = sub_df['Rank'].astype(int).astype(object)
+                df_all[[(name, alg, col) for col in ['Rank', 'Score']]] = sub_df
 
     # now remove rows that are NA for all values
     df_all.dropna(how='all', inplace=True)
 
+    # and the average rank
+    df_all.insert(0, 'MedianRank', med_rank)
+    df_all.sort_values(by='MedianRank', inplace=True)
+    # add the protein names
+    if uniprot_to_prot_names is not None:
+        df_all.insert(0, 'ProteinNames', df_all.index.map(uniprot_to_prot_names))
     # add the gene names
     if uniprot_to_gene is not None:
         df_all.insert(0, 'GeneName', df_all.index.map(uniprot_to_gene))
-    # and the average rank
-    df_all.insert(1, 'AvgRank', avg_rank)
-    df_all.sort_values(by='AvgRank', inplace=True)
 
     print(df_all.head())
 
