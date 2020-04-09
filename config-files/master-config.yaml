@@ -228,11 +228,15 @@ fastsinksource_pipeline_settings:
     output_dir: "outputs/"
 
     # evaluation settings to use when running the pipeline
-    # uncomment these settings to run cross validation
-    #eval_settings: 
+    eval_settings: 
+      # automatically generate the predictions for each method
+      num_pred_to_write: -1
+      # for the methods that need negative examples, randomly sample negatives equal to a ratio of 5:1 Neg:Pos
+      sample_neg_examples_factor: 5
+      # 100 repetitions 
+      num_reps: 100  
+      # uncomment this setting to run cross validation
       #cross_validation_folds: 5
-      #sample_neg_examples_factor: 1
-      #num_reps: 1
       #cv_seed: 1
 
     # Algorithms to run along with their settings.
