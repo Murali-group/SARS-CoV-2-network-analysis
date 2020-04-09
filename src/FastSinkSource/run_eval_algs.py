@@ -21,7 +21,7 @@ import src.evaluate.cross_validation as cross_validation
 import src.evaluate.eval_leave_one_species_out as eval_loso
 import src.utils.file_utils as utils
 import src.utils.string_utils as string_utils
-
+import src.utils.config_utils as config_utils
 
 
 def parse_args():
@@ -94,20 +94,8 @@ def setup_opts():
 
 
 def run(config_map, **kwargs):
-    input_settings = config_map['input_settings']
-    input_dir = input_settings['input_dir']
-    alg_settings = config_map['algs']
-    output_settings = config_map['output_settings']
-    postfix = kwargs.get("postfix")
-    # combine the evaluation settings in the config file and the kwargs
-    if 'eval_settings' in config_map:
-        kwargs.update(config_map['eval_settings'])
-    # if specified, use this postfix, meaning overwrite the postfix from the yaml file
-    if postfix is not None:
-        kwargs['postfix'] = postfix
-    # otherwise use the default empty string
-    elif kwargs.get('postfix') is None:
-        kwargs['postfix'] = ""
+    input_settings, input_dir, output_dir, alg_settings, postfix, kwargs \
+        = config_utils.setup_config_variables(config_map, **kwargs)
 
     for dataset in input_settings['datasets']:
         # add options specified for this dataset to kwargs  
@@ -121,7 +109,7 @@ def run(config_map, **kwargs):
             continue
         # the outputs will follow this structure:
         # outputs/<net_version>/<exp_name>/<alg_name>/output_files
-        out_dir = "%s/%s/%s/" % (output_settings['output_dir'], dataset['net_version'], dataset['exp_name'])
+        out_dir = "%s/%s/%s/" % (output_dir, dataset['net_version'], dataset['exp_name'])
         alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
 
         # first run prediction mode since it is the fastest
@@ -310,13 +298,8 @@ def run_algs(alg_runners, **kwargs):
     # first check to see if the algorithms have already been run
     # and if the results should be overwritten
     for run_obj in alg_runners:
-        # TODO add this to the "params_str"
-        eval_str = "" 
-        if 'plus' not in run_obj.name and neg_factor is not None:
-            eval_str = "-rep%s-nf%s" % (num_reps, neg_factor)
-        out_file = "%s/pred-scores%s%s.txt" % (run_obj.out_dir, eval_str, run_obj.params_str)
+        out_file = run_obj.out_pref + ".txt"
         run_obj.out_file = out_file
-        run_obj.out_pref = out_file.replace(".txt","")
     if kwargs['forcealg'] is True or kwargs['num_pred_to_write'] == 0:
         runners_to_run = alg_runners
     else:
@@ -354,7 +337,6 @@ def run_algs(alg_runners, **kwargs):
             run_obj.setupInputs()
             # TODO storing all of the runners scores simultaneously could be costly (too much RAM).
             run_obj.run()
-            print(run_obj.params_results)
             params_results.update(run_obj.params_results)
 
     # parse the outputs. Only needed for the algs that write output files
@@ -375,7 +357,7 @@ def run_algs(alg_runners, **kwargs):
             alg_utils.write_output(run_obj.term_scores, run_obj.ann_obj.terms, run_obj.ann_obj.prots,
                          run_obj.out_file, num_pred_to_write=num_pred_to_write)
 
-    eval_loso.write_stats_file(runners_to_run, params_results)
+    #eval_loso.write_stats_file(runners_to_run, params_results)
     print(params_results)
     print("Finished")
 

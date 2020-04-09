@@ -57,9 +57,12 @@ class Runner(object):
         # using lil matrix so 0s are automatically not stored
         self.term_scores = sp.lil_matrix(ann_obj.ann_matrix.shape, dtype=np.float)
 
-        # keep track of the weighting method for writing to the output file later
-        self.setupParamsStr(net_obj.weight_str, params, name)
-        self.out_pref = kwargs.get('out_pref', self.out_dir+'pred-scores'+self.params_str)
+        # keep track of the evaluation settings and weighting method for adding to the output
+        eval_str = get_eval_str(name, **kwargs)
+        self.setupParamsStr(eval_str+net_obj.weight_str, params, name)
+        default_out_pref = "%s/pred-scores%s%s" % (
+            self.out_dir, self.params_str, self.kwargs.get('postfix',''))
+        self.out_pref = kwargs.get('out_pref', default_out_pref)
 
         # for the supervised classification methods, train_mat and test_mat are set during cross validation  
         # leave them as None so they are ignored during prediction mode
@@ -89,18 +92,40 @@ class Runner(object):
         return LibMapper[self.name].get_alg_type()
 
 
-def get_runner_params_str(name, dataset, params):
+def get_eval_str(name, **kwargs):
+    # if we sampled negative examples when running this method, add that to the output string
+    neg_factor = kwargs.get('sample_neg_examples_factor')
+    num_reps = kwargs.get('num_reps', 1)
+    eval_str = "" 
+    # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
+    if 'plus' not in name and neg_factor is not None:
+        eval_str = "-rep%s-nf%s" % (num_reps, neg_factor)
+    return eval_str
+
+
+def get_weight_str(dataset):
     """
-    Get the params string for a runner without actually creating the runner object
     *dataset*: dictionary of datset settings and file paths. Used to get the 'net_settings': 'weight_method' (e.g., 'swsn' or 'gmw')
     """
-    # get the weight str used when writing output files
     unweighted = dataset['net_settings'].get('unweighted', False) if 'net_settings' in dataset else False
     weight_method = ""
     if dataset.get('multi_net',False) is True: 
         weight_method = "-"+dataset['net_settings']['weight_method']
     weight_str = '%s%s' % (
         '-unw' if unweighted else '', weight_method)
+    return weight_str
 
-    return LibMapper[name].setup_params_str(weight_str, params, name=name)
+
+def get_runner_params_str(name, params, dataset=None, weight_str="", **kwargs):
+    """
+    Get the params string for a runner without actually creating the runner object
+    *dataset*: dictionary of datset settings and file paths. Used to get the 'net_settings': 'weight_method' (e.g., 'swsn' or 'gmw')
+    """
+    # get the weight str used when writing output files
+    if dataset is not None:
+        weight_str = get_weight_str(dataset) 
+    eval_str = get_eval_str(name, **kwargs) 
+    settings_str = eval_str + weight_str
+
+    return LibMapper[name].setup_params_str(settings_str, params, name=name)
 
