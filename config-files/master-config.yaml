@@ -56,6 +56,50 @@ dataset_settings:
               prefer_reviewed: True
             sep: "\t"
 
+      #### Gene-drug dataset options:
+      # *name*: name of this network. Will be used as the directory name
+      # *file_name*: the name of the file to download
+      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
+      # *unpacked_file*: The name of the file to parse after unpacking the archive.
+      # *namespace*: the namespace of the nodes in the networks
+      # *url*: the url of the file to download
+      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
+      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
+      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
+      #     If not specified, all columns will be kept
+      # *sep*: the delimiter of columns in the files
+        drug-targets:
+          - name: "pharmgkb"
+            # the script will also write a gmt file
+            file_name: "prot-chem-relationships.tsv"
+            file_type: "table"
+            # available at https://www.pharmgkb.org/downloads
+            url: "https://s3.pgkb.org/data/relationships.zip"
+            unpack_command: "unzip"
+            unpacked_file: "relationships.tsv"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              namespace: "pharmgkb"
+              prefer_reviewed: True
+              col_to_map: "Entity1_id"
+            # keep all columns for now
+            #columns_to_keep: []
+            # columns to use in the output gmt file. 
+            # Should be 3 column headers. The first is the drug ID, the second is the description, third is the proteins
+            gmt_cols: ["Entity2_id", "Entity2_name", "Entity1_id"]
+            sep: "\t"
+            filters:
+                # Keep only the drugs that are associated with a gene for now.
+                - col: "Association"
+                  vals: ["associated"]
+                # Keep only the Gene - Chemical interactions for now
+                - col: "Entity1_type"
+                  vals: ["Gene"]
+                - col: "Entity2_type"
+                  vals: ["Chemical"]
+
       #### Network options:
       # *name*: name of this network. Will be used as the directory
       # *file_name*: the name of the file to download
@@ -139,41 +183,6 @@ dataset_settings:
             unpack_command: "unzip"
             namespace: "ensembl"
             url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/GTEx-RNA-Seq.zip"
-            taxon: 9606
-            species: "human"
-            mapping_settings:
-              #keep_multiple: False
-              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
-              prefer_reviewed: True
-            columns_to_keep: []
-            sep: "\t"
-
-      #### Gene-drug dataset options:
-      # *name*: name of this network. Will be used as the directory name
-      # *file_name*: the name of the file to download
-      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
-      # *namespace*: the namespace of the nodes in the networks
-      # *url*: the url of the file to download
-      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
-      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
-      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
-      # *gzip_files*: gzip the individual files
-      # *remove_filename_spaces*: if there are spaces in the file names, remove them
-      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
-      #     If not specified, all columns will be kept
-      # *sep*: the delimiter of columns in the files
-        drug-targets:
-          - name: "pharmgkb"
-            file_name: "relationships.zip"
-            network_collection: False
-            collection_settings:
-              gzip_files: True
-              remove_filename_spaces: True
-            weighted: False
-            unpack_command: "unzip"
-            namespace: "ensembl"
-            # available at https://www.pharmgkb.org/downloads
-            url: "https://s3.pgkb.org/data/relationships.zip"
             taxon: 9606
             species: "human"
             mapping_settings:
