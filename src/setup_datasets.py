@@ -95,12 +95,62 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
     if 'genesets' in dataset_settings:
         genesets_dir = "%s/genesets" % (datasets_dir)
         setup_genesets(genesets_dir, dataset_settings['genesets'], namespace_mappings, **kwargs)
+    if 'drug-targets' in dataset_settings:
+        out_dir = "%s/drug-targets" % (datasets_dir)
+        setup_drug_targets(out_dir, dataset_settings['drug-targets'], namespace_mappings, **kwargs)
     if 'networks' in dataset_settings:
         networks_dir = "%s/networks" % (datasets_dir)
         setup_networks(networks_dir, dataset_settings['networks'], namespace_mappings, **kwargs)
 
     print("Finished downloading/setting up datasets")
     return
+
+
+def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mappings, **kwargs):
+    """
+    Download the drug target files, and map the genes in them to UniProt IDs, if specified.
+    """
+    for settings in drug_target_settings:
+        drug_targets_file = "%s/%s/%s" % (
+            drug_targets_dir, settings['name'], settings['file_name'])
+        downloaded_file = "%s/%s" % (os.path.dirname(drug_targets_file), settings['url'].split('/')[-1])
+        download_dir = os.path.dirname(downloaded_file)
+        mapping_settings = settings.get("mapping_settings", {}) 
+        # add the mapping settings to all settings
+        settings.update(mapping_settings)
+
+        if not kwargs.get('force_download') and os.path.isfile(drug_targets_file):
+            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (drug_targets_file))
+            continue
+        if kwargs.get('force_download') and os.path.isfile(downloaded_file):
+            print("Deleting %s and its contents" % (download_dir))
+            shutil.rmtree(download_dir)
+        # download the file 
+        #try:
+        download_file(settings['url'], downloaded_file)
+        #except:
+        #    print("Failed to download '%s' using the url '%s'. Skipping" % (drug_target_files, drug_target['url']))
+        #    continue
+        unpack_command = settings.get('unpack_command')
+        # if its a zip file, unzip first
+        if unpack_command is not None and unpack_command != "":
+            command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
+            run_command(command, chdir=download_dir)
+
+        unpacked_file = settings.get('unpacked_file')
+        unpacked_file = downloaded_file if unpacked_file is None else \
+                        "%s/%s" % (download_dir, unpacked_file)
+        all_mapping_stats = setup_geneset(
+            unpacked_file, drug_targets_file, namespace_mappings, **settings)
+        if all_mapping_stats is not None:
+            write_mapping_stats(all_mapping_stats, os.path.dirname(drug_targets_file)) 
+
+
+#def setup_drug_target_dataset(
+#            downloaded_file, drug_target_files, namespace_mappings,
+#            **kwargs):
+#
+#    return all_mapping_stats
 
 
 def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs):
@@ -158,7 +208,7 @@ def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs)
 def setup_geneset(
         geneset_file, new_file, namespace_mappings,
         namespace=None, prefer_reviewed=True,
-        file_type='gmt', sep='\t'):
+        file_type='gmt', sep='\t', **kwargs):
     """
     *geneset_file*: path/to/original geneset file in edge-list format. First two columns should be the tail and head of the edge
     *new_file*: path/to/new file to write. Should be a .gmt file since that's the format that will be used
@@ -171,16 +221,43 @@ def setup_geneset(
     *returns*: a dictionary of mapping statistics
     """
     mapping_stats = None
-    if file_type != 'gmt':
-        print("WARNING: file_type '%s' not yet implemented. Skipping" % (file_type))
-        return mapping_stats
-
-    genesets, descriptions = parse_gmt_file(geneset_file)
-
     if namespace is not None and namespace.lower() not in ['uniprot', 'uniprotkb']:
         if namespace_mappings is None:
             print("WARNING: mappings not supplied. Unable to map from '%s' to UniProt IDs." % (namespace))
             namespace = None
+
+    #if file_type != 'gmt':
+    #    print("WARNING: file_type '%s' not yet implemented. Skipping" % (file_type))
+    #    return mapping_stats
+    if file_type == 'table':
+        print("Reading %s" % (geneset_file))
+        df = pd.read_csv(geneset_file, sep=sep, index_col=None)
+        df2 = filter_and_map_table(
+            df, namespace_mappings, namespace=namespace,
+            prefer_reviewed=prefer_reviewed, **kwargs)
+        # now write to the table to file
+        print("\twriting %s" % (new_file))
+        df2.to_csv(new_file, sep=sep, index=None)
+
+        # extract the "genesets" from the table
+        geneset_name_col, description_col, genes_col = kwargs['gmt_cols']
+        print(geneset_name_col, description_col, genes_col)
+        genesets = {}
+        descriptions = {}
+        for geneset_name, geneset_df in df2.groupby(geneset_name_col):
+            genesets[geneset_name] = set(geneset_df[genes_col])
+            descriptions[geneset_name] = set(geneset_df[description_col]).pop()
+        print("\t%d genesets, %d total genes" % (len(genesets), len(set(g for gs in genesets.values() for g in gs))))
+        # don't need to map from a different namespace anymore
+        namespace = None
+        gmt_file = kwargs.get('gmt_file')
+        if gmt_file is None:
+            file_end = '.'.join(new_file.split('.')[1:])
+            gmt_file = new_file.replace(file_end, 'gmt')
+        new_file = gmt_file
+
+    if file_type == 'gmt':
+        genesets, descriptions = parse_gmt_file(geneset_file)
 
     print("\twriting %s" % (new_file))
     all_mapping_stats = {}
@@ -190,7 +267,9 @@ def setup_geneset(
         for name, genes in genesets.items():
             prots = genes
             if namespace is not None:
-                prots, mapping_stats = map_nodes(genes, namespace_mappings, prefer_reviewed=prefer_reviewed)
+                ids_to_prot, mapping_stats = map_nodes(genes, namespace_mappings, prefer_reviewed=prefer_reviewed)
+                # get just the set of uniprot IDs to which the genes map
+                prots = set(p for ps in ids_to_prot.values() for p in ps)
                 all_mapping_stats[name] = mapping_stats
             new_line = "%s\t%s\t%s\n" % (
                 name, descriptions.get(name, ""), '\t'.join(prots))
@@ -199,14 +278,57 @@ def setup_geneset(
     return all_mapping_stats if len(all_mapping_stats) > 0 else None
 
 
+def filter_and_map_table(
+        df, namespace_mappings, namespace=None,
+        prefer_reviewed=None, col_to_map=0,
+        filters=None, **kwargs):
+    # first apply the filters
+    if filters is not None:
+        for filter_to_apply in filters:
+            col, vals = filter_to_apply['col'], filter_to_apply['vals']
+            print("\tkeeping only %s values in the '%s' column" % (str(vals), col))
+            df = df[df[col].isin(vals)]
+    #print(df.head())
+    num_rows = len(df.index)
+    print("\t%d rows in table" % (num_rows))
+    # now map the ids to UniProt
+    if namespace is not None:
+        # the map the ids column to uniprot
+        col_to_map = df.columns[col_to_map] if isinstance(col_to_map, int) else col_to_map
+        ids_to_map = set(df[col_to_map])
+        ids_to_prot, mapping_stats = map_nodes(ids_to_map, namespace_mappings, prefer_reviewed=prefer_reviewed)
+        print(mapping_stats)
+        # now update the dataframe with UniProt IDs
+        df[col_to_map+"_orig"] = df[col_to_map]
+        df.set_index(col_to_map, inplace=True)
+        orig_cols = df.columns
+        df['uniprot'] = pd.Series(ids_to_prot)
+        # since there could be cases where a single id maps to multiple ids, we need to expand the rows
+        # TODO what if I keep only one of the mapped uniprot IDs instead of allowing for multiple?
+        df2 = pd.concat([df['uniprot'].apply(pd.Series), df], axis=1) \
+            .drop('uniprot', axis=1) \
+            .melt(id_vars=orig_cols, value_name="uniprot") \
+            .drop("variable", axis=1) \
+            .dropna(subset=['uniprot'])
+        # keep the original column name
+        df2.rename(columns={'uniprot':col_to_map}, inplace=True)
+        # keep the original order
+        df2 = df2[[col_to_map]+list(orig_cols)]
+        print("\t%d rows mapped to %d rows" % (num_rows, len(df2)))
+        print(df2.head())
+    return df2
+
 def map_nodes(nodes, namespace_mappings, prefer_reviewed=True):
+    """
+    *returns*: a dictionary of node ID to a set of uniprot IDs
+    """
     num_unmapped_nodes = 0
     if prefer_reviewed: 
         # get all of the reviewed prots 
         reviewed_prots = namespace_mappings.get('reviewed')
         if reviewed_prots is None:
             print("\tWarning: 'prefer_reviewed' was specified, but the reviewed status of the UniProt IDs was not given. Skipping this option.")
-    new_nodes = []
+    ids_to_prot = {}
     for n in nodes:
         new_ns = namespace_mappings.get(n)
         if new_ns is None or len(new_ns) == 0:
@@ -216,13 +338,13 @@ def map_nodes(nodes, namespace_mappings, prefer_reviewed=True):
             # if any of the mapped UniProt IDs are reviewed, keep only those
             ns_to_keep = new_ns & reviewed_prots
             new_ns = ns_to_keep if len(ns_to_keep) > 0 else new_ns
-        # keep the nodes in the same order they were originally in
-        new_nodes += list(new_ns)
+        ids_to_prot[n] = list(new_ns)
+    new_nodes = set(p for ps in ids_to_prot.values() for p in ps)
     #print("\t%d nodes map to %d new nodes" % (len(nodes), len(new_nodes)))
     #print("\t%d unmapped edges" % (num_unmapped_edges))
     mapping_stats = {'num_nodes': len(nodes), 'num_mapped_nodes': len(new_nodes),
                      'num_unmapped_nodes': num_unmapped_nodes}
-    return new_nodes, mapping_stats
+    return ids_to_prot, mapping_stats
 
 
 def parse_gmt_file(gmt_file):
@@ -512,7 +634,7 @@ def download_file(url, file_path):
     #except urllib.error:
     except Exception as e:
         print(e)
-        print("WARNING: wget failed. Attempting to use the requests library")
+        print("WARNING: wget failed. Attempting to use the requests library to download the file")
         # wget didn't work for STRING, gave a 403 error. Using the requests library is working
         r = requests.get(url, stream=True)
         if r.status_code == 200:
