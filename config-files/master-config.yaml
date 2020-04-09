@@ -232,11 +232,28 @@ fastsinksource_pipeline_settings:
       - name: "tissuenet-v2/hpa-rnaseq"
         network_collection: True
 
+    # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
+    # and corresponding options to pass to the script
+    genesets_to_test:
+    # *name*: name of the corresponding downloaded geneset under "datasets_to_download"
+    # *k_to_test*: list of k-values to get the top-k predictions to test. 
+    # *incremental_k_to_test*: list of 3 integers: starting k, ending k, and step size
+    # *pval_corr*: Method to use for multiple hypothesis testing correction.
+    #              options: "BF" (Bonferroni), "BH" (Benjamini-Hochberg)
+      - name: "covid19-crowd"
+        #k_to_test: [20, 50, 100]
+        incremental_k_to_test: [10, 100, 10]
+        pval_corr: "BF"
+      - name: "pharmgkb"
+        #k_to_test: [20, 50, 100]
+        incremental_k_to_test: [10, 100, 10]
+        pval_corr: "BF"
+
     # the outputs will follow this structure:
     # outputs/<net_version>/<exp_name>/<alg_name>/output_files
     output_dir: "outputs/"
 
-    # evaluation settings to use when running the pipeline
+    # settings to use when running the pipeline
     eval_settings: 
       # automatically generate the predictions for each method
       num_pred_to_write: -1
