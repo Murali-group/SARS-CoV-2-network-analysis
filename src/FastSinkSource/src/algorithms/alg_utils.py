@@ -369,7 +369,8 @@ def write_output(term_scores, terms, prots, out_file,
         #print("\twriting top %d*num_pred scores to %s" % (kwargs['factor_pred_to_write'], out_file))
         print("\twriting top <factor>*num_pred scores to %s" % (out_file))
     else:
-        print("\twriting top %d scores to %s" % (num_pred_to_write, out_file))
+        print("\twriting %s scores to %s" % (
+            "top %d"%num_pred_to_write if num_pred_to_write != -1 else "all", out_file))
 
     with open(out_file, 'w') as out:
         out.write("#term\tprot\tscore\n")
