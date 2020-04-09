@@ -127,6 +127,9 @@ def main(config_map, **kwargs):
             W.data = -np.log(W.data / (max_weight+1))
             print(W.data)
         shortest_paths = sp.csgraph.dijkstra(W, directed=False, unweighted=unweighted, indices=[node2idx[p] for p in virus_nodes])
+        if unweighted is False:
+            # also find the path lengths
+            path_lengths = sp.csgraph.dijkstra(W, directed=False, unweighted=True, indices=[node2idx[p] for p in virus_nodes])
         #print(shortest_paths.shape)
         #print(shortest_paths)
 
@@ -141,15 +144,17 @@ def main(config_map, **kwargs):
                 continue
             if unweighted:
                 for path_length in range(2,10):
-                    curr_dist_nodes = np.nonzero(dist <= path_length)[0]
-                    if len(curr_dist_nodes) > 0:
-                        #print(curr_dist_nodes) 
+                    closest_nodes = np.nonzero(dist <= path_length)[0]
+                    if len(closest_nodes) > 0:
+                        #print(closest_nodes) 
                         break
             else:
-                curr_dist_nodes = [np.argsort(dist)[0]]
-                path_length = dist[curr_dist_nodes[0]]
-                #print(curr_dist_nodes, path_length) 
-            closest_virus_prots = ','.join(set(virus_nodes[int(i)] for i in curr_dist_nodes))
+                closest_nodes = [np.argsort(dist)[0]]
+                #path_length = dist[closest_nodes[0]]
+                # UPDATE: use the unweighted distance to get the path length
+                path_length = path_lengths[:,idx][closest_nodes[0]]
+                #print(closest_nodes, path_length) 
+            closest_virus_prots = ','.join(sorted(virus_nodes[int(i)] for i in closest_nodes))
             pred_closest_virus_prots[p] = (closest_virus_prots, path_length)
         dataset_pred_closest_virus_prots[dataset_name] = pred_closest_virus_prots
     #df = pd.DataFrame(dataset_pred_closest_virus_prots)
@@ -172,10 +177,13 @@ def main(config_map, **kwargs):
     pred_virus_df = pd.DataFrame(best_rank_col, columns=['best-col'])
     pred_virus_df['closest-virus-prot'] = pd.Series(pred_virus_prots)
     pred_virus_df['dist'] = pd.Series(pred_virus_dist)
+    # before concatenating, add the MultiIndex columns to maintain the 3 levels of columns
+    pred_virus_df.columns = pd.MultiIndex.from_tuples([(col,"","") for col in pred_virus_df.columns])
+    out_df = pd.concat([pred_virus_df, pred_df], axis=1)
 
     out_file = kwargs['pred_table'].replace('.tsv','-closest-virus-prots.tsv')
     print("Writing %s" % (out_file))
-    pred_virus_df.to_csv(out_file, sep='\t')
+    out_df.to_csv(out_file, sep='\t')
 
 
 if __name__ == "__main__":
