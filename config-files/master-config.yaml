@@ -57,23 +57,49 @@ dataset_settings:
             sep: "\t"
 
       #### Gene-drug dataset options:
-      # *name*: name of this network. Will be used as the directory name
-      # *file_name*: the name of the file to download
+      # *name*: name of this dataset. Will be used as the directory name
+      # *url*: the url of the file to download
       # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
       # *unpacked_file*: The name of the file to parse after unpacking the archive.
+      #     Use this to specify the file name if the file was pre-downloaded
+      # *file_name*: the name of the file to write after parsing the downloaded file
+      # *file_type*: file type of the downloaded file. Will be used to parse the file.
+      #     current types: "gmt", "table", "drugbank_csv"
+      # *sep*: the delimiter of columns in the files
       # *namespace*: the namespace of the nodes in the networks
-      # *url*: the url of the file to download
       # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
       # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
       # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
-      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
-      #     If not specified, all columns will be kept
-      # *sep*: the delimiter of columns in the files
+      # *columns_to_keep*: a list of indexes or names of columns to keep in the new file. 
+      #      If not specified, all columns will be kept
+      # *gmt_file*: the script will also write a gmt file format for "gene sets"
+      # *gmt_cols*: columns to use in the output gmt file. 
+      #      Should be 3 column headers. The first is the drug ID, the second is the description, third is the proteins
+      # *filters*: Only keep the specified values in the given columns
         drug-targets:
+          - name: "drugbank"
+            # couldn't download the file automatically, so I just put it in the right location
+            #url: "https://s3.pgkb.org/data/relationships.zip"
+            # drugbank_all_target_polypeptide_ids.csv.zip
+            #unpack_command: "unzip"
+            unpacked_file: "all.csv"
+            file_type: "drugbank_csv"
+            file_name: "prot-drug-itxs.tsv"
+            sep: ","
+            columns_to_keep: ["UniProt ID", "Drug ID"]
+            taxon: 9606
+            species: "human"
+            gmt_file: "drug-targets.gmt"
+            gmt_cols: ["Drug ID", "", "UniProt ID"]
+            filters:
+                # Keep only the human prots
+                - col: "Species"
+                  vals: ["Humans"]
+
           - name: "pharmgkb"
-            # the script will also write a gmt file
             file_name: "prot-chem-relationships.tsv"
             file_type: "table"
+            sep: "\t"
             # available at https://www.pharmgkb.org/downloads
             url: "https://s3.pgkb.org/data/relationships.zip"
             unpack_command: "unzip"
@@ -87,9 +113,8 @@ dataset_settings:
             # keep all columns for now
             #columns_to_keep: []
             # columns to use in the output gmt file. 
-            # Should be 3 column headers. The first is the drug ID, the second is the description, third is the proteins
+            gmt_file: "prot-chem-relationships.gmt"
             gmt_cols: ["Entity2_id", "Entity2_name", "Entity1_id"]
-            sep: "\t"
             filters:
                 # Keep only the drugs that are associated with a gene for now.
                 - col: "Association"
@@ -215,12 +240,25 @@ fastsinksource_pipeline_settings:
             weight_method: 'gmw'
             string_nets: 'combined_score'
             string_cutoff: 400
+#      # TODO also try combining the drugbank drug-protein interactions
+#      - name: "stringv11"
+#        file_name: "9606-uniprot-links-full-v11.txt.gz"
+#        drug-targets: "drugbank/prot-drug-itxs.tsv"
+#        string_networks: True
+#        # run using only the "combined" channel (last column)
+#        net_version: "stringv11-drugbank/400"
+#        net_settings:
+#            # the weight_method will not be used, since we're passing a single network
+#            weight_method: 'gmw'
+#            string_nets: 'combined_score'
+#            string_cutoff: 400
 #      # leaving out combining all STRING channels using GeneMANIA-Weighting (GMW) since using the 'combined_score' does just as well
 #      - name: "stringv11"
 #        file_name: "9606-uniprot-links-full-v11.txt.gz"
 #        # This flag indicates the downloaded file has all string channels (i.e., "full")
 #        string_networks: True
 #        net_version: "stringv11-indv/400"
+#        multi_net: True
 #        net_settings:
 #            weight_method: 'gmw'
 #            string_nets: 'all'
