@@ -22,13 +22,11 @@ def setup_config_variables(config_map, **kwargs):
     # update the settings specified in this script with those set in the yaml file
     # TODO these should be called 'script_settings'
     if config_map.get('eval_settings'):
-        for key, val in config_map['eval_settings']:
+        for key, val in config_map['eval_settings'].items():
             # if the user provided a value for this parameter (i.e., in kwargs), don't overwrite it
-            if key not in kwargs:
+            if key not in kwargs or kwargs[key] is None or kwargs[key] == "":
                 kwargs[key] = val
-    # if no postfix was set, use the empty string
-    postfix = kwargs.get("postfix", "")
-    return input_settings, input_dir, output_dir, alg_settings, postfix, kwargs
+    return input_settings, input_dir, output_dir, alg_settings, kwargs
 
 
 def get_algs_to_run(alg_settings, algs=None, **kwargs):

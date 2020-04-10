@@ -59,6 +59,9 @@ class Runner(object):
 
         # keep track of the evaluation settings and weighting method for adding to the output
         eval_str = get_eval_str(name, **kwargs)
+        # if cross valudation is run, then the eval str will be set there, so don't include it here
+        if kwargs.get('cross_validation_folds') is not None:
+            eval_str = "" 
         self.setupParamsStr(eval_str+net_obj.weight_str, params, name)
         default_out_pref = "%s/pred-scores%s%s" % (
             self.out_dir, self.params_str, self.kwargs.get('postfix',''))
