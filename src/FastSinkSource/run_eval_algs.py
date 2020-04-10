@@ -33,6 +33,12 @@ def parse_args():
         config_map = yaml.load(conf)
     # TODO check to make sure the inputs are correct in config_map
 
+    # for each argument not set in opts, remove it from kwargs.
+    # That way the default will be used instead of None
+    for key in list(kwargs.keys()):
+        if kwargs[key] is None:
+            del kwargs[key]
+
     return config_map, kwargs
 
 
@@ -49,24 +55,24 @@ def setup_opts():
 
     # evaluation parameters
     group = parser.add_argument_group("Evaluation options (can be set under 'eval_settings' in config file)")
-    group.add_argument('--only-eval', action="store_true", default=False,
+    group.add_argument('--only-eval', action="store_true",
             help="Perform evaluation only (i.e., skip prediction mode)")
     group.add_argument('--cross-validation-folds', '-C', type=int,
             help="Perform cross validation using the specified # of folds. Usually 5")
-    group.add_argument('--num-reps', type=int, default=1,
+    group.add_argument('--num-reps', type=int, 
             help="Number of times to repeat the CV process. Default=1")
     group.add_argument('--cv-seed', type=int, 
             help="Seed to use for the random number generator when splitting the annotations into folds. " + \
             "If --num-reps > 1, the seed will be incremented by 1 each time. Should only be used for testing purposes")
     group.add_argument('--sample-neg-examples-factor', type=float, 
             help="If specified, sample negative examples randomly without replacement from the protein universe equal to <sample_neg_examples_factor> * # positives")
-    group.add_argument('--loso', action="store_true", default=False,
+    group.add_argument('--loso', action="store_true",
             help="Leave-One-Species-Out evaluation. For each species, leave out all of its annotations " +
             "and evaluate how well they can be recovered from the annotations of the other species. " +
             "Must specify the 'taxon_file' in the config file")
     group.add_argument('--taxon', '-S', dest="taxons", type=str, action='append',
             help="Specify the species taxonomy ID for which to evaluate. Multiple may be specified. Otherwise, all species will be used")
-    group.add_argument('--write-prec-rec', action="store_true", default=False,
+    group.add_argument('--write-prec-rec', action="store_true",
             help="Also write a file containing the precision and recall for every positive example. " + \
             "If a single term is given, only the prec-rec file, with the term in its name, will be written.")
     group.add_argument('--early-prec', '-E', type=str, action="append", default=["k1"],
@@ -75,7 +81,7 @@ def setup_opts():
 
     # additional parameters
     group = parser.add_argument_group('Additional options')
-    group.add_argument('--num-pred-to-write', '-W', type=int, default=10,
+    group.add_argument('--num-pred-to-write', '-W', type=int,
             help="Number of predictions to write to the file for predictions mode (meaning if --only-eval isn't specified). " + \
             "If 0, none will be written. If -1, all will be written. Default=10")
     group.add_argument('--factor-pred-to-write', '-N', type=float, 
@@ -83,18 +89,18 @@ def setup_opts():
             "For example, if the factor is 2, a term with 5 annotations would get the nodes with the top 10 prediction scores written to file.")
     group.add_argument('--postfix', type=str, 
             help="String to add to the end of the output file name(s)")
-    group.add_argument('--forcealg', action="store_true", default=False,
+    group.add_argument('--forcealg', action="store_true",
             help="Force re-running algorithms if the output files already exist")
-    group.add_argument('--forcenet', action="store_true", default=False,
+    group.add_argument('--forcenet', action="store_true",
             help="Force re-building network matrix from scratch")
-    group.add_argument('--verbose', action="store_true", default=False,
+    group.add_argument('--verbose', action="store_true",
             help="Print additional info about running times and such")
 
     return parser
 
 
 def run(config_map, **kwargs):
-    input_settings, input_dir, output_dir, alg_settings, postfix, kwargs \
+    input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
 
     for dataset in input_settings['datasets']:
@@ -113,7 +119,7 @@ def run(config_map, **kwargs):
         alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
 
         # first run prediction mode since it is the fastest
-        if kwargs['only_eval'] is False:
+        if kwargs.get('only_eval',False) is False:
             # run algorithms in "prediction" mode 
             run_algs(alg_runners, **kwargs) 
             # if specified, write the SWSN combined network to a file
@@ -128,17 +134,17 @@ def run(config_map, **kwargs):
             if eval_ann_obj is not None:
                 exp_type = "eval"
                 for run_obj in alg_runners:
-                    out_file = "%s/%s%s%s.txt" % (
+                    out_file = "%s/%s-%s%s.txt" % (
                         run_obj.out_dir, exp_type, run_obj.params_str, kwargs.get("postfix", ""))
                     utils.checkDir(os.path.dirname(out_file))
                     eval_utils.evaluate_ground_truth(
                         run_obj, eval_ann_obj, out_file, **kwargs)
 
-        if kwargs['cross_validation_folds'] is not None:
+        if kwargs.get('cross_validation_folds') is not None:
             # run cross validation
             cross_validation.run_cv_all_terms(alg_runners, ann_obj, folds=kwargs['cross_validation_folds'], **kwargs)
 
-        if kwargs['loso'] is True:
+        if kwargs.get('loso') is True:
             # add the taxon file paths for this dataset to kwargs
             for arg in ['taxon_file', 'only_taxon_file']:
                 kwargs[arg] = "%s/%s" % (input_dir, dataset[arg]) 
@@ -300,7 +306,7 @@ def run_algs(alg_runners, **kwargs):
     for run_obj in alg_runners:
         out_file = run_obj.out_pref + ".txt"
         run_obj.out_file = out_file
-    if kwargs['forcealg'] is True or kwargs['num_pred_to_write'] == 0:
+    if kwargs.get('forcealg') is True or kwargs.get('num_pred_to_write') == 0:
         runners_to_run = alg_runners
     else:
         runners_to_run = []
@@ -344,7 +350,7 @@ def run_algs(alg_runners, **kwargs):
         run_obj.setupOutputs()
 
         # write to file if specified
-        num_pred_to_write = kwargs['num_pred_to_write']
+        num_pred_to_write = kwargs.get('num_pred_to_write',10)
         if kwargs.get('factor_pred_to_write') is not None:
             # make a dictionary with the # ann*factor for each term
             num_pred_to_write = {} 

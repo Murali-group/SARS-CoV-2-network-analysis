@@ -875,7 +875,7 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
                 *(alg_params[param] for param in alg_params))]
         params_str = "%dparam-combos" % (len(combos))
         if len(combos) == 1:
-            params_str = runner.get_runner_params_str(alg, dataset, combos[0])
+            params_str = runner.get_runner_params_str(alg, combos[0], dataset=dataset)
         out_dir = "%s/%s/%s" % (
             results_dir, dataset['net_version'], dataset['exp_name'])
         rep_file = "%s/%s/%s%s%s%s.txt" % (
@@ -945,7 +945,7 @@ def load_alg_results(
     df_all = pd.DataFrame()
     for param_combo in combos:
         # first get the parameter string for this runner
-        params_str = runner.get_runner_params_str(alg, dataset, param_combo)
+        params_str = runner.get_runner_params_str(alg, param_combo, dataset=dataset)
         cv_file = "%s/%s/%s%s%s%s.txt" % (out_dir, alg, eval_type, params_str, postfix, prec_rec_str)
         if not os.path.isfile(cv_file):
             print("\tnot found %s - skipping" % (cv_file))
