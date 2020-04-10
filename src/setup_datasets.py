@@ -10,6 +10,9 @@ import subprocess
 import glob
 import requests
 import shutil
+# add this file's directory to the path so these imports work from anywhere
+sys.path.insert(0,os.path.dirname(__file__))
+from utils import parse_utils
 
 
 def setup_mappings(datasets_dir, mapping_settings, **kwargs):
@@ -92,6 +95,7 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
     if mapping_settings is not None:
         namespace_mappings = setup_mappings(datasets_dir, mapping_settings, **kwargs)
 
+    # TODO combine genesets and drug-targets, since I essentially treat them the same anyway
     if 'genesets' in dataset_settings:
         genesets_dir = "%s/genesets" % (datasets_dir)
         setup_genesets(genesets_dir, dataset_settings['genesets'], namespace_mappings, **kwargs)
@@ -113,33 +117,42 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
     for settings in drug_target_settings:
         drug_targets_file = "%s/%s/%s" % (
             drug_targets_dir, settings['name'], settings['file_name'])
-        downloaded_file = "%s/%s" % (os.path.dirname(drug_targets_file), settings['url'].split('/')[-1])
-        download_dir = os.path.dirname(downloaded_file)
+        dataset_dir = os.path.dirname(drug_targets_file)
+        # also write a gmt file if the original file is of a different type
+        if settings.get('gmt_file') is None:
+            # default is to just use a different suffix
+            file_end = '.'.join(drug_targets_file.split('.')[1:])
+            settings['gmt_file'] = drug_targets_file.replace(file_end, 'gmt')
+        else:
+            settings['gmt_file'] = "%s/%s" % (dataset_dir, settings['gmt_file'])
         mapping_settings = settings.get("mapping_settings", {}) 
         # add the mapping settings to all settings
         settings.update(mapping_settings)
 
+        # TODO separate downloading from parsing?
         if not kwargs.get('force_download') and os.path.isfile(drug_targets_file):
             print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (drug_targets_file))
             continue
-        if kwargs.get('force_download') and os.path.isfile(downloaded_file):
-            print("Deleting %s and its contents" % (download_dir))
-            shutil.rmtree(download_dir)
-        # download the file 
-        #try:
-        download_file(settings['url'], downloaded_file)
-        #except:
-        #    print("Failed to download '%s' using the url '%s'. Skipping" % (drug_target_files, drug_target['url']))
-        #    continue
+        if 'url' in settings:
+            downloaded_file = "%s/%s" % (dataset_dir, settings['url'].split('/')[-1])
+            if kwargs.get('force_download') and os.path.isfile(downloaded_file):
+                print("Deleting %s and its contents" % (dataset_dir))
+                shutil.rmtree(dataset_dir)
+            # download the file 
+            #try:
+            download_file(settings['url'], downloaded_file)
+            #except:
+            #    print("Failed to download '%s' using the url '%s'. Skipping" % (drug_target_files, drug_target['url']))
+            #    continue
         unpack_command = settings.get('unpack_command')
         # if its a zip file, unzip first
         if unpack_command is not None and unpack_command != "":
             command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
-            run_command(command, chdir=download_dir)
+            run_command(command, chdir=dataset_dir)
 
         unpacked_file = settings.get('unpacked_file')
         unpacked_file = downloaded_file if unpacked_file is None else \
-                        "%s/%s" % (download_dir, unpacked_file)
+                        "%s/%s" % (dataset_dir, unpacked_file)
         all_mapping_stats = setup_geneset(
             unpacked_file, drug_targets_file, namespace_mappings, **settings)
         if all_mapping_stats is not None:
@@ -207,7 +220,7 @@ def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs)
 
 def setup_geneset(
         geneset_file, new_file, namespace_mappings,
-        namespace=None, prefer_reviewed=True,
+        gmt_file=None, namespace=None, prefer_reviewed=True,
         file_type='gmt', sep='\t', **kwargs):
     """
     *geneset_file*: path/to/original geneset file in edge-list format. First two columns should be the tail and head of the edge
@@ -226,39 +239,33 @@ def setup_geneset(
             print("WARNING: mappings not supplied. Unable to map from '%s' to UniProt IDs." % (namespace))
             namespace = None
 
-    #if file_type != 'gmt':
-    #    print("WARNING: file_type '%s' not yet implemented. Skipping" % (file_type))
-    #    return mapping_stats
+    if file_type == "drugbank_csv":
+        print("Reading %s" % (geneset_file))
+        # after parsing the file, treat it like a regular table
+        df = parse_utils.parse_drugbank_csv(geneset_file, **kwargs)
     if file_type == 'table':
         print("Reading %s" % (geneset_file))
         df = pd.read_csv(geneset_file, sep=sep, index_col=None)
+
+    if file_type in ['table', 'drugbank_csv']:
         df2 = filter_and_map_table(
             df, namespace_mappings, namespace=namespace,
             prefer_reviewed=prefer_reviewed, **kwargs)
         # now write to the table to file
+        if kwargs.get('columns_to_keep') is not None:
+            df2 = df2[kwargs['columns_to_keep']]
         print("\twriting %s" % (new_file))
-        df2.to_csv(new_file, sep=sep, index=None)
-
-        # extract the "genesets" from the table
-        geneset_name_col, description_col, genes_col = kwargs['gmt_cols']
-        print(geneset_name_col, description_col, genes_col)
-        genesets = {}
-        descriptions = {}
-        for geneset_name, geneset_df in df2.groupby(geneset_name_col):
-            genesets[geneset_name] = set(geneset_df[genes_col])
-            descriptions[geneset_name] = set(geneset_df[description_col]).pop()
-        print("\t%d genesets, %d total genes" % (len(genesets), len(set(g for gs in genesets.values() for g in gs))))
+        df2.to_csv(new_file, sep='\t', index=None)
+        # extract the genesets from the table
+        genesets, descriptions = extract_genesets_from_table(df2, **kwargs)
         # don't need to map from a different namespace anymore
         namespace = None
-        gmt_file = kwargs.get('gmt_file')
-        if gmt_file is None:
-            file_end = '.'.join(new_file.split('.')[1:])
-            gmt_file = new_file.replace(file_end, 'gmt')
         new_file = gmt_file
 
     if file_type == 'gmt':
         genesets, descriptions = parse_gmt_file(geneset_file)
 
+    # now write the genesets and descriptions as a gmt file
     print("\twriting %s" % (new_file))
     all_mapping_stats = {}
     # and re-write the file with the specified columns to keep
@@ -278,6 +285,20 @@ def setup_geneset(
     return all_mapping_stats if len(all_mapping_stats) > 0 else None
 
 
+def extract_genesets_from_table(df, **kwargs):
+    # extract the "genesets" from the table
+    geneset_name_col, description_col, genes_col = kwargs['gmt_cols']
+    #print(geneset_name_col, description_col, genes_col)
+    genesets = {}
+    descriptions = {}
+    for geneset_name, geneset_df in df.groupby(geneset_name_col):
+        genesets[geneset_name] = set(geneset_df[genes_col])
+        if description_col != "":
+            descriptions[geneset_name] = set(geneset_df[description_col]).pop()
+    print("\t%d genesets, %d total genes" % (len(genesets), len(set(g for gs in genesets.values() for g in gs))))
+    return genesets, descriptions
+
+
 def filter_and_map_table(
         df, namespace_mappings, namespace=None,
         prefer_reviewed=None, col_to_map=0,
@@ -288,6 +309,7 @@ def filter_and_map_table(
             col, vals = filter_to_apply['col'], filter_to_apply['vals']
             print("\tkeeping only %s values in the '%s' column" % (str(vals), col))
             df = df[df[col].isin(vals)]
+    df2 = df
     #print(df.head())
     num_rows = len(df.index)
     print("\t%d rows in table" % (num_rows))
@@ -380,6 +402,7 @@ def write_mapping_stats(all_mapping_stats, out_dir):
     stats_file = "%s/mapping-stats.tsv" % (out_dir)
     print("Writing mapping statistics to %s" % (stats_file))
     df.to_csv(stats_file, sep='\t')
+    return df
 
 
 def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs):
@@ -391,24 +414,24 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         network_file = "%s/%s/%s" % (
             networks_dir, network['name'], network['file_name'])
 
-        if not kwargs.get('force_download') and os.path.isfile(network_file):
-            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
-            continue
-        elif kwargs.get('force_download') and os.path.isfile(network_file):
-            print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
-            continue
-        # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
+#        if not kwargs.get('force_download') and os.path.isfile(network_file):
+#            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
+#            continue
+#        elif kwargs.get('force_download') and os.path.isfile(network_file):
+#            print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
+#            continue
+#        # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
         if network.get('network_collection') is True:
             downloaded_file = network_file
         # If this isn't a network collection, then download the file and keep the original filename
         else:
             downloaded_file = "%s/%s" % (os.path.dirname(network_file), network['url'].split('/')[-1])
-        # download the file 
-        #try:
-        download_file(network['url'], downloaded_file)
-        #except:
-        #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
-        #    continue
+#        # download the file 
+#        #try:
+#        download_file(network['url'], downloaded_file)
+#        #except:
+#        #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
+#        #    continue
 
         unpack_command = network.get('unpack_command')
         # if its a zip file, unzip first
@@ -422,6 +445,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
             setup_network_collection(
                 network_file, namespace_mappings,
                 namespace=network.get('namespace'), gzip_files=opts.get('gzip_files'),
+                weighted=network.get('weighted'),
                 prefer_reviewed=mapping_settings.get('prefer_reviewed'),
                 remove_filename_spaces=opts.get('remove_filename_spaces'),
                 columns_to_keep=network.get('columns_to_keep'),
@@ -432,6 +456,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
                 downloaded_file, network_file, namespace_mappings,
                 namespace=network.get('namespace'), 
                 prefer_reviewed=mapping_settings.get('prefer_reviewed'),
+                weighted=network.get('weighted'),
                 columns_to_keep=network.get('columns_to_keep'), sep=network.get('sep')
             )
 
@@ -443,8 +468,8 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
 
 def setup_network_collection(
         collection_file, namespace_mappings, namespace=None,
-        gzip_files=False, prefer_reviewed=True,
-        remove_filename_spaces=False,
+        gzip_files=False, weighted=False,
+        prefer_reviewed=True, remove_filename_spaces=False,
         columns_to_keep=None, sep='\t', **kwargs):
     """
     *collection_file*: the original archive file
@@ -479,8 +504,8 @@ def setup_network_collection(
                          .replace('(','').replace(')','') \
                          .lower()
         mapping_stats = setup_network(
-            orig_f, new_f, namespace_mappings, namespace=namespace,
-            prefer_reviewed=prefer_reviewed, columns_to_keep=columns_to_keep, sep=sep)
+            orig_f, new_f, namespace_mappings, namespace=namespace, prefer_reviewed=prefer_reviewed,
+            weighted=weighted, columns_to_keep=columns_to_keep, sep=sep)
 
         # gzip the original file to save on space
         gzip_file(orig_f, orig_f+'.gz', remove_orig=True)
@@ -499,20 +524,20 @@ def setup_network_collection(
     if len(all_mapping_stats) > 0:
         write_mapping_stats(all_mapping_stats, collection_dir) 
     print("")
-    return df
+    #return df
 
 
 def setup_network(
         network_file, new_file, namespace_mappings, namespace=None,
-        weighted=False, prefer_reviewed=True, columns_to_keep=None, sep='\t'):
+        prefer_reviewed=True, weighted=False, columns_to_keep=None, sep='\t'):
     """
     *network_file*: path/to/original network file in edge-list format. First two columns should be the tail and head of the edge
     *new_file*: path/to/new file to write. 
     *namespace_mappings*: a dictionary of IDs each mapped to a set of uniprot IDs
     *namespace*: the namespace of the nodes in the networks
+    *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
     *weighted*: T/F. If False, add a column of all 1s (i.e., unweighted) after the first two columns. 
         If True, the first column in *columns_to_keep* should be the weights
-    *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
     *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
     *sep*: the delimiter of columns in the files
 
@@ -551,8 +576,8 @@ def setup_network(
     open_command = gzip.open if '.gz' in new_file else open
     with open_command(new_file, 'wb' if '.gz' in new_file else 'w') as out:
         for i, e in enumerate(new_edges):
-            new_line = "%s%s%s\n" % (
-                '\t'.join(e), "\t1\t" if weighted is False else "",
+            new_line = "%s\t%s%s\n" % (
+                '\t'.join(e), "1\t" if weighted is False else "",
                 # if weighted is True, then the first column in new_extra_cols should be the weight
                 '\t'.join(new_extra_cols[i]))
             out.write(new_line.encode() if '.gz' in new_file else new_line)
