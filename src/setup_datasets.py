@@ -414,24 +414,24 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         network_file = "%s/%s/%s" % (
             networks_dir, network['name'], network['file_name'])
 
-#        if not kwargs.get('force_download') and os.path.isfile(network_file):
-#            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
-#            continue
-#        elif kwargs.get('force_download') and os.path.isfile(network_file):
-#            print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
-#            continue
-#        # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
+        if not kwargs.get('force_download') and os.path.isfile(network_file):
+            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
+            continue
+        elif kwargs.get('force_download') and os.path.isfile(network_file):
+            print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
+            continue
+        # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
         if network.get('network_collection') is True:
             downloaded_file = network_file
         # If this isn't a network collection, then download the file and keep the original filename
         else:
             downloaded_file = "%s/%s" % (os.path.dirname(network_file), network['url'].split('/')[-1])
-#        # download the file 
-#        #try:
-#        download_file(network['url'], downloaded_file)
-#        #except:
-#        #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
-#        #    continue
+        # download the file 
+        #try:
+        download_file(network['url'], downloaded_file)
+        #except:
+        #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
+        #    continue
 
         unpack_command = network.get('unpack_command')
         # if its a zip file, unzip first
