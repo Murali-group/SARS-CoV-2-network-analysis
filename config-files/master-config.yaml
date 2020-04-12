@@ -77,25 +77,6 @@ dataset_settings:
       #      Should be 3 column headers. The first is the drug ID, the second is the description, third is the proteins
       # *filters*: Only keep the specified values in the given columns
         drug-targets:
-          - name: "drugbank"
-            # couldn't download the file automatically, so I just put it in the right location
-            #url: "https://s3.pgkb.org/data/relationships.zip"
-            # drugbank_all_target_polypeptide_ids.csv.zip
-            #unpack_command: "unzip"
-            unpacked_file: "all.csv"
-            file_type: "drugbank_csv"
-            file_name: "prot-drug-itxs.tsv"
-            sep: ","
-            columns_to_keep: ["UniProt ID", "Drug ID"]
-            taxon: 9606
-            species: "human"
-            gmt_file: "drug-targets.gmt"
-            gmt_cols: ["Drug ID", "", "UniProt ID"]
-            filters:
-                # Keep only the human prots
-                - col: "Species"
-                  vals: ["Humans"]
-
           - name: "pharmgkb"
             file_name: "prot-chem-relationships.tsv"
             file_type: "table"
@@ -124,6 +105,27 @@ dataset_settings:
                   vals: ["Gene"]
                 - col: "Entity2_type"
                   vals: ["Chemical"]
+
+#            # couldn't download the file automatically, so I just put it in the right location
+#            # The name of the originally downloaded zip file is: drugbank_all_target_polypeptide_ids.csv.zip
+#            # To parse the file, put the file 'all.csv' here: datasets/drug-targets/drugbank/all.csv
+#            # and uncomment this section
+#          - name: "drugbank"
+#            #url: ""
+#            #unpack_command: "unzip"
+#            unpacked_file: "all.csv"
+#            file_type: "drugbank_csv"
+#            file_name: "prot-drug-itxs.tsv"
+#            sep: ","
+#            columns_to_keep: ["UniProt ID", "Drug ID"]
+#            taxon: 9606
+#            species: "human"
+#            gmt_file: "drug-targets.gmt"
+#            gmt_cols: ["Drug ID", "", "UniProt ID"]
+#            filters:
+#                # Keep only the human prots
+#                - col: "Species"
+#                  vals: ["Humans"]
 
       #### Network options:
       # *name*: name of this network. Will be used as the directory
