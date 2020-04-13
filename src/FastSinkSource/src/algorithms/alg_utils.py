@@ -66,7 +66,7 @@ def setup_sparse_network(network_file, node2idx_file=None, forced=False):
                 line = line.rstrip().split('\t')
                 u.append(line[0])
                 v.append(line[1])
-                if len(line > 2):
+                if len(line) > 2:
                     w.append(float(line[2]))
                 else:
                     w.append(float(1))
