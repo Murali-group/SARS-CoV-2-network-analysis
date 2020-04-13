@@ -26,6 +26,7 @@ import gzip
 # Ignore it for now
 import warnings
 warnings.simplefilter('ignore', RuntimeWarning)
+available_weight_methods = ['swsn', 'gmw', 'gmw2008', 'add']
 
 
 class Sparse_Networks:
@@ -33,10 +34,12 @@ class Sparse_Networks:
     An object to hold the sparse network (or sparse networks if they are to be joined later), 
         the list of nodes giving the index of each node, and a mapping from node name to index
     *sparse_networks*: either a list of scipy sparse matrices, or a single sparse matrix
+        If a list is given, then the sparse matrices must be aligned (i.e., nodes and indexes match)
     *weight_method*: method to combine the networks if multiple sparse networks are given.
-        Possible values: 'swsn', or 'gmw'
+        Possible values: 'swsn', 'gmw', or 'add'
         'swsn': Simultaneous Weighting with Specific Negatives (all terms)
-        'gmw': GeneMANIA Weighting (term-by-term). Also called gm2008
+        'gmw': GeneMANIA Weighting (term-by-term). May also called gm2008
+        'add': Simply add the networks together
     *unweighted*: set the edge weights to 1 for all given networks.
     *term_weights*: a dictionary of tuples containing the weights and indices to use for each term.
         Would be used instead of running 'gmw'
@@ -61,12 +64,18 @@ class Sparse_Networks:
         self.verbose = verbose
         # make sure the values are correct
         if self.multi_net is True:
+            if weight_method.lower() not in available_weight_methods:
+                print("ERROR: weight_method '%s' not recognized. Available options: '%s'.\nQuitting" % (
+                    "', '".join(available_weight_methods)))
+                sys.exit()
             self.weight_swsn = True if weight_method.lower() == 'swsn' else False
             self.weight_gmw = True if weight_method.lower() in ['gmw', 'gm2008'] else False
-            num_weight_methods = sum([self.weight_swsn, self.weight_gmw])
-            if num_weight_methods == 0 or num_weight_methods > 1:
-                raise("must specify exactly one method to combine networks when multiple networks are passed in. Given method: '%s'" % (weight_method))
-            self.term_weights = term_weights
+            self.term_weights = term_weights  # extra setting for gmw
+            # if specified, just add them together
+            if weight_method.lower() == "add":
+                self.W = sparse_networks[0]
+                for W in sparse_networks[1:]:
+                    self.W += W
         else:
             self.weight_swsn = False
             self.weight_gmw = False
@@ -302,7 +311,8 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
                     continue
                 #u,v,w = line.rstrip().split('\t')[:3]
                 line = line.rstrip().split('\t')
-                u,v,w = line[:3]
+                u,v = line[:2]
+                w = line[2] if len(line) > 2 else 1
                 G.add_edge(u,v,**{name:float(w)})
 
     network_names += string_nets
