@@ -38,6 +38,10 @@ def get_algs_to_run(alg_settings, algs=None, **kwargs):
     else:
         # make the alg names lower so capitalization won't make a difference
         algs = [a.lower() for a in algs]
+        for alg in algs:
+            if alg not in alg_settings:
+                print("ERROR: alg '%s' not found in config file.\nQuitting" % (alg))
+                sys.exit()
     return algs
 
 

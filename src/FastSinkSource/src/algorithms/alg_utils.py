@@ -66,7 +66,10 @@ def setup_sparse_network(network_file, node2idx_file=None, forced=False):
                 line = line.rstrip().split('\t')
                 u.append(line[0])
                 v.append(line[1])
-                w.append(float(line[2]))
+                if len(line > 2):
+                    w.append(float(line[2]))
+                else:
+                    w.append(float(1))
         print("\tconverting uniprot ids to node indexes / ids")
         # first convert the uniprot ids to node indexes / ids
         prots = sorted(set(list(u)) | set(list(v)))
@@ -83,6 +86,7 @@ def setup_sparse_network(network_file, node2idx_file=None, forced=False):
             print("### Matrix not symmetric!")
             W = W + W.T
             print("### Matrix converted to symmetric.")
+        #print("\t%d nodes, %d edges")
         #name = os.path.basename(net_file)
         print("\twriting sparse matrix to %s" % (sparse_net_file))
         sp.save_npz(sparse_net_file, W)
