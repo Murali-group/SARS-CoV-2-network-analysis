@@ -75,9 +75,9 @@ def setup_opts():
     group.add_argument('--write-prec-rec', action="store_true",
             help="Also write a file containing the precision and recall for every positive example. " + \
             "If a single term is given, only the prec-rec file, with the term in its name, will be written.")
-    group.add_argument('--early-prec', '-E', type=str, action="append", default=["k1"],
+    group.add_argument('--early-prec', '-E', type=str, action="append", default=["k1", "0.1"],
             help="Report the precision at the specified recall value (between 0 and 1). " + \
-            "If prefixed with 'k', for a given term, the precision at (k * # ann) # of nodes is given. Default: k1")
+            "If prefixed with 'k', for a given term, the precision at (k * # ann) # of nodes is given. Default: k1, 0.1")
 
     # additional parameters
     group = parser.add_argument_group('Additional options')
