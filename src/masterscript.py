@@ -271,9 +271,9 @@ def setup_net_settings(
     if plot_exp_name is not None:
         dataset_settings['plot_exp_name'] = plot_exp_name
     # finally clean up the unused options
-    if string_net_files is None and 'string_net_files' in dataset_settings:
+    if (string_net_files is None or len(string_net_files) == 0) and 'string_net_files' in dataset_settings:
         del dataset_settings['string_net_files']
-    if net_files is None and 'net_files' in dataset_settings:
+    if (net_files is None or len(net_files) == 0) and 'net_files' in dataset_settings:
         del dataset_settings['net_files']
     return dataset_settings
 
