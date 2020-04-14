@@ -148,6 +148,8 @@ dataset_settings:
         networks:
           - name: "stringv11"
             file_name: "9606-uniprot-links-full-v11.txt.gz"
+            # This flag indicates the downloaded file has all string channels (i.e., "full")
+            string_networks: True
             network_collection: False
             weighted: True
             #unpack_command: "gunzip"
@@ -232,9 +234,9 @@ fastsinksource_pipeline_settings:
     # *net_version*: if multiple network comparisons will be run, use this to distinguish between them
     # *net_settings*: will be passed directly to the FSS pipeline. See that repo's config file for more info
     networks_to_run:
-      - name: "stringv11"
+      - names: ["stringv11"]
         file_name: "9606-uniprot-links-full-v11.txt.gz"
-        string_networks: True
+        plot_exp_name: "STRING-400"
         # run using only the "combined" channel (last column)
         net_version: "stringv11/400"
         net_settings:
@@ -242,20 +244,8 @@ fastsinksource_pipeline_settings:
             weight_method: 'gmw'
             string_nets: 'combined_score'
             string_cutoff: 400
-#      # TODO also try combining the drugbank drug-protein interactions
-#      - name: "stringv11"
-#        file_name: "9606-uniprot-links-full-v11.txt.gz"
-#        drug-targets: "drugbank/prot-drug-itxs.tsv"
-#        string_networks: True
-#        # run using only the "combined" channel (last column)
-#        net_version: "stringv11-drugbank/400"
-#        net_settings:
-#            # the weight_method will not be used, since we're passing a single network
-#            weight_method: 'gmw'
-#            string_nets: 'combined_score'
-#            string_cutoff: 400
 #      # leaving out combining all STRING channels using GeneMANIA-Weighting (GMW) since using the 'combined_score' does just as well
-#      - name: "stringv11"
+#      - names: ["stringv11"]
 #        file_name: "9606-uniprot-links-full-v11.txt.gz"
 #        # This flag indicates the downloaded file has all string channels (i.e., "full")
 #        string_networks: True
@@ -265,12 +255,39 @@ fastsinksource_pipeline_settings:
 #            weight_method: 'gmw'
 #            string_nets: 'all'
 #            string_cutoff: 400
-      - name: "tissuenet-v2/hpa-protein"
+      - names: ["tissuenet-v2/hpa-protein"]
         network_collection: True
-      - name: "tissuenet-v2/gtex-rnaseq"
+      - names: ["tissuenet-v2/gtex-rnaseq"]
         network_collection: True
-      - name: "tissuenet-v2/hpa-rnaseq"
+      - names: ["tissuenet-v2/hpa-rnaseq"]
         network_collection: True
+
+#      # also try combining the drugbank drug-protein interactions
+#      - names: ["stringv11"]
+#        file_name: "9606-uniprot-links-full-v11.txt.gz"
+#        #/prot-drug-itxs.tsv"
+#        drug_target_names: ["drugbank"]
+#        plot_exp_name: "STRING-400 + DrugBank"
+#        # run using only the "combined" channel (last column)
+#        net_version: "stringv11-drugbank/400"
+#        multi_net: True
+#        net_settings:
+#            weight_method: 'add'
+#            string_nets: 'combined_score'
+#            string_cutoff: 400
+#      # also run the tissuenet collections with drugbank
+#      - names: ["tissuenet-v2/hpa-protein"]
+#        network_collection: True
+#        drug_target_names: ["drugbank"]
+#        net_version: "tissuenet-v2-drugbank/hpa-protein"
+#      - names: ["tissuenet-v2/gtex-rnaseq"]
+#        network_collection: True
+#        drug_target_names: ["drugbank"]
+#        net_version: "tissuenet-v2-drugbank/hpa-gtex-rnaseq"
+#      - names: ["tissuenet-v2/hpa-rnaseq"]
+#        network_collection: True
+#        drug_target_names: ["drugbank"]
+#        net_version: "tissuenet-v2-drugbank/hpa-rnaseq"
 
     # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
     # and corresponding options to pass to the script
@@ -293,7 +310,7 @@ fastsinksource_pipeline_settings:
     # outputs/<net_version>/<exp_name>/<alg_name>/output_files
     output_dir: "outputs/"
 
-    # settings to use when running the pipeline
+    # These settings will be passed to the FastSinkSource pipeline
     eval_settings: 
       # automatically generate the predictions for each method
       num_pred_to_write: -1
