@@ -102,6 +102,7 @@ def setup_opts():
 def run(config_map, **kwargs):
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
+    print("Running with these kwargs: " + str(kwargs))
 
     for dataset in input_settings['datasets']:
         # add options specified for this dataset to kwargs  
@@ -155,8 +156,9 @@ def run(config_map, **kwargs):
 def setup_net(input_dir, dataset, **kwargs):
     # load the network matrix and protein IDs
     net_files = None
+    net_dir = "%s/%s" % (input_dir, dataset['net_version'])
     if 'net_files' in dataset:
-        net_files = ["%s/%s/%s" % (input_dir, dataset['net_version'], net_file) for net_file in dataset['net_files']]
+        net_files = ["%s/%s" % (net_dir, net_file) for net_file in dataset['net_files']]
     unweighted = dataset['net_settings'].get('unweighted', False) if 'net_settings' in dataset else False
     # if multiple networks are passed in, then set multi_net to True automatically
     if (net_files is not None and len(net_files) > 1) or 'string_net_files' in dataset:
@@ -168,14 +170,17 @@ def setup_net(input_dir, dataset, **kwargs):
     if dataset.get('multi_net') is True: 
         # if multiple file names are passed in, then map each one of them
         if net_files is not None or 'string_net_files' in dataset:
-            string_net_files = ["%s/%s/%s" % (input_dir, dataset['net_version'], string_net_file) for string_net_file in dataset['string_net_files']]
-            string_nets = None 
-            if 'string_nets' in dataset['net_settings']:
-                string_nets = string_utils.convert_string_naming_scheme(dataset['net_settings']['string_nets'])
-            # they all need to have the same rows and columns, which is handled by this function
-            # this function also creates the multi net file if it doesn't exist
-            string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
-            out_pref = "%s/sparse-nets/c%d-" % (os.path.dirname(string_net_files[0]), string_cutoff)
+            string_net_files = dataset.get('string_net_files', [])
+            string_nets, string_cutoff = None, None
+            if string_net_files is not None and len(string_net_files) > 0:
+                string_net_files = ["%s/%s/%s" % (input_dir, dataset['net_version'], string_net_file) for string_net_file in dataset['string_net_files']]
+                string_nets = None 
+                if 'string_nets' in dataset['net_settings'] and len(dataset['net_settings']['string_nets']) > 0:
+                    string_nets = string_utils.convert_string_naming_scheme(dataset['net_settings']['string_nets'])
+                # they all need to have the same rows and columns, which is handled by this function
+                # this function also creates the multi net file if it doesn't exist
+                string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
+            out_pref = "%s/sparse-nets/%s" % (net_dir, "c%d-"%string_cutoff if string_net_files else "")
             utils.checkDir(os.path.dirname(out_pref))
             sparse_nets, net_names, prots = setup.create_sparse_net_file(
                     out_pref, net_files=net_files, string_net_files=string_net_files, 
@@ -188,7 +193,11 @@ def setup_net(input_dir, dataset, **kwargs):
             node_ids_file  = "%s/%s/%s" % (input_dir, dataset['net_version'], dataset['net_settings']['node_ids_file'])
             sparse_nets, net_names, prots = alg_utils.read_multi_net_file(net_file, net_names_file, node_ids_file)
 
-        weight_method = dataset['net_settings']['weight_method'].lower()
+        if 'net_settings' not in dataset or 'weight_method' not in dataset['net_settings']:
+            print("'weight_method' not specified. Using default 'add' where networks are added together")
+            weight_method = 'add'
+        else:
+            weight_method = dataset['net_settings']['weight_method'].lower()
         net_obj = setup.Sparse_Networks(
             sparse_nets, prots, net_names=net_names, weight_method=weight_method,
             unweighted=unweighted, verbose=kwargs.get('verbose',False)
