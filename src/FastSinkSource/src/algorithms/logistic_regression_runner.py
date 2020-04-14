@@ -98,7 +98,7 @@ def run(run_obj):
             test_set = sorted(list(test_set))
         else:
             # set all unlabeled genes to the test set
-            test_set = sorted(list(set(run_obj.protidx.values()) - set(train_set)))
+            test_set = sorted(list(set(range(P.shape[0])) - set(train_set)))
 
         # obtain the feature vector only for the genes in the training set
         X_train = P[train_set, :]

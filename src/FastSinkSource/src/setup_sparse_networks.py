@@ -192,6 +192,8 @@ class Sparse_Annotations:
         # now transpose back to term rows and prot cols
         self.ann_matrix = new_ann_mat.tocsc().T.tocsr()
         self.prots = new_prots
+        # reset the index mapping
+        self.node2idx = {n: i for i, n in enumerate(self.prots)}
 
     def limit_to_terms(self, terms_list):
         """ *terms_list*: list of terms. Data from rows not in this list of terms will be removed
