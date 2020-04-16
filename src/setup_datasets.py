@@ -122,9 +122,10 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
         if settings.get('gmt_file') is None:
             # default is to just use a different suffix
             file_end = '.'.join(drug_targets_file.split('.')[1:])
-            settings['gmt_file'] = drug_targets_file.replace(file_end, 'gmt')
+            gmt_file = drug_targets_file.replace(file_end, 'gmt')
+            settings['gmt_file'] = os.path.basename(gmt_file) 
         else:
-            settings['gmt_file'] = "%s/%s" % (dataset_dir, settings['gmt_file'])
+            gmt_file = "%s/%s" % (dataset_dir, settings['gmt_file'])
         mapping_settings = settings.get("mapping_settings", {}) 
         # add the mapping settings to all settings
         settings.update(mapping_settings)
@@ -154,7 +155,8 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
         unpacked_file = downloaded_file if unpacked_file is None else \
                         "%s/%s" % (dataset_dir, unpacked_file)
         all_mapping_stats = setup_geneset(
-            unpacked_file, drug_targets_file, namespace_mappings, **settings)
+            unpacked_file, drug_targets_file, namespace_mappings,
+            gmt_file=gmt_file, **settings)
         if all_mapping_stats is not None:
             write_mapping_stats(all_mapping_stats, os.path.dirname(drug_targets_file)) 
 
