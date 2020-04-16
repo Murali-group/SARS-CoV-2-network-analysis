@@ -47,8 +47,11 @@ def setup_opts():
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
                        help="Algorithms for which to get results. Must be in the config file. " +
                        "If not specified, will get the list of algs with 'should_run' set to True in the config file")
+    group.add_argument('--stats-only', action='store_true', default=False,
+                       help="Rather than run the entire FSS pipeline, just print out statistics about the network size and such. " +
+                       "Useful to parse the networks and setup the sparse matrices")
     group.add_argument('--force-run', action='store_true', default=False,
-                       help="Force re-running the FastSinkSource pipeline, and re-writing the associated config files")
+                       help="Force re-running the FSS pipeline, and re-writing the associated config files")
 
 #    # additional parameters
 #    group = parser.add_argument_group('Additional options')
@@ -94,6 +97,7 @@ def main(config_map, **kwargs):
         command = "python -u src/FastSinkSource/run_eval_algs.py "  + \
                   " --config %s " % (config_file) + \
                   " %s " % ("--forcealg" if kwargs.get('force_run') else "") + \
+                  " %s " % ("--stats-only" if kwargs.get('stats_only') else "") + \
                   " >> %s 2>&1 " % (log_file)
         run_command(command) 
 
@@ -173,15 +177,22 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
 
             for net_file in net_files:
                 curr_net_files = [net_file]
+                file_name = os.path.basename(net_file).split('.')[0]
+                net_version = name+'/'+file_name
                 if drug_targets is not None:
+                    setup_drug_target_nets(
+                        fss_dir, net_version, drug_target_files,
+                        curr_net_files+dataset_string_files)
                     curr_net_files += drug_target_files 
                 curr_settings = setup_net_settings(
-                    fss_dir, copy.deepcopy(base_dataset_settings), name,
+                    fss_dir, copy.deepcopy(base_dataset_settings), net_version,
                     net_files=curr_net_files, dataset_net_settings=net_settings)
                 curr_settings['exp_name'] += "-%s" % (os.path.basename(net_file).split('.')[0])
                 net_config_map['input_settings']['datasets'].append(curr_settings) 
         else:
             if drug_targets is not None:
+                # for drug target files, only include the edges where the target is in the network
+                setup_drug_target_nets(fss_dir, name, drug_target_files, dataset_net_files+dataset_string_files)
                 dataset_net_files += drug_target_files
             curr_settings = setup_net_settings(
                 fss_dir, copy.deepcopy(base_dataset_settings), name,
@@ -192,7 +203,10 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
         config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
         if kwargs.get('force_run') is not True and os.path.isfile(config_file):
             print("'%s' already exists. Use --force-run to overwite and run 'run_eval_algs.py'." % (config_file))
-            continue
+            # if --stats-only is specified, then run_eval_algs.py
+            # will be run with this config file using the --stats-only option
+            if not kwargs.get('stats_only'):
+                continue
         write_yaml_file(config_file, net_config_map)
         config_files.append(config_file)
     return config_files
@@ -234,6 +248,48 @@ def write_yaml_file(yaml_file, config_map):
     print("Writing %s" % (yaml_file))
     with open(yaml_file, 'w') as out:
         yaml.dump(config_map, out, default_flow_style=False)
+
+
+def setup_drug_target_nets(
+        input_dir, net_version, drug_target_files, net_files, forced=False):
+    print("Setting up drug-target networks")
+    not_setup_files = []
+    for drug_target_file in drug_target_files:
+        file_name = os.path.basename(drug_target_file)
+        new_drug_target_file = "%s/networks/%s/%s" % (input_dir, net_version, file_name)
+        if not forced and os.path.isfile(new_drug_target_file):
+            print("%s already exists. Not overwriting it." % (new_drug_target_file))
+            continue
+        else:
+            not_setup_files.append(new_drug_target_file)
+    if len(not_setup_files) == 0:
+        return
+
+    # first get the nodes from the networks
+    all_prots = set()
+    for net_file in net_files:
+        print("Reading prots/nodes from %s" % (net_file))
+        df = pd.read_csv(net_file, sep='\t', header=None)
+        prots = set(df[df.columns[0]].values) | set(df[df.columns[1]].values)
+        all_prots.update(prots)
+    print("\t%d total prots" % (len(all_prots)))
+
+    for new_drug_target_file in not_setup_files:
+        print("Reading %s and limiting edges to those with a target in the given %d prots" % (
+            drug_target_file, len(all_prots)))
+        # first column should be the UniProt ID, second is the Drug ID
+        df = pd.read_csv(drug_target_file, sep='\t', header=None, skiprows=1)
+        num_drug_targets = len(df)
+        num_drugs, num_targets = df[1].nunique(), df[0].nunique()
+        df = df[df[df.columns[0]].isin(all_prots)]
+        # leave this network as unweighted
+        df['weights'] = 1
+        print("\t%d drug-targets (%d drugs, %d targets) limited to %d (%d drugs, %d targets)" % (
+            num_drug_targets, num_drugs, num_targets, len(df), df[1].nunique(), df[0].nunique()))
+        print("\twriting to %s" % (new_drug_target_file))
+        os.makedirs(os.path.dirname(new_drug_target_file), exist_ok=True)
+        df.to_csv(new_drug_target_file, sep='\t', index=None, header=False)
+    return 
 
 
 def setup_net_settings(
