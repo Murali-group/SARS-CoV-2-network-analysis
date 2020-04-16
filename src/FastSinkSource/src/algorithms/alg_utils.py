@@ -122,7 +122,8 @@ def align_mat(mat, new_shape, row_labels, row_label_to_new_index,
 def normalizeGraphEdgeWeights(W, ss_lambda=None, axis=1):
     """
     *W*: weighted network as a scipy sparse matrix in csr format
-    *ss_lambda*: SinkSourcePlus lambda parameter
+    *ss_lambda*: SinkSourcePlus lambda parameter. Adds the given value to the degree of every node
+        which essentially acts as an artificial negative example with the given edge weight connected to every node.
     *axis*: The axis to normalize by. 0 is columns, 1 is rows
     """
     # normalize the matrix
@@ -131,6 +132,8 @@ def normalizeGraphEdgeWeights(W, ss_lambda=None, axis=1):
     if ss_lambda is None:
         deg = np.divide(1., deg)
     else:
+        # scale ss_lambda by the largest edge weight
+        ss_lambda = ss_lambda * max(W.data)
         deg = np.divide(1., ss_lambda + deg)
     deg[np.isinf(deg)] = 0
     # make sure we're dividing by the right axis

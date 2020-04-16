@@ -12,7 +12,9 @@ from scipy.stats import kruskal, mannwhitneyu, wilcoxon
 import networkx as nx
 # plotting imports
 import matplotlib
-matplotlib.use('Agg')  # To save files remotely. 
+if __name__ == "__main__":
+    # Use this to save files remotely. 
+    matplotlib.use('Agg')  
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pandas as pd
@@ -104,6 +106,8 @@ def setup_opts():
                      help="Factor of # positives used to sample a negative examples")
     group.add_argument('--loso', action='store_true',
                      help="Get results from leave-one-species-out validation")
+    group.add_argument('--ratio-over-random', action='store_true',
+                     help="Plot the ratio over a random predictor (# P / (# P + # N)) for each measure.")
 
     # plotting parameters
     group = parser.add_argument_group('Plotting Options')
@@ -148,6 +152,9 @@ def setup_opts():
                      "Useful to add info to title of prec-rec plot. Can specify multiple")
     group.add_argument('--plot-postfix', type=str, default='',
                      help="Postfix to add to the end of the figure files")
+    group.add_argument('--forceread', action='store_true', default=False,
+                       help="If multiple repititions of CV are performed, a processed file is stored. " +
+                       "Specifying this option will start from scratch again.")
     group.add_argument('--forceplot', action='store_true', default=False,
                      help="Force overwitting plot files if they exist. TODO not yet implemented.")
 
@@ -223,25 +230,19 @@ def main(config_map, ax=None, out_pref='', **kwargs):
             #num_terms = df_all.groupby(['#taxon', '#term']).size()
         algs = df_all['Algorithm'].unique()
 
+        # if specified, use the ratio over a random predictor 
+        if kwargs.get('ratio_over_random'):
+            df_all = get_ratios_over_random(df_all, **kwargs)
+            # and rename the columns to include 'ratio'
+            measure_ratio_map = {m: m+'-ratio' for m in kwargs['measures']}
+            kwargs['measures'] = [m+'-ratio' for m in kwargs['measures']]
+            df_all.rename(columns=measure_ratio_map, inplace=True)
+
         print("\t%d algorithms, %d plot_exp_name values\n" % (len(algs), len(df_all['plot_exp_name'].unique())))
         #print(df_all.head())
         results_overview(df_all, measures=kwargs['measures'])
 
-        if kwargs.get('title') is not None:
-            title = kwargs['title']
-        else:
-            title = '-'.join(df_all['plot_exp_name'].unique())
-        # add the cross-validation settings to the plot
-        if kwargs.get('cross_validation_folds'):
-            title += " \n%s%s%s" % (
-                " neg-factor=%s;"%kwargs['sample_neg_examples_factor'] if kwargs.get('sample_neg_examples_factor') else '',
-                " seed=%s;"%kwargs['cv_seed'] if kwargs.get('cv_seed') else "",
-                " # reps=%s;"%kwargs['num_reps'] if kwargs.get('num_reps',1) > 1 else "",
-            )
-        if not kwargs.get('for_paper') and num_terms > 1:
-            title += " \n %d%s %s" % (
-                    num_terms, ' %s'%kwargs.get('only_terms_name', ''),
-                    "sp-term pairs" if kwargs.get('loso') else 'terms')
+        title = setup_title(df_all, num_terms, **kwargs)
         kwargs['title'] = title
         kwargs['alg_params'] = alg_settings
         kwargs['algs'] = get_algs_to_run(alg_settings, **kwargs)
@@ -265,6 +266,48 @@ def main(config_map, ax=None, out_pref='', **kwargs):
                 else:
                     ax = plot_boxplot(df_all, measure=measure, ax=ax, **kwargs)
     return ax
+
+
+def get_ratios_over_random(df_all, sample_neg_examples_factor=None, **kwargs):
+    """
+    """
+    if sample_neg_examples_factor is None:
+        # Will likely need to compute this directly in the script
+        # The issue is that the P and N will change depending on how many are in the network
+        # And the network size can change if SWSN or GMW are used
+        print("ERROR: script not yet set up to get the ratio over a " + \
+              "random predictor for non-sampled negative examples. Quitting")
+        sys.exit()
+
+    # The random predictor precision can be calculated by the ratio of positives to negatives 
+    # P / (P + N)
+    rand_pred_prec = 1 / float(1 + sample_neg_examples_factor)
+    print("Dividing by a random predictor precision of %0.3f to get the fmax/auprc/early-prec ratios" % (
+        rand_pred_prec))
+    df = df_all.copy()
+    for measure in kwargs['measures']:
+        df[measure] = df[measure] / rand_pred_prec
+
+    return df
+
+
+def setup_title(df_all, num_terms, **kwargs):
+    if kwargs.get('title') is not None:
+        title = kwargs['title']
+    else:
+        title = '-'.join(df_all['plot_exp_name'].unique())
+    # add the cross-validation settings to the plot
+    if kwargs.get('cross_validation_folds'):
+        title += " \n%s%s%s" % (
+            " neg-factor=%s;"%kwargs['sample_neg_examples_factor'] if kwargs.get('sample_neg_examples_factor') else '',
+            " seed=%s;"%kwargs['cv_seed'] if kwargs.get('cv_seed') else "",
+            " # reps=%s;"%kwargs['num_reps'] if kwargs.get('num_reps',1) > 1 else "",
+        )
+    if not kwargs.get('for_paper') and num_terms > 1:
+        title += " \n %d%s %s" % (
+                num_terms, ' %s'%kwargs.get('only_terms_name', ''),
+                "sp-term pairs" if kwargs.get('loso') else 'terms')
+    return title
 
 
 def setup_variables(config_map, out_pref='', **kwargs):
@@ -788,7 +831,8 @@ def results_overview(df, measures=['fmax']):
         for measure in measures:
             for alg in sorted(df_curr['Algorithm'].unique()):
                 df_alg = df_curr[df_curr['Algorithm'] == alg][measure]
-                print("%s\t%s\t%s\t%0.3f\t%d" % (plot_exp_name, measure, alg, df_alg.median(), len(df_alg)))
+                print("%s\t%s\t%s\t%0.3f\t%d" % (
+                    plot_exp_name, measure, alg, df_alg.median(), len(df_alg)))
                 #print("%s\t%s\t%s\t%s\t%0.3f\t%d" % (net_version, exp_name, measure, alg, df_alg.median(), len(df_alg)))
 
 
@@ -859,15 +903,15 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
         eval_type = cv.get_output_prefix(folds, "1-%s"%kwargs['num_reps'], neg_factor, cv_seed)
         combos = [dict(zip(alg_params.keys(), val)) for val in itertools.product(
                 *(alg_params[param] for param in alg_params))]
-        params_str = "%dparam-combos" % (len(combos))
+        params_str = "param-combos%d" % (len(combos))
         if len(combos) == 1:
             params_str = runner.get_runner_params_str(alg, combos[0], dataset=dataset)
         out_dir = "%s/%s/%s" % (
             results_dir, dataset['net_version'], dataset['exp_name'])
         rep_file = "%s/%s/%s%s%s%s.txt" % (
             out_dir, alg, eval_type, params_str, kwargs.get('postfix', ''), kwargs.get('prec_rec_str'))
-        if os.path.isfile(rep_file):
-            print("reading processed repetition files from %s" % (rep_file))
+        if os.path.isfile(rep_file) and not kwargs.get('forceread'):
+            print("reading processed repetition files from %s. Use --forceread to start from scratch and overwrite" % (rep_file))
             reps_df = pd.read_csv(rep_file, sep='\t')
             return reps_df
     reps_df = pd.DataFrame()
@@ -882,7 +926,7 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
         add_dataset_settings(dataset, df) 
         df['rep'] = rep
         reps_df = pd.concat([reps_df, df])
-    if kwargs.get('num_reps',1) > 1:
+    if kwargs.get('num_reps',1) > 1 and len(reps_df) > 0:
         print("Writing %s" % (rep_file)) 
         reps_df.to_csv(rep_file, sep='\t')
     return reps_df

@@ -40,7 +40,7 @@ def run_cv_all_terms(
 
     # first check to see if the algorithms have already been run
     # and if the results should be overwritten
-    if kwargs['forcealg'] is True or len(terms) == 1:
+    if kwargs['forcealg'] is True:
         # runners_to_run is a list of runners for each repitition
         runners_to_run = {i: alg_runners for i in range(1,num_reps+1)}
     else:
@@ -101,6 +101,8 @@ def run_cv_all_terms(
                 run_obj.setupOutputs()
 
                 # store only the scores of the test (left out) positives and negatives
+                # TODO to be able to accurately compute the early precision at k=1
+                # (where the # predictions matches the # pos), we would need to include scores for all nodes
                 for i in range(len(terms)):
                     test_pos, test_neg = alg_utils.get_term_pos_neg(test_ann_mat, i)
                     curr_term_scores = run_obj.term_scores[i].toarray().flatten()

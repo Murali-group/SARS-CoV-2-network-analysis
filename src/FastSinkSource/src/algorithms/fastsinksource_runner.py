@@ -15,13 +15,13 @@ def setupInputs(run_obj):
     if run_obj.net_obj.weight_swsn:
         # TODO if the net obj already has the W_SWSN object, then use that instead
         W, process_time = run_obj.net_obj.weight_SWSN(run_obj.ann_matrix)
-        run_obj.P = alg_utils.normalizeGraphEdgeWeights(W, ss_lambda=run_obj.params.get('lambda', None))
+        run_obj.P = alg_utils.normalizeGraphEdgeWeights(W, ss_lambda=run_obj.params.get('lambda'))
         run_obj.params_results['%s_weight_time'%(run_obj.name)] += process_time
     elif run_obj.net_obj.weight_gmw:
         # this will be handled on a term by term basis
         run_obj.P = None
     else:
-        run_obj.P = alg_utils.normalizeGraphEdgeWeights(run_obj.net_obj.W, ss_lambda=run_obj.params.get('lambda', None))
+        run_obj.P = alg_utils.normalizeGraphEdgeWeights(run_obj.net_obj.W, ss_lambda=run_obj.params.get('lambda'))
 
     return
 
@@ -32,7 +32,8 @@ def setup_params_str(weight_str, params, name="fastsinksource"):
     ss_lambda = params.get('lambda', 0)
     params_str = "%s-l%s" % (weight_str, ss_lambda)
     if name.lower() not in ["local", "localplus"]:
-        a, eps, maxi = params['alpha'], params['eps'], params['max_iters']
+        a = params.get('alpha',1.0)
+        eps, maxi = params.get('eps',), params['max_iters']
         tol = "-tol%s" % (str_(params['tol'])) if 'tol' in params else ''
         solver = "-%s" % (params['solver']) if 'solver' in params else ''
         params_str += "-a%s-eps%s-maxi%s%s%s" % ( 
@@ -88,7 +89,7 @@ def run(run_obj):
             start_time = time.process_time()
             # weight the network for each term individually
             W,_,_ = run_obj.net_obj.weight_GMW(y.toarray()[0], term)
-            P = alg_utils.normalizeGraphEdgeWeights(W, ss_lambda=params.get('lambda', None))
+            P = alg_utils.normalizeGraphEdgeWeights(W, ss_lambda=params.get('lambda'))
             params_results['%s_weight_time'%(alg)] += time.process_time() - start_time
 
         # now actually run the algorithm
