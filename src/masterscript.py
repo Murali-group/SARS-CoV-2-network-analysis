@@ -84,6 +84,13 @@ def main(config_map, **kwargs):
     # For now I will assume some of the essential structure is already setup (i.e., committed to the repo) 
     # TODO setup the pos-neg file(s) automatically (the file containing the positive and negative examples for which to use when running FSS)
     fss_settings = config_map['fastsinksource_pipeline_settings']
+    # Before writing the config file, setup the geneset files and their settings for the config file 
+    geneset_settings = fss_settings.get('genesets_to_test')
+    if geneset_settings is not None:
+        fss_settings['genesets_to_test'] = setup_geneset_config(
+            datasets_dir, dataset_settings['datasets_to_download'], geneset_settings,
+            fss_settings, **kwargs)
+
     config_files = setup_fss_config(datasets_dir, dataset_settings['datasets_to_download'], fss_settings, **kwargs) 
 
     # Now run FSS on each of the config files
@@ -99,6 +106,67 @@ def main(config_map, **kwargs):
                   " %s " % ("--stats-only" if kwargs.get('stats_only') else "") + \
                   " >> %s 2>&1 " % (log_file)
         run_command(command) 
+
+    # Now test for overlap of the top predictions with related gene sets
+    if geneset_settings is not None:
+        if len(config_files) > 0:
+            print("\nTesting the overlap of the top predictions of each method with %d gene sets" % (
+                len(geneset_settings)))
+        for config_file in config_files:
+            command = "python -u src/Enrichment/enrichment.py "  + \
+                    " --config %s " % (config_file) + \
+                    " %s " % ("--force-run" if kwargs.get('force_run') else "") + \
+                    " >> %s 2>&1 " % (log_file)
+            run_command(command) 
+    print("Finished")
+
+
+def setup_geneset_config(
+        datasets_dir, dataset_settings, genesets_to_run,
+        fss_settings, **kwargs):
+    """
+    Setup the config options to test for enrichment of FastSinkSource algorithm predictions 
+        with the specified genesets
+    *returns*: an updated geneset_settings list with dictionaries of names, 
+        file paths to the gene sets, and other settings
+    """
+    new_genesets_settings = []
+    # Instead of a list of genesets to run, change to a dictionary with the name as the key
+    download_genesets_settings = {}
+    for geneset in dataset_settings.get('genesets', []) + dataset_settings.get('drug-targets', []):
+        download_genesets_settings[geneset['name']] = geneset
+    for geneset in genesets_to_run:
+        name = geneset['name']
+        # Possibly types are "genesets", "drug-targets"
+        data_type = geneset.get('data_type', 'genesets')
+        if name not in download_genesets_settings:
+            print("WARNING: %s with the name '%s' not found " % (data_type, name) +
+                  "in 'datasets_to_download' section of config file. Skipping") 
+            continue
+
+        if 'gmt_file' in download_genesets_settings[name]:
+            file_name = download_genesets_settings[name]['gmt_file'] 
+        else:
+            file_name = download_genesets_settings[name]['file_name'] 
+        gmt_file = "%s/%s/%s/%s" % (datasets_dir, data_type, name, file_name) 
+        print(name, file_name)
+        new_gmt_file = "%s/genesets/%s/%s" % (fss_settings['input_dir'], name, file_name) 
+        # TODO allow to filter out some gene sets
+        # don't need to do anything if it already exists since this is just a symlink
+        if not os.path.isfile(new_gmt_file):
+            print("\tadding symlink from %s to %s" % (gmt_file, new_gmt_file))
+            if not os.path.isfile(gmt_file):
+                print("ERROR: %s does not exist. Quitting" % (gmt_file))
+                sys.exit()
+            os.makedirs(os.path.dirname(new_gmt_file), exist_ok=True)
+            os.symlink(os.path.abspath(gmt_file), new_gmt_file)
+        # now setup the settings
+        ## remove the fss_inputs dir since that is specified as a variable in the config file
+        #new_gmt_file = '/'.join(new_gmt_file.split('/')[1:])
+        geneset['gmt_file'] = os.path.basename(new_gmt_file)
+        new_genesets_settings.append(geneset)
+
+    return new_genesets_settings
 
 
 def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
@@ -122,6 +190,8 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
         # only keep the specified algorithms in the config file
         'algs': {alg: fss_settings['algs'][alg] for alg in algs},
     }
+    if 'genesets_to_test' in fss_settings:
+        config_map['genesets_to_test'] = fss_settings['genesets_to_test']
     eval_str = ""
     if fss_settings.get('eval_settings'):
         # append a string of the evaluation settings specified to the yaml file so you can run multiple in parallel.
