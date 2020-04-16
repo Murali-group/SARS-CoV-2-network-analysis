@@ -1,0 +1,15 @@
+# don't add the outputs or temporary/test files
+outputs*/
+*test*
+
+# python
+*.pyc
+__pycache__
+
+# vim backup files
+.*.sw* 
+
+# emacs backup files
+*~
+*#
+
