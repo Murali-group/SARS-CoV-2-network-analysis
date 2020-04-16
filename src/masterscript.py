@@ -11,11 +11,10 @@ import time
 #from scipy import sparse
 import pandas as pd
 #import subprocess
+
 # packages in this repo
-# add this file's directory to the path so these imports work from anywhere
-sys.path.insert(0,os.path.dirname(__file__))
-from setup_datasets import setup_dataset_files, run_command
-from FastSinkSource.src.utils.config_utils import get_algs_to_run
+from src.setup_datasets import setup_dataset_files, run_command
+from src.FastSinkSource.src.utils.config_utils import get_algs_to_run
 
 
 def parse_args():
