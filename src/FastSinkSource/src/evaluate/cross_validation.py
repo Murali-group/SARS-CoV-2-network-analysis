@@ -1,10 +1,5 @@
 # needed for cross-validation
-#import run_eval_algs
 import os
-import src.setup_sparse_networks as setup
-import src.algorithms.alg_utils as alg_utils
-import src.utils.file_utils as utils
-import src.evaluate.eval_utils as eval_utils
 from tqdm import tqdm, trange
 import numpy as np
 from scipy import sparse
@@ -12,6 +7,12 @@ try:
     from sklearn.model_selection import KFold
 except ImportError:
     pass
+
+# my local imports
+from .. import setup_sparse_networks as setup
+from ..algorithms import alg_utils as alg_utils
+from ..utils import file_utils as utils
+from . import eval_utils
 
 
 def run_cv_all_terms(

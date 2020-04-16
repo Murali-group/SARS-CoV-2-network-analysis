@@ -4,10 +4,10 @@ from tqdm import tqdm, trange
 #from rpy2 import robjects as ro
 import numpy as np
 from scipy import sparse
-import src.algorithms.alg_utils as alg_utils
-import src.algorithms.logistic_regression_runner as logReg_runner
-import src.algorithms.svm as svm
 import time
+from . import alg_utils
+from . import svm
+from . import logistic_regression_runner as logReg_runner
 
 
 def setupInputs(run_obj):

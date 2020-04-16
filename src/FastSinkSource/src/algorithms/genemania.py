@@ -1,10 +1,10 @@
 # Python implementation of GeneMANIA
 
 import time
-import src.algorithms.alg_utils as alg_utils
 import numpy as np
 from scipy.sparse import eye, diags
 from scipy.sparse.linalg import spsolve, cg, spilu, LinearOperator
+from . import alg_utils
 
 
 def setup_laplacian(W):

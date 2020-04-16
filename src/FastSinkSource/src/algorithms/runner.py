@@ -1,16 +1,15 @@
 
 import sys
 from collections import defaultdict
-#import src.setup_sparse_networks as setup
-import src.algorithms.alg_utils
-import src.algorithms.fastsinksource_runner as fastsinksource
-import src.algorithms.sinksource_bounds_runner as ss_bounds
-import src.algorithms.genemania_runner as genemania
-import src.algorithms.svm_runner as svm
-import src.algorithms.logistic_regression_runner as logistic_regression
-#import src.algorithms.sinksource_bounds
 import numpy as np
 from scipy import sparse as sp
+
+# my local imports
+from . import fastsinksource_runner as fastsinksource
+from . import sinksource_bounds_runner as ss_bounds
+from . import genemania_runner as genemania
+from . import svm_runner as svm
+from . import logistic_regression_runner as logistic_regression
 
 
 LibMapper = {

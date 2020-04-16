@@ -1,12 +1,12 @@
 # Python implementation of SinkSource
 
 import time
-import src.algorithms.alg_utils as alg_utils
 import numpy as np
 from scipy.sparse import csr_matrix, eye
 from scipy.sparse import linalg
 from tqdm import tqdm
 import sys
+from . import alg_utils
 
 
 def FastSinkSource(P, f, max_iters=1000, eps=0.0001, a=0.8, verbose=False):

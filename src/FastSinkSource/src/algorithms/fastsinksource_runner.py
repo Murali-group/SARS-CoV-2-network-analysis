@@ -1,11 +1,10 @@
 
 import time
-import src.algorithms.fastsinksource as fastsinksource
-import src.algorithms.alg_utils as alg_utils
 from tqdm import tqdm, trange
 from scipy import sparse as sp
-from scipy.sparse.linalg import LinearOperator, spilu
 import numpy as np
+from . import fastsinksource
+from . import alg_utils
 
 
 def setupInputs(run_obj):

@@ -2,11 +2,10 @@
 # Add the fss base path so these imports work from anywhere
 import sys
 import os
-fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(0,fss_dir)
-from src.algorithms import runner
-from src.plot import plot_utils
-import run_eval_algs
+#fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+#sys.path.insert(0,fss_dir)
+from ..algorithms import runner
+from ..plot import plot_utils
 import itertools
 
 
@@ -33,8 +32,11 @@ def get_algs_to_run(alg_settings, algs=None, **kwargs):
     # if there aren't any algs specified by the command line (i.e., kwargs),
     # then use whatever is in the config file
     if algs is None:
-        algs_to_run = run_eval_algs.get_algs_to_run(alg_settings)
-        algs = [a.lower() for a in algs_to_run]
+        # these are the algs to run
+        algs = []
+        for alg in alg_settings:
+            if alg_settings[alg].get('should_run', [True])[0] is True:
+                algs.append(alg.lower())
     else:
         # make the alg names lower so capitalization won't make a difference
         algs = [a.lower() for a in algs]

@@ -1,7 +1,7 @@
 
 #from scipy import sparse
 import numpy as np
-import src.algorithms.alg_utils as alg_utils
+from ..algorithms import alg_utils
 
 
 def findKernelWeights(y, W):
