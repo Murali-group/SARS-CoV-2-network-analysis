@@ -101,6 +101,8 @@ def get_eval_str(name, **kwargs):
     eval_str = "" 
     # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
     if 'plus' not in name and neg_factor is not None:
+        # make sure its treated as an integer if it is one
+        neg_factor = int(neg_factor) if int(neg_factor) == neg_factor else neg_factor
         eval_str = "-rep%s-nf%s" % (num_reps, neg_factor)
     return eval_str
 

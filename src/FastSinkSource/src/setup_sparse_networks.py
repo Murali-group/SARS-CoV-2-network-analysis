@@ -73,6 +73,7 @@ class Sparse_Networks:
                 self.W = sparse_networks[0]
                 for W in sparse_networks[1:]:
                     self.W += W
+                self.multi_net = False
         else:
             self.weight_swsn = False
             self.weight_gmw = False
@@ -224,15 +225,23 @@ def create_sparse_net_file(
     elif string_nets is None:
         string_nets = STRING_NETWORKS
     string_nets = list(string_nets)
-    num_networks = len(net_files) + len(string_nets)
+    #num_networks = len(net_files) + len(string_nets)
+    net_files_str = '-'.join(os.path.basename(f).split('.')[0] for f in net_files)+'-' \
+                    if len(net_files) > 0 else ""
     # if there is only 1 string network, then write the name instead of the number
+    string_nets_str = "" 
     if len(string_nets) == 1:
-        num_networks = list(string_nets)[0] 
-    sparse_nets_file = "%s%s-sparse-nets.mat" % (out_pref, num_networks)
+        string_nets_str = list(string_nets)[0] + '-'
+    elif len(string_nets) > 1:
+        string_nets_str = "string%d-" % (len(string_nets)) 
+
+    out_pref += net_files_str + string_nets_str
+    sparse_nets_file = "%ssparse-nets.mat" % (
+        out_pref)
     # the node IDs should be the same for each of the networks,
     # so no need to include the # in the ids file
     node_ids_file = "%snode-ids.txt" % (out_pref)
-    net_names_file = "%s%s-net-names.txt" % (out_pref, num_networks)
+    net_names_file = "%snet-names.txt" % (out_pref)
     if forcenet is False \
        and os.path.isfile(sparse_nets_file) and os.path.isfile(node_ids_file) \
        and os.path.isfile(net_names_file):
