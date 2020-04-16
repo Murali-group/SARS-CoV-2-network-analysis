@@ -283,7 +283,7 @@ fastsinksource_pipeline_settings:
 #      - names: ["tissuenet-v2/gtex-rnaseq"]
 #        network_collection: True
 #        drug_target_names: ["drugbank"]
-#        net_version: "tissuenet-v2-drugbank/hpa-gtex-rnaseq"
+#        net_version: "tissuenet-v2-drugbank/gtex-rnaseq"
 #      - names: ["tissuenet-v2/hpa-rnaseq"]
 #        network_collection: True
 #        drug_target_names: ["drugbank"]
@@ -360,6 +360,14 @@ fastsinksource_pipeline_settings:
             alpha: [1.0]
             eps: [1e-4]
             max_iters: [1000]
+
+        sinksourceplus:
+            should_run: [True]
+            alpha: [1.0]
+            eps: [0]
+            max_iters: [1000]
+            # the ss+ lambda option isn't needed if alpha is < 1
+            ss_lambda: [10]
 
         logistic_regression:
             should_run: [True]
