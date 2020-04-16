@@ -115,12 +115,16 @@ def run(config_map, **kwargs):
         # the outputs will follow this structure:
         # outputs/<net_version>/<exp_name>/<alg_name>/output_files
         out_dir = "%s/%s/%s/" % (output_dir, dataset['net_version'], dataset['exp_name'])
-        alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
 
         # first run prediction mode since it is the fastest
         if kwargs.get('only_eval',False) is False:
+            # set the CV flag to None so that the output file will have the "neg factor" and "num reps" set correctly
+            cv_folds = kwargs.get('cross_validation_folds')
+            kwargs['cross_validation_folds'] = None
+            alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
             # run algorithms in "prediction" mode 
             run_algs(alg_runners, **kwargs) 
+            kwargs['cross_validation_folds'] = cv_folds
             # if specified, write the SWSN combined network to a file
             save_net = dataset['net_settings'].get('save_net', None) if 'net_settings' in dataset else None
             if net_obj.weight_swsn is True and save_net is not None:
@@ -139,6 +143,8 @@ def run(config_map, **kwargs):
                     eval_utils.evaluate_ground_truth(
                         run_obj, eval_ann_obj, out_file, **kwargs)
 
+        # reset the runner objects
+        alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
         if kwargs.get('cross_validation_folds') is not None:
             # run cross validation
             cross_validation.run_cv_all_terms(alg_runners, ann_obj, folds=kwargs['cross_validation_folds'], **kwargs)
