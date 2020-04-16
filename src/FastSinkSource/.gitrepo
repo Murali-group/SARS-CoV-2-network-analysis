@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:jlaw9/FastSinkSource.git
 	branch = no-ontology
-	commit = 9d0360819f4c10315d66d6c0fe4fc377f66544c9
-	parent = 70df03bba566e0bc876f21a6610dfad945e356aa
+	commit = e6570a724de5541a38a2c350d9edf37ecbad2f5a
+	parent = 0b83d5d8270a5913ba5c4918fa0be50264c8424c
 	method = merge
 	cmdver = 0.4.1

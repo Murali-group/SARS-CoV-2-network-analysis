@@ -19,26 +19,12 @@ import pandas as pd
 import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
-# add two levels up to the path
-#from os.path import dirname
-#base_path = dirname(dirname(dirname(__file__)))
-#sys.path.append(base_path)
-#print(sys.path)
-#os.chdir(base_path)
-#print(base_path)
-#import run_eval_algs
-#from src.algorithms import runner as runner
-#sys.path.append(base_path + "/src/algorithms")
-#print(sys.path)
-#import runner
+
 # my local imports
-fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(0,fss_dir)
-import run_eval_algs
-import src.algorithms.runner as runner
-import src.utils.file_utils as utils
-import src.evaluate.eval_utils as eval_utils
-import src.evaluate.cross_validation as cv
+from ..algorithms import runner as runner
+from ..utils import config_utils as config_utils
+from ..evaluate import eval_utils as eval_utils
+from ..evaluate import cross_validation as cv
 
 
 ALG_NAMES = {
@@ -329,7 +315,7 @@ def setup_variables(config_map, out_pref='', **kwargs):
     # TODO only create the output dir if plots are will be created
     if out_pref is not None:
         out_pref += kwargs.get('postfix','')
-        utils.checkDir(os.path.dirname(out_pref))
+        os.makedirs(os.path.dirname(out_pref), exist_ok=True)
 
     return input_settings, alg_settings, output_settings, out_pref, kwargs
 
@@ -812,7 +798,7 @@ def get_algs_to_run(alg_settings, **kwargs):
     # if there aren't any algs specified by the command line (i.e., kwargs),
     # then use whatever is in the config file
     if kwargs['algs'] is None:
-        algs_to_run = run_eval_algs.get_algs_to_run(alg_settings)
+        algs_to_run = config_utils.get_algs_to_run(alg_settings)
         kwargs['algs'] = [a.lower() for a in algs_to_run]
         if print_warning:
             print("\nNo algs were specified. Using the algorithms in the yaml file:")

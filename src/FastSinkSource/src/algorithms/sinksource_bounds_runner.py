@@ -2,12 +2,12 @@
 import sys, os
 import time
 from scipy import sparse as sp
-import src.algorithms.fastsinksource_runner as fss_runner
-import src.algorithms.sinksource_bounds as ss_bounds
-import src.algorithms.alg_utils as alg_utils
 import numpy as np
 from tqdm import tqdm, trange
 import fcntl
+from . import fastsinksource_runner as fss_runner
+from . import sinksource_bounds as ss_bounds
+from . import alg_utils
 
 
 def setupInputs(run_obj):

@@ -2,7 +2,6 @@
 from sklearn.svm import LinearSVC
 #from sklearn.svm import SVC
 #from sklearn.calibration import CalibratedClassifierCV
-import time
 #from scikit.learn.svm.sparse import SVC
 
 

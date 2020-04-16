@@ -3,19 +3,13 @@
 # Algorithm and proofs adapted from:
 # Zhang et al. Fast Inbound Top-K Query for Random Walk with Restart, KDD, 2015
 
-#import SinkSource
 import sys
 import time
-import operator
-from collections import defaultdict
-# expects python 3 and networkx 2
-#import networkx as nx
 import numpy as np
 from scipy.sparse import csr_matrix
-import src.algorithms.alg_utils as alg_utils
-import src.evaluate.eval_utils as eval_utils
-import random
-from scipy.stats import kendalltau  #, spearmanr, weightedtau
+#from scipy.stats import kendalltau  #, spearmanr, weightedtau
+from . import alg_utils
+#import src.evaluate.eval_utils as eval_utils
 
 
 class SinkSourceBounds:

@@ -5,16 +5,6 @@
 
 from collections import defaultdict
 import os, sys, time
-from optparse import OptionParser, OptionGroup
-#import src.version_settings as v_settings
-import src.utils.file_utils as utils
-from src.utils.string_utils import full_column_names, \
-    STRING_NETWORKS, NON_TRANSFERRED_STRING_NETWORKS, \
-    CORE_STRING_NETWORKS
-import src.algorithms.alg_utils as alg_utils
-from src.weight_networks.findKernelWeights import findKernelWeights
-from src.weight_networks.combineNetworksSWSN import combineNetworksSWSN
-from networkx.algorithms.dag import descendants
 import networkx as nx
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -27,6 +17,13 @@ import gzip
 import warnings
 warnings.simplefilter('ignore', RuntimeWarning)
 available_weight_methods = ['swsn', 'gmw', 'gmw2008', 'add']
+
+# my local imports
+from .utils import file_utils as utils
+from .utils.string_utils import full_column_names, STRING_NETWORKS
+from .algorithms import alg_utils as alg_utils
+from .weight_networks.findKernelWeights import findKernelWeights
+from .weight_networks.combineNetworksSWSN import combineNetworksSWSN
 
 
 class Sparse_Networks:

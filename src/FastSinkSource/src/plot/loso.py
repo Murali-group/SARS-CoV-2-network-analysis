@@ -17,13 +17,12 @@ import pandas as pd
 import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
+
 # my local imports
-fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(0,fss_dir)
-from src.plot import plot_utils
-from src.evaluate import eval_leave_one_species_out as eval_loso
-from src import setup_sparse_networks as setup
-import run_eval_algs
+from . import plot_utils
+from ..evaluate import eval_leave_one_species_out as eval_loso
+from .. import setup_sparse_networks as setup
+from .. import main as run_eval_algs
 
 
 measure_map = plot_utils.measure_map

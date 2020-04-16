@@ -18,11 +18,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
-#from src.algorithms import runner
-#from src.utils import file_utils
-#from src.evaluate import eval_utils
-#from src.plot import plot_utils
-import src.plot.plot_utils as plot_utils
+from . import plot_utils
 
 
 def main(config_map, **kwargs):

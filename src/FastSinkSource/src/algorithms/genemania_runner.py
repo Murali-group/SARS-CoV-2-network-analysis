@@ -1,11 +1,10 @@
 
 import time
-import src.algorithms.genemania as genemania
-import src.algorithms.alg_utils as alg_utils
 from tqdm import tqdm, trange
 from scipy import sparse as sp
 from scipy.sparse.linalg import spilu, LinearOperator
 import numpy as np
+from . import genemania
 
 
 def setupInputs(run_obj):

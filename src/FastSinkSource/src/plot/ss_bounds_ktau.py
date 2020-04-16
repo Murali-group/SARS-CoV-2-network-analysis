@@ -16,9 +16,9 @@ import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
 # my local imports
-fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-sys.path.insert(0,fss_dir)
-from src.plot import plot_utils
+#fss_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+#sys.path.insert(0,fss_dir)
+from . import plot_utils
 
 
 # TODO use the ax that was passed in
