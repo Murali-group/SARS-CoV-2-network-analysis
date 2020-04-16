@@ -367,7 +367,7 @@ fastsinksource_pipeline_settings:
             eps: [0]
             max_iters: [1000]
             # the ss+ lambda option isn't needed if alpha is < 1
-            ss_lambda: [10]
+            lambda: [10]
 
         logistic_regression:
             should_run: [True]
