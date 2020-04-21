@@ -63,6 +63,11 @@ Similar to the previous section, the options to run cross validation can either 
   - `cv_seed`
     - The seed to use when generating the CV splits. 
 
+Example:
+```
+python src/FastSinkSource/run_eval_algs.py  --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml --cross-validation-folds 5
+```
+
 After CV has finished, to visualize the results, use the `plot.py` script (TODO add to `masterscript.py`). For example:
 ```
 python FastSinkSource/plot.py --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml --box --measure fmax
