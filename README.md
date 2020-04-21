@@ -47,7 +47,9 @@ python src/masterscript.py --config config-files/master-config.yaml
 
 Example 2:
 ```
-python src/FastSinkSource/run_eval_algs.py  --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml --num-pred-to-write -1
+python src/FastSinkSource/run_eval_algs.py  \
+  --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml \
+  --num-pred-to-write -1
 ```
 
 #### TODO Compare overlap of top predictions with various gene sets ([#6](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/6))
@@ -65,7 +67,9 @@ Similar to the previous section, the options to run cross validation can either 
 
 Example:
 ```
-python src/FastSinkSource/run_eval_algs.py  --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml --cross-validation-folds 5
+python src/FastSinkSource/run_eval_algs.py \
+  --config fss_inputs/config_files/stringv11/400-cv5-nf1.yaml \
+  --cross-validation-folds 5
 ```
 
 After CV has finished, to visualize the results, use the `plot.py` script (TODO add to `masterscript.py`). For example:
