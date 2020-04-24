@@ -13,7 +13,8 @@ import pandas as pd
 #import subprocess
 
 # packages in this repo
-from src.setup_datasets import setup_dataset_files, run_command
+from src.setup_datasets import setup_dataset_files
+from src.utils.parse_utils import run_command
 from src.FastSinkSource.src.utils.config_utils import get_algs_to_run
 
 
@@ -212,6 +213,11 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
         'string_net_files': [],
     }
 
+    pos_neg_file = "%s/%s" % (fss_dir, fss_settings['pos_neg_file'])
+    print("Reading %s" % (pos_neg_file))
+    krogan_nodes = pd.read_csv(pos_neg_file, sep='\t', index_col=None, header=0)['prots']
+    print("\t%d 'krogan' nodes" % (len(krogan_nodes)))
+
     # Instead of a list of networks to run, change to a dictionary with the name as the key
     download_net_settings = {net['name']: net for net in dataset_settings['networks']}
     download_drug_target_settings = {dt['name']: dt for dt in dataset_settings.get('drug-targets',{})}
@@ -251,7 +257,7 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 if drug_targets is not None:
                     setup_drug_target_nets(
                         fss_dir, net_version, drug_target_files,
-                        curr_net_files+dataset_string_files)
+                        curr_net_files+dataset_string_files, nodes_to_remove=krogan_nodes)
                     curr_net_files += drug_target_files 
                 curr_settings = setup_net_settings(
                     fss_dir, copy.deepcopy(base_dataset_settings), net_version,
@@ -261,7 +267,9 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
         else:
             if drug_targets is not None:
                 # for drug target files, only include the edges where the target is in the network
-                setup_drug_target_nets(fss_dir, name, drug_target_files, dataset_net_files+dataset_string_files)
+                setup_drug_target_nets(
+                    fss_dir, name, drug_target_files, dataset_net_files+dataset_string_files,
+                    nodes_to_remove=krogan_nodes)
                 dataset_net_files += drug_target_files
             curr_settings = setup_net_settings(
                 fss_dir, copy.deepcopy(base_dataset_settings), name,
@@ -320,7 +328,7 @@ def write_yaml_file(yaml_file, config_map):
 
 
 def setup_drug_target_nets(
-        input_dir, net_version, drug_target_files, net_files, forced=False):
+        input_dir, net_version, drug_target_files, net_files, nodes_to_remove=None, forced=False):
     print("Setting up drug-target networks")
     not_setup_files = []
     for drug_target_file in drug_target_files:
@@ -336,11 +344,17 @@ def setup_drug_target_nets(
 
     # first get the nodes from the networks
     all_prots = set()
+    # leave this network as unweighted, but set the weight as the largest weight in the network
+    # so the edges are treated similarly to the weighted network
+    largest_weight = 1
     for net_file in net_files:
         print("Reading prots/nodes from %s" % (net_file))
         df = pd.read_csv(net_file, sep='\t', header=None)
         prots = set(df[df.columns[0]].values) | set(df[df.columns[1]].values)
         all_prots.update(prots)
+        # TODO set this up to automatically extract the edge weight
+        if 'string' in net_file:
+            largest_weight = 1000
     print("\t%d total prots" % (len(all_prots)))
 
     for new_drug_target_file in not_setup_files:
@@ -351,12 +365,22 @@ def setup_drug_target_nets(
         num_drug_targets = len(df)
         num_drugs, num_targets = df[1].nunique(), df[0].nunique()
         df = df[df[df.columns[0]].isin(all_prots)]
-        # leave this network as unweighted
-        df['weights'] = 1
+        df['weights'] = largest_weight
+        os.makedirs(os.path.dirname(new_drug_target_file), exist_ok=True)
+        if nodes_to_remove is not None:
+            # UPDATE: Also remove the targets that are Krogan nodes (i.e., SARS-CoV-2 - Human PPIs)
+            # so that we get the drug targets of our predictions.
+            # Keep the "all-targets" file to be able to visualize both later (i.e., posting to graphspace)
+            new_drug_target_file2 = new_drug_target_file.replace('.tsv','-all-targets.tsv')
+            print("\t%d drug-targets (%d drugs, %d targets) limited to %d (%d drugs, %d targets)" % (
+                num_drug_targets, num_drugs, num_targets, len(df), df[1].nunique(), df[0].nunique()))
+            print("\twriting to %s" % (new_drug_target_file2))
+            df.to_csv(new_drug_target_file2, sep='\t', index=None, header=False)
+            df = df[~df[df.columns[0]].isin(nodes_to_remove)]
+
         print("\t%d drug-targets (%d drugs, %d targets) limited to %d (%d drugs, %d targets)" % (
             num_drug_targets, num_drugs, num_targets, len(df), df[1].nunique(), df[0].nunique()))
         print("\twriting to %s" % (new_drug_target_file))
-        os.makedirs(os.path.dirname(new_drug_target_file), exist_ok=True)
         df.to_csv(new_drug_target_file, sep='\t', index=None, header=False)
     return 
 
