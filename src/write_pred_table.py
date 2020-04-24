@@ -43,8 +43,14 @@ def setup_opts():
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
                        help="Algorithms for which to get results. Must be in the config file. " +
                        "If not specified, will get the list of algs with 'should_run' set to True in the config file")
+    group.add_argument('--sample-neg-examples-factor', type=float, 
+            help="If specified, sample negative examples randomly without replacement from the protein universe equal to <sample_neg_examples_factor> * # positives")
+    group.add_argument('--num-reps', type=int, 
+            help="Number of times to repeat the CV process. Default=1")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry' and 'Gene names'")
+    group.add_argument('--drug-id-mapping-file', type=str, 
+                       help="Table parsed from DrugBank xml with drug names and other info")
     group.add_argument('--num-pred-to-write', '-W', type=int, default=100,
             help="Number of predictions to keep. " +
             "If 0, none will be written. If -1, all will be written. Default=100")
@@ -76,25 +82,29 @@ def main(config_map, **kwargs):
     *kwargs*: all of the options passed into the script
     """
     
-    input_settings = config_map['input_settings']
-    input_dir = input_settings['input_dir']
-    alg_settings = config_map['algs']
-    output_settings = config_map['output_settings']
-    if config_map.get('eval_settings'):
-        kwargs.update(config_map['eval_settings'])
-    postfix = kwargs.get("postfix")
-    postfix = "" if postfix is None else postfix
+    input_settings, input_dir, output_dir, alg_settings, kwargs \
+        = config_utils.setup_config_variables(config_map, **kwargs)
     algs = plot_utils.get_algs_to_run(alg_settings, **kwargs)
     del kwargs['algs']  # remove algs from kwargs
     uniprot_to_gene = None
     # also add the protein name
     uniprot_to_prot_names = None
     if kwargs.get('id_mapping_file'):
+        print("Reading %s" % (kwargs['id_mapping_file']))
         df = pd.read_csv(kwargs['id_mapping_file'], sep='\t', header=0) 
         ## keep only the first gene for each UniProt ID
         uniprot_to_gene = {p: genes.split(' ')[0] for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
         if 'Protein names' in df.columns:
             uniprot_to_prot_names = dict(zip(df['Entry'], df['Protein names'].astype(str)))
+    if kwargs.get('drug_id_mapping_file'):
+        print("Reading %s" % (kwargs['drug_id_mapping_file']))
+        df = pd.read_csv(kwargs['drug_id_mapping_file'], sep='\t', header=0) 
+        ## keep only the first gene for each UniProt ID
+        uniprot_to_gene.update({d: name for d, name in zip(df['drugbank_id'], df['name'].astype(str))})
+        # now get extra drug info
+        uniprot_to_prot_names.update({d: groups for d, groups in zip(df['drugbank_id'], df['groups'].astype(str))})
+        #if 'Protein names' in df.columns:
+        #    uniprot_to_prot_names = dict(zip(df['Entry'], df['Protein names'].astype(str)))
 
     # for each dataset, get the prediction scores from each method
     # store a single df for each alg
@@ -107,7 +117,7 @@ def main(config_map, **kwargs):
 
         dataset_name = config_utils.get_dataset_name(dataset) 
         alg_pred_files = config_utils.get_dataset_alg_prediction_files(
-            output_settings['output_dir'], dataset, alg_settings, algs, **kwargs)
+            output_dir, dataset, alg_settings, algs, **kwargs)
         for alg, pred_file in alg_pred_files.items():
             if not os.path.isfile(pred_file):
                 print("Warning: %s not found. skipping" % (pred_file))
@@ -212,4 +222,3 @@ def main(config_map, **kwargs):
 if __name__ == "__main__":
     config_map, kwargs = parse_args()
     main(config_map, **kwargs)
-
