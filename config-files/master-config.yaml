@@ -18,7 +18,8 @@ dataset_settings:
             url: "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
             type: "list"
             #namespaces: ["all"]
-            namespaces: ["ensembl", "gene_name", "string", "biogrid", "pharmgkb"]
+            #namespaces: ["ensembl", "gene_name", "string", "biogrid", "pharmgkb", "geneid"]
+            namespaces: ["geneid", "gene_name", "ensembl", "string", "pharmgkb"]
 
           - mapping_file: "uniprot-reviewed-status.tab.gz"
             species: "human"
@@ -55,6 +56,21 @@ dataset_settings:
               # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
               prefer_reviewed: True
             sep: "\t"
+
+          - name: "wikipathways"
+            file_name: "human-wikipathways.gmt"
+            file_type: "wikipathways"
+            downloaded_file: "pathway-list.json"
+            #namespace: "uniprot"
+            url: "https://webservice.wikipathways.org/listPathways?organism=Homo%20sapiens&format=json"
+            # this is the template url for the individual pathway files that will be downloaded
+            # code='S': uniprot, code='L': entrez gene
+            pathway_prots_url: "https://webservice.wikipathways.org/getXrefList?pwId=%s&code=L&format=json"
+            taxon: 9606
+            species: "human"
+            namespace: "geneid"
+            mapping_settings:
+              prefer_reviewed: True
 
       #### Gene-drug dataset options:
       # *name*: name of this dataset. Will be used as the directory name
