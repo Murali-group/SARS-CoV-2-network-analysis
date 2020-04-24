@@ -90,12 +90,14 @@ def get_dataset_alg_prediction_files(
 
 def get_alg_results_files(
         alg, alg_params, file_type="pred-scores",
-        weight_str="", postfix="", **kwargs):
+        weight_str="", postfix="", use_alg_plot_name=True, **kwargs):
     """
     Get the results file name(s) for this algorithm
 
     *file_type*: The type of results file to get. Options are:
         'pred-scores', 'cv-Xfolds', 'loso'
+    *use_alg_plot_name*: Option to use the name of the algorithm used when plotting vs the standard full name. 
+        e.g., GM+ vs genemaniaplus
 
     *returns*: a dictionary of algorithm name: file path
         algorithm name will include the settings used to run it if alg_params contains multiple combinations of parameters
@@ -110,7 +112,8 @@ def get_alg_results_files(
         params_str = runner.get_runner_params_str(alg, param_combo, weight_str=weight_str, **kwargs)
         eval_str = runner.get_eval_str(alg, **kwargs)
         results_file = "%s%s%s.txt" % (file_type, params_str, postfix)
-        alg_name = plot_utils.ALG_NAMES.get(alg,alg)
+        if use_alg_plot_name is True:
+            alg_name = plot_utils.ALG_NAMES.get(alg,alg)
         alg_name += eval_str
         if len(combos) > 1: 
             alg_name = alg_name + params_str
