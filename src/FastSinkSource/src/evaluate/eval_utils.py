@@ -14,13 +14,14 @@ except ImportError:
 def evaluate_ground_truth(
         run_obj, eval_ann_obj, out_file,
         non_pos_as_neg_eval=False, taxon='-',
-        early_prec=None, write_prec_rec=False, 
+        early_prec=None, rep=None, write_prec_rec=False, 
         append=False, **kwargs):
     """
     *early_prec*: A list of recall values for which to get the precision. 
         Each will get its own column in the output file
     *write_prec_rec*: For every term, write a file containing the 
         precision and recall at every positive and negative example
+    *rep*: index of current repetition if repeating CV multiple times.
     """
     term_scores, terms = run_obj.term_scores, run_obj.terms_to_run 
     eval_ann_matrix, prots = eval_ann_obj.ann_matrix, eval_ann_obj.prots
@@ -86,6 +87,7 @@ def evaluate_ground_truth(
             print("%s fmax: %0.4f" % (term, fmax))
 
     # skip writing the output file if there's only one term specified
+    rep_str = "\t%s"%rep if rep is not None else ""
     if write_prec_rec and len(term_prec_rec) == 1:
         print("skipping writing %s" % (out_file))
     else:
@@ -96,9 +98,9 @@ def evaluate_ground_truth(
             # format the values so they'll be ready to be written to the output file
             early_prec_str = '\t'+'\t'.join("%0.4f" % (p) for p in eprec_vals) \
                              if len(eprec_vals) > 0 else ""
-            out_str += "%s%s\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%d%s\n" % (
+            out_str += "%s%s\t%0.4f\t%0.4f\t%0.4f\t%0.4f\t%d%s%s\n" % (
                 "%s\t"%taxon if taxon not in ["-", None] else "",
-                g, fmax, avgp, auprc, auroc, term_num_pos[g], early_prec_str)
+                g, fmax, avgp, auprc, auroc, term_num_pos[g], early_prec_str, rep_str)
         # don't re-write the header if this file is being appended to
         if not os.path.isfile(out_file) or not append:
             print("Writing results to %s\n" % (out_file))
@@ -109,6 +111,8 @@ def evaluate_ground_truth(
                 header_line += "\t# ann"
             if early_prec is not None:
                 header_line += '\t'+'\t'.join(["eprec-rec%s" % (r) for r in early_prec])
+            if rep is not None:
+                header_line += '\trepetition'
             out_str = header_line+"\n" + out_str
         else:
             print("Appending results to %s\n" % (out_file))
@@ -123,13 +127,20 @@ def evaluate_ground_truth(
         out_file_pr = out_file.replace('.txt', "prec-rec%s%s.txt" % (
             taxon if taxon not in ['-', None] else '',
             '-%s'%(term) if len(term_prec_rec) == 1 else ""))
-        print("writing prec/rec to %s" % (out_file_pr))
-        with open(out_file_pr, 'w') as out:
-            out.write("#term\tprec\trec\tnode\tscore\tidx\tpos/neg\n")
+        if not os.path.isfile(out_file) or not append:
+            print("writing prec/rec to %s" % (out_file_pr))
+            header_line = "#term\tprec\trec\tnode\tscore\tidx\tpos/neg"
+            header_line += "\trepetition" if rep is not None else ""
+            header_line += "\n"
+        else:
+            header_line = ""
+            print("appending prec/rec to %s" % (out_file_pr))
+        with open(out_file_pr, 'a' if append else 'w') as out:
+            out.write(header_line)
             #for term, (prec, rec, pos_neg_stats) in sorted(term_prec_rec.items(), key=term_num_pos.get, reverse=True):
             for term, (prec, rec, pos_neg_stats) in term_prec_rec.items():
-                out.write(''.join(["%s\t%0.4f\t%0.4f\t%s\t%0.4e\t%d\t%d\n" % (
-                    term, p, r, prots[n], s, idx, pos_neg) for p,r,(n,s,idx,pos_neg,_) in zip(prec, rec, pos_neg_stats)]))
+                out.write(''.join(["%s\t%0.4f\t%0.4f\t%s\t%0.4e\t%d\t%d%s\n" % (
+                    term, p, r, prots[n], s, idx, pos_neg, rep_str) for p,r,(n,s,idx,pos_neg,_) in zip(prec, rec, pos_neg_stats)]))
 
 
 def compute_eval_measures(scores, positives, negatives=None, 

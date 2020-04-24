@@ -113,7 +113,9 @@ def get_weight_str(dataset):
     """
     unweighted = dataset['net_settings'].get('unweighted', False) if 'net_settings' in dataset else False
     weight_method = ""
-    if dataset.get('multi_net',False) is True: 
+    # if the weight method is to simply add the networks together, I did not include anything in the output file
+    if dataset.get('multi_net',False) is True and \
+       dataset.get('net_settings') is not None and dataset['net_settings'].get('weight_method','add') != 'add': 
         weight_method = "-"+dataset['net_settings']['weight_method']
     weight_str = '%s%s' % (
         '-unw' if unweighted else '', weight_method)
