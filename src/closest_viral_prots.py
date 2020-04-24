@@ -12,11 +12,11 @@ import numpy as np
 from scipy import sparse as sp
 import pandas as pd
 # add this file's directory to the path so these imports work from anywhere
-sys.path.insert(0,os.path.dirname(__file__))
-from FastSinkSource.run_eval_algs import setup_net
-from FastSinkSource.src.plot import plot_utils
-from FastSinkSource.src.algorithms import runner
-from setup_datasets import parse_mapping_file
+#sys.path.insert(0,os.path.dirname(__file__))
+from src.FastSinkSource.src.main import setup_net
+from src.FastSinkSource.src.plot import plot_utils
+from src.FastSinkSource.src.algorithms import runner
+from src.setup_datasets import parse_mapping_file
 
 
 def parse_args():
@@ -169,6 +169,7 @@ def main(config_map, **kwargs):
             prots, dist = dataset_pred_closest_virus_prots[d[0]][p]
         except KeyError:
             print("no viral proteins found for %s, %s. Skipping" % (str(d), p))
+            sys.exit()
             continue
         pred_virus_prots[p] = prots 
         pred_virus_dist[p] = dist 
