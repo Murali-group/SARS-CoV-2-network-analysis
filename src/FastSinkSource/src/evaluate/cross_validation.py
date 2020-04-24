@@ -39,27 +39,34 @@ def run_cv_all_terms(
     #    np.random.seed(cv_seed)
 
     # first check to see if the algorithms have already been run
-    # and if the results should be overwritten
-    if kwargs['forcealg'] is True:
-        # runners_to_run is a list of runners for each repitition
-        runners_to_run = {i: alg_runners for i in range(1,num_reps+1)}
-    else:
-        runners_to_run = {}
-        # a different file is stored for each repitition, so check each one
-        for rep in range(1,num_reps+1):
-            curr_runners_to_run = [] 
-            curr_seed = cv_seed
-            if curr_seed is not None:
-                # add the current repitition number to the seed
-                curr_seed += rep-1
-            out_pref = get_output_prefix(folds, rep, sample_neg_examples_factor, curr_seed)
-            for run_obj in alg_runners:
-                out_file = "%s/%s%s.txt" % (run_obj.out_dir, out_pref, run_obj.params_str)
-                if os.path.isfile(out_file):
-                    print("%s already exists. Use --forcealg to overwite" % (out_file))
-                else:
-                    curr_runners_to_run.append(run_obj)
-            runners_to_run[rep] = curr_runners_to_run
+    # and if the results should be overwritten.
+    # Since the output file will be appended to for each repetition,
+    # delete the file if it already exists and forcealg is true
+    #if kwargs['forcealg'] is True:
+    #    # runners_to_run is a list of runners for each repetition
+    #    runners_to_run = {i: alg_runners for i in range(1,num_reps+1)}
+    #else:
+    #runners_to_run = {}
+    # a different file is stored for each repetition, so check each one
+    # UPDATE: store the different repetitions in the same file
+    #for rep in range(1,num_reps+1):
+    #curr_seed = cv_seed
+    #if curr_seed is not None:
+    #    # add the current repetition number to the seed
+    #    curr_seed += rep-1
+    curr_runners_to_run = [] 
+    out_pref = get_output_prefix(folds, num_reps, sample_neg_examples_factor, cv_seed)
+    for run_obj in alg_runners:
+        out_file = "%s/%s%s%s.txt" % (run_obj.out_dir, out_pref, run_obj.params_str, kwargs.get('postfix',''))
+        if not kwargs.get('forcealg') and os.path.isfile(out_file):
+            print("%s already exists. Use --forcealg to overwite" % (out_file))
+        else:
+            if kwargs.get('forcealg') and os.path.isfile(out_file):
+                print("deleting %s" % (out_file))
+                os.remove(out_file)
+            curr_runners_to_run.append(run_obj)
+        #runners_to_run[rep] = curr_runners_to_run
+    runners_to_run = {i: curr_runners_to_run for i in range(1,num_reps+1)}
 
     orig_ann_obj = ann_obj
     # repeat the CV process the specified number of times
@@ -68,7 +75,7 @@ def run_cv_all_terms(
             continue
         curr_seed = cv_seed
         if curr_seed is not None:
-            # add the current repitition number to the seed
+            # add the current repetition number to the seed
             curr_seed += rep-1
         # generate negative examples if specified 
         if sample_neg_examples_factor is not None:
@@ -79,7 +86,7 @@ def run_cv_all_terms(
         ann_matrix_folds = split_cv_all_terms(ann_obj, folds=folds, seed=curr_seed, **kwargs)
 
         for run_obj in runners_to_run[rep]:
-            # because each fold contains a different set of positives, and combined they contain all positives,
+            # because each fold contains a different set of positives/negatives, and combined they contain all positives/negatives,
             # store all of the prediction scores from each fold in a matrix
             combined_fold_scores = sparse.lil_matrix(ann_matrix.shape, dtype=np.float)
             for curr_fold, (train_ann_mat, test_ann_mat) in enumerate(ann_matrix_folds):
@@ -115,13 +122,14 @@ def run_cv_all_terms(
             run_obj.term_scores = combined_fold_scores 
 
             # now evaluate the results and write to a file
-            out_pref = get_output_prefix(folds, rep, sample_neg_examples_factor, curr_seed)
-            out_file = "%s/%s%s.txt" % (run_obj.out_dir, out_pref, run_obj.params_str)
+            out_pref = get_output_prefix(folds, num_reps, sample_neg_examples_factor, cv_seed)
+            out_file = "%s/%s%s%s.txt" % (run_obj.out_dir, out_pref, run_obj.params_str, kwargs.get('postfix',''))
             utils.checkDir(os.path.dirname(out_file)) 
             eval_utils.evaluate_ground_truth(
                 run_obj, ann_obj, out_file,
                 #non_pos_as_neg_eval=opts.non_pos_as_neg_eval,
-                alg=run_obj.name, append=False, **kwargs)
+                alg=run_obj.name, rep=rep if num_reps > 1 else None,
+                append=True, **kwargs)
 
     print("Finished running cross-validation")
     return
@@ -133,7 +141,7 @@ def get_output_prefix(
     """
     Get the prefix of the output cross-validation results file
     *folds*: number of cross-validation folds
-    *rep*: current repitition number
+    *rep*: current repetition number
     *sample_neg_examples_factor*: Factor of # positives used to sample a negative examples. 
     *curr_seed*: Seed to use for the random number generator when splitting the annotations into folds
     """
