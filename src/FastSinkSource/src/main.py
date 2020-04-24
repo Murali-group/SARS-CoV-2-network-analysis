@@ -173,6 +173,9 @@ def setup_net(input_dir, dataset, **kwargs):
     # if multiple networks are passed in, then set multi_net to True automatically
     if (net_files is not None and len(net_files) > 1) or \
        ('string_net_files' in dataset and len(dataset['string_net_files'])) > 1:
+        if dataset.get('net_settings') is None or dataset['net_settings'].get('weight_method','add') == 'add':
+            # this will be treated as a single network since they will be added together
+            dataset['multi_net'] = False
         if dataset.get('multi_net') is False:
             print("WARNING: multiple networks were passed in. Setting 'multi_net' to True")
         dataset['multi_net'] = True
@@ -190,6 +193,7 @@ def setup_net(input_dir, dataset, **kwargs):
                 string_nets = None 
                 if 'string_nets' in dataset['net_settings'] and len(dataset['net_settings']['string_nets']) > 0:
                     string_nets = string_utils.convert_string_naming_scheme(dataset['net_settings']['string_nets'])
+                    dataset['net_settings']['string_nets'] = string_nets
                 # they all need to have the same rows and columns, which is handled by this function
                 # this function also creates the multi net file if it doesn't exist
                 string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
@@ -240,9 +244,12 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
                        .replace('/','-').replace('pos-neg-','') \
                        .replace('.txt','').replace('.tsv','').replace('.gz','')
     pos_neg_str += '-Yneg' if kwargs.get('youngs_neg') else ''
-    net_files = dataset['net_files'] if 'net_files' in dataset else dataset['string_net_files']
-    sparse_ann_file = "%s/%s/sparse-anns/%s-%s.npz" % (
-        input_dir, dataset['net_version'], net_files[0].split('.')[0], pos_neg_str)
+    # use the same str that is used for the sparse network files
+    net_files_str = setup.get_net_out_str(
+        dataset.get('net_files',[]), dataset.get('string_net_files',[]),
+        dataset['net_settings'].get('string_nets') if 'net_settings' in dataset else None) 
+    sparse_ann_file = "%s/%s/sparse-anns/%s%s.npz" % (
+        input_dir, dataset['net_version'], net_files_str, pos_neg_str)
     # now build the annotation matrix
     pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
     ann_obj = setup.create_sparse_ann_and_align_to_net(

@@ -213,6 +213,23 @@ class Sparse_Annotations:
         self.ann_matrix = self.ann_matrix.dot(diag)
 
 
+def get_net_out_str(net_files, string_net_files=None, string_nets=None):
+    #num_networks = len(net_files) + len(string_nets)
+    net_files_str = '-'.join(os.path.basename(f).split('.')[0] for f in net_files)+'-' \
+                    if len(net_files) > 0 else ""
+    # if there is only 1 string network, then write the name instead of the number
+    string_nets_str = "" 
+    if string_net_files is not None and len(string_net_files) > 0 and \
+       string_nets is not None:
+        if len(string_nets) == 1:
+            string_nets_str = list(string_nets)[0] + '-'
+        elif len(string_nets) > 1:
+            string_nets_str = "string%d-" % (len(string_nets)) 
+
+    net_str = net_files_str + string_nets_str
+    return net_str
+
+
 def create_sparse_net_file(
         out_pref, net_files=[], string_net_files=[], 
         string_nets=STRING_NETWORKS, string_cutoff=None, forcenet=False):
@@ -225,17 +242,8 @@ def create_sparse_net_file(
     elif string_nets is None:
         string_nets = STRING_NETWORKS
     string_nets = list(string_nets)
-    #num_networks = len(net_files) + len(string_nets)
-    net_files_str = '-'.join(os.path.basename(f).split('.')[0] for f in net_files)+'-' \
-                    if len(net_files) > 0 else ""
-    # if there is only 1 string network, then write the name instead of the number
-    string_nets_str = "" 
-    if len(string_nets) == 1:
-        string_nets_str = list(string_nets)[0] + '-'
-    elif len(string_nets) > 1:
-        string_nets_str = "string%d-" % (len(string_nets)) 
-
-    out_pref += net_files_str + string_nets_str
+    net_str = get_net_out_str(net_files, string_net_files, string_nets)
+    out_pref += net_str
     sparse_nets_file = "%ssparse-nets.mat" % (
         out_pref)
     # the node IDs should be the same for each of the networks,
