@@ -4,15 +4,15 @@ import os
 import sys
 import numpy as np
 import gzip
-import wget
 import pandas as pd
 import subprocess
 import glob
+import wget
 import requests
 import shutil
 # add this file's directory to the path so these imports work from anywhere
-sys.path.insert(0,os.path.dirname(__file__))
-from utils import parse_utils
+#sys.path.insert(0,os.path.dirname(__file__))
+from src.utils import parse_utils as utils
 
 
 def setup_mappings(datasets_dir, mapping_settings, **kwargs):
@@ -28,7 +28,7 @@ def setup_mappings(datasets_dir, mapping_settings, **kwargs):
         # download the file 
         if kwargs['force_download'] or not os.path.isfile(mapping_file):
             try:
-                download_file(mapping['url'], mapping_file)
+                utils.download_file(mapping['url'], mapping_file)
             except:
                 print("Failed to download '%s' using the url '%s'. Skipping" % (mapping_file, mapping['url']))
                 continue
@@ -101,7 +101,8 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
         setup_genesets(genesets_dir, dataset_settings['genesets'], namespace_mappings, **kwargs)
     if 'drug-targets' in dataset_settings:
         out_dir = "%s/drug-targets" % (datasets_dir)
-        setup_drug_targets(out_dir, dataset_settings['drug-targets'], namespace_mappings, **kwargs)
+        # use the same function to process both genesets and drug targets
+        setup_genesets(out_dir, dataset_settings['drug-targets'], namespace_mappings, **kwargs)
     if 'networks' in dataset_settings:
         networks_dir = "%s/networks" % (datasets_dir)
         setup_networks(networks_dir, dataset_settings['networks'], namespace_mappings, **kwargs)
@@ -110,9 +111,11 @@ def setup_dataset_files(datasets_dir, dataset_settings, mapping_settings, **kwar
     return
 
 
-def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mappings, **kwargs):
+def setup_genesets(drug_targets_dir, drug_target_settings, namespace_mappings, **kwargs):
     """
-    Download the drug target files, and map the genes in them to UniProt IDs, if specified.
+    Download the genesets / drug target files, and map the genes in them to UniProt IDs, if specified.
+    Will write the parsed files in gmt format.
+    Currently supports the following file types: gmt, table, wikipathways
     """
     for settings in drug_target_settings:
         drug_targets_file = "%s/%s/%s" % (
@@ -123,9 +126,10 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
             # default is to just use a different suffix
             file_end = '.'.join(drug_targets_file.split('.')[1:])
             gmt_file = drug_targets_file.replace(file_end, 'gmt')
-            settings['gmt_file'] = os.path.basename(gmt_file) 
+            #settings['gmt_file'] = os.path.basename(gmt_file) 
         else:
             gmt_file = "%s/%s" % (dataset_dir, settings['gmt_file'])
+            del settings['gmt_file']
         mapping_settings = settings.get("mapping_settings", {}) 
         # add the mapping settings to all settings
         settings.update(mapping_settings)
@@ -136,12 +140,14 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
             continue
         if 'url' in settings:
             downloaded_file = "%s/%s" % (dataset_dir, settings['url'].split('/')[-1])
+            if 'downloaded_file' in settings:
+                downloaded_file = "%s/%s" % (dataset_dir, settings['downloaded_file'])
             if kwargs.get('force_download') and os.path.isfile(downloaded_file):
                 print("Deleting %s and its contents" % (dataset_dir))
                 shutil.rmtree(dataset_dir)
             # download the file 
             #try:
-            download_file(settings['url'], downloaded_file)
+            utils.download_file(settings['url'], downloaded_file)
             #except:
             #    print("Failed to download '%s' using the url '%s'. Skipping" % (drug_target_files, drug_target['url']))
             #    continue
@@ -149,7 +155,7 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
         # if its a zip file, unzip first
         if unpack_command is not None and unpack_command != "":
             command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
-            run_command(command, chdir=dataset_dir)
+            utils.run_command(command, chdir=dataset_dir)
 
         unpacked_file = settings.get('unpacked_file')
         unpacked_file = downloaded_file if unpacked_file is None else \
@@ -159,65 +165,6 @@ def setup_drug_targets(drug_targets_dir, drug_target_settings, namespace_mapping
             gmt_file=gmt_file, **settings)
         if all_mapping_stats is not None:
             write_mapping_stats(all_mapping_stats, os.path.dirname(drug_targets_file)) 
-
-
-#def setup_drug_target_dataset(
-#            downloaded_file, drug_target_files, namespace_mappings,
-#            **kwargs):
-#
-#    return all_mapping_stats
-
-
-def setup_genesets(genesets_dir, geneset_settings, namespace_mappings, **kwargs):
-    """
-    Download all specified geneset files, and map the genes in them to UniProt IDs, if specified.
-    Will write the parsed files in gmt format.
-    Currently supports the following file types: gmt
-    """
-    for geneset in geneset_settings:
-        geneset_file = "%s/%s/%s" % (
-            genesets_dir, geneset['name'], geneset['file_name'])
-
-        if not kwargs.get('force_download') and os.path.isfile(geneset_file):
-            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (geneset_file))
-            continue
-        # if this is a geneset collecton, then geneset file should be the name to give to the zip file with the collection inside
-        if geneset.get('geneset_collection') is True:
-            downloaded_file = geneset_file
-        # If this isn't a geneset collection, then download the file and keep the original filename
-        else:
-            downloaded_file = "%s/%s" % (os.path.dirname(geneset_file), geneset['url'].split('/')[-1])
-        if kwargs.get('force_download') and os.path.isfile(downloaded_file):
-            print("Deleting %s" % (downloaded_file))
-            os.remove(downloaded_file)
-        # download the file 
-        #try:
-        download_file(geneset['url'], downloaded_file)
-        #except:
-        #    print("Failed to download '%s' using the url '%s'. Skipping" % (geneset_file, geneset['url']))
-        #    continue
-
-        unpack_command = geneset.get('unpack_command')
-        # if its a zip file, unzip first
-        if unpack_command is not None and unpack_command != "":
-            command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
-            run_command(command, chdir=os.path.dirname(downloaded_file))
-
-        # TODO parse multiple gene sets and put them in a gmt file
-        if geneset.get('geneset_collection') is True:
-            print("WARNING: 'geneset_collection' not yet implemented. Skipping")
-            continue
-        else:
-            mapping_settings = geneset.get('mapping_settings', {})
-            all_mapping_stats = setup_geneset(
-                downloaded_file, geneset_file, namespace_mappings,
-                namespace=geneset.get('namespace'), 
-                prefer_reviewed=mapping_settings.get('prefer_reviewed'),
-                file_type=geneset.get('file_type'),
-                sep=geneset.get('sep')
-            )
-            if all_mapping_stats is not None:
-                write_mapping_stats(all_mapping_stats, os.path.dirname(geneset_file)) 
 
 
 def setup_geneset(
@@ -244,10 +191,12 @@ def setup_geneset(
     if file_type == "drugbank_csv":
         print("Reading %s" % (geneset_file))
         # after parsing the file, treat it like a regular table
-        df = parse_utils.parse_drugbank_csv(geneset_file, **kwargs)
+        df = utils.parse_drugbank_csv(geneset_file, **kwargs)
     if file_type == 'table':
         print("Reading %s" % (geneset_file))
         df = pd.read_csv(geneset_file, sep=sep, index_col=None)
+    if file_type == "wikipathways":
+        genesets, descriptions = utils.download_wikipathways(geneset_file, new_file, **kwargs) 
 
     if file_type in ['table', 'drugbank_csv']:
         df2 = filter_and_map_table(
@@ -265,24 +214,19 @@ def setup_geneset(
         new_file = gmt_file
 
     if file_type == 'gmt':
-        genesets, descriptions = parse_gmt_file(geneset_file)
+        genesets, descriptions = utils.parse_gmt_file(geneset_file)
 
-    # now write the genesets and descriptions as a gmt file
-    print("\twriting %s" % (new_file))
     all_mapping_stats = {}
-    # and re-write the file with the specified columns to keep
-    open_command = gzip.open if '.gz' in new_file else open
-    with open_command(new_file, 'wb' if '.gz' in new_file else 'w') as out:
+    mapped_genesets = genesets
+    if namespace is not None:
         for name, genes in genesets.items():
-            prots = genes
-            if namespace is not None:
-                ids_to_prot, mapping_stats = map_nodes(genes, namespace_mappings, prefer_reviewed=prefer_reviewed)
-                # get just the set of uniprot IDs to which the genes map
-                prots = set(p for ps in ids_to_prot.values() for p in ps)
-                all_mapping_stats[name] = mapping_stats
-            new_line = "%s\t%s\t%s\n" % (
-                name, descriptions.get(name, ""), '\t'.join(prots))
-            out.write(new_line.encode() if '.gz' in new_file else new_line)
+            ids_to_prot, mapping_stats = map_nodes(genes, namespace_mappings, prefer_reviewed=prefer_reviewed)
+            # get just the set of uniprot IDs to which the genes map
+            prots = set(p for ps in ids_to_prot.values() for p in ps)
+            mapped_genesets[name] = prots 
+            all_mapping_stats[name] = mapping_stats
+    # now write the genesets and descriptions as a gmt file
+    utils.write_gmt_file(new_file, mapped_genesets, descriptions)
     # keep track of the mapping statistics
     return all_mapping_stats if len(all_mapping_stats) > 0 else None
 
@@ -342,6 +286,7 @@ def filter_and_map_table(
         print(df2.head())
     return df2
 
+
 def map_nodes(nodes, namespace_mappings, prefer_reviewed=True):
     """
     *returns*: a dictionary of node ID to a set of uniprot IDs
@@ -369,28 +314,6 @@ def map_nodes(nodes, namespace_mappings, prefer_reviewed=True):
     mapping_stats = {'num_nodes': len(nodes), 'num_mapped_nodes': len(new_nodes),
                      'num_unmapped_nodes': num_unmapped_nodes}
     return ids_to_prot, mapping_stats
-
-
-def parse_gmt_file(gmt_file):
-    """
-    Parse a gmt file and return a dictionary of the geneset names mapped to the list of genes 
-    """
-    print("Reading %s" % (gmt_file))
-    genesets = {}
-    descriptions = {}
-    open_command = gzip.open if '.gz' in gmt_file else open
-    with open_command(gmt_file, 'r') as f:
-        for line in f:
-            line = line.decode() if '.gz' in gmt_file else line
-            if line[0] == '#':
-                continue
-            line = line.rstrip().split('\t')
-            name, description = line[:2]
-            genes = line[2:]
-            genesets[name] = genes
-            descriptions[name] = description 
-    print("\t%d gene sets" % (len(genesets)))
-    return genesets, descriptions
 
 
 def write_mapping_stats(all_mapping_stats, out_dir):
@@ -430,7 +353,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
             downloaded_file = "%s/%s" % (os.path.dirname(network_file), network['url'].split('/')[-1])
         # download the file 
         #try:
-        download_file(network['url'], downloaded_file)
+        utils.download_file(network['url'], downloaded_file)
         #except:
         #    print("Failed to download '%s' using the url '%s'. Skipping" % (network_file, network['url']))
         #    continue
@@ -439,7 +362,7 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
         # if its a zip file, unzip first
         if unpack_command is not None and unpack_command != "":
             command = "%s %s" % (unpack_command, os.path.basename(downloaded_file))
-            run_command(command, chdir=os.path.dirname(downloaded_file))
+            utils.run_command(command, chdir=os.path.dirname(downloaded_file))
 
         mapping_settings = network.get('mapping_settings', {})
         opts = network.get('collection_settings', {})
@@ -510,10 +433,10 @@ def setup_network_collection(
             weighted=weighted, columns_to_keep=columns_to_keep, sep=sep)
 
         # gzip the original file to save on space
-        gzip_file(orig_f, orig_f+'.gz', remove_orig=True)
+        utils.gzip_file(orig_f, orig_f+'.gz', remove_orig=True)
         # also gzip the new file if specified
         if gzip_files:
-            gzip_file(new_f, new_f+'.gz', remove_orig=True)
+            utils.gzip_file(new_f, new_f+'.gz', remove_orig=True)
             new_f += ".gz"
 
         f_name = os.path.basename(new_f)
@@ -623,51 +546,3 @@ def map_network(edges, extra_cols, namespace_mappings, prefer_reviewed=True):
                      'edges': len(edges), 'new_edges': len(new_edges),
                      'unmapped_edges': num_unmapped_edges}
     return new_edges, new_extra_cols, mapping_stats
-
-
-def run_command(command, chdir=None):
-    """
-    Run the given command using subprocess. 
-    *chdir*: Change to the specified directory before running the command, 
-        then change back to the original directory
-    """
-    if chdir is not None:
-        curr_dir = os.getcwd()
-        os.chdir(chdir)
-    print("Running: %s" % (command))
-    subprocess.check_output(command, shell=True)
-
-    if chdir is not None:
-        os.chdir(curr_dir)
-
-
-def gzip_file(f1, f2, remove_orig=True):
-    print("\tgzipping %s" % (f1))
-    with open(f1, 'rb') as f_in:
-        with gzip.open(f2, 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
-    # and remove the original
-    if remove_orig:
-        os.remove(f1)
-
-
-def download_file(url, file_path):
-    # make sure the directory exists
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    print("Downloading to file '%s' from '%s'" % (file_path, url))
-    try:
-        wget.download(url, file_path)
-    # TODO catch specific errors
-    #except urllib.error:
-    except Exception as e:
-        print(e)
-        print("WARNING: wget failed. Attempting to use the requests library to download the file")
-        # wget didn't work for STRING, gave a 403 error. Using the requests library is working
-        r = requests.get(url, stream=True)
-        if r.status_code == 200:
-            with open(file_path, 'wb') as f:
-                r.raw.decode_content = True
-                shutil.copyfileobj(r.raw, f)
-        print("\tdone")
-    # TODO also add the date of download and url to a README file
-    print("")
