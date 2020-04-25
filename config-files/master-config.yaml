@@ -314,10 +314,12 @@ fastsinksource_pipeline_settings:
     # *pval_corr*: Method to use for multiple hypothesis testing correction.
     #              options: "BF" (Bonferroni), "BH" (Benjamini-Hochberg)
       - name: "covid19-crowd"
+        data_type: "genesets"
         #k_to_test: [20, 50, 100]
         incremental_k_to_test: [10, 100, 10]
         pval_corr: "BF"
       - name: "pharmgkb"
+        data_type: "drug-targets"
         #k_to_test: [20, 50, 100]
         incremental_k_to_test: [10, 100, 10]
         pval_corr: "BF"
