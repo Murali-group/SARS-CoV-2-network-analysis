@@ -41,10 +41,15 @@ def main(config_map, **kwargs):
 	for dirpath, dirs, files in os.walk(predicted_prot_dir):
 
 		for filename in files:
-
+			
 			fname = os.path.join(dirpath, filename)
+			
+			dirpath_split = dirpath.split('/')
+			algorithm = dirpath_split[-1]
 
-			if 'pred-scores' in fname:
+			if 'pred-scores' in fname and 'sinksourceplus' not in algorithm:
+				#print(fname)
+				
 				predicted_prot_info = pd.read_csv(fname, sep='\t')
 				# filtering out the positive (Krogan) proteins from predicted list of proteins
 				predicted_protein_info = predicted_prot_info[~predicted_prot_info['prot'].isin(positive_protein_list)]
