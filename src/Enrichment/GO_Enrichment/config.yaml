@@ -1,0 +1,3 @@
+predicted_prot_dir: "../../../outputs/networks"
+positive_protein_file: "../../../fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/pos.txt"
+

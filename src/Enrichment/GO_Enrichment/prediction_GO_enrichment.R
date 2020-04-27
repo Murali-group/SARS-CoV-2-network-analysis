@@ -4,10 +4,25 @@ library('org.Hs.eg.db')
 
 # This script will do compute go enrichment on three GO ontology i.e. BP, CC, MF on each of the prediction files on top k predictions.
 
+
+args = commandArgs(trailingOnly=TRUE)
+
 k=200 #change it to command line argument
-predicted_output_path="/media/tassnina/Study/VT/Research_Group/SARSCOV2/SARS-CoV-2-network-analysis/outputs/networks/tissuenet-v2"
+
+if (length(args)==0) {
+  stop("At least one argument must be supplied (input file).n", call.=FALSE)
+} 
+#else if (length(args)==1) {
+  # default output file
+#  args[2] = "out.txt"
+#}
+
+#predicted_output_path="/media/tassnina/Study/VT/Research_Group/SARSCOV2/SARS-CoV-2-network-analysis/outputs/networks/stringv11"
+
+predicted_output_path = args[1]
 
 prediction_files <- list.files(predicted_output_path, pattern="filtered_pred_scores.csv", full.names=TRUE, recursive=TRUE)
+
 prediction_files
 
 for (file in prediction_files){

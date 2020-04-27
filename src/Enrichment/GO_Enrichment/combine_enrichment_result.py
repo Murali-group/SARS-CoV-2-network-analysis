@@ -98,7 +98,8 @@ def combine_enrichment_result(predicted_prot_dir):
 def main(config_map, **kwargs):
 
 	#combine_enrichment_result(predicted_prot_dir)
-	combine_enrichment_result( "/media/tassnina/Study/VT/Research_Group/SARSCOV2/SARS-CoV-2-network-analysis/outputs/networks")
+	predicted_prot_dir = config_map['predicted_prot_dir']
+	combine_enrichment_result( predicted_prot_dir)
 if __name__ == "__main__":
 	config_map, kwargs = parse_args()
 	main(config_map, **kwargs)
