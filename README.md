@@ -24,6 +24,7 @@ To download additional datasets and map various namespaces to UniProt IDs, use t
 ```
 python src/masterscript.py --config config-files/master-config.yaml --download-only
 ```
+Note, you may need to use `python3` for this and other calls, depending on where your Python distribution is located. - AR
 
 The YAML config file contains the list of datasets to download and is self-documented. The following types of datasets are supported:
   - Networks

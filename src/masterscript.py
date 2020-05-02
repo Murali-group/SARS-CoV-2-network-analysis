@@ -1,4 +1,3 @@
-
 import argparse
 import yaml
 from collections import defaultdict
@@ -101,7 +100,7 @@ def main(config_map, **kwargs):
         print("\tsee the respective log files for more details")
     for config_file in config_files:
         log_file = config_file.replace('.yaml', '.log')
-        command = "python -u src/FastSinkSource/run_eval_algs.py "  + \
+        command = "python3 -u src/FastSinkSource/run_eval_algs.py "  + \
                   " --config %s " % (config_file) + \
                   " %s " % ("--forcealg" if kwargs.get('force_run') else "") + \
                   " %s " % ("--stats-only" if kwargs.get('stats_only') else "") + \
@@ -114,7 +113,7 @@ def main(config_map, **kwargs):
             print("\nTesting the overlap of the top predictions of each method with %d gene sets" % (
                 len(geneset_settings)))
         for config_file in config_files:
-            command = "python -u src/Enrichment/enrichment.py "  + \
+            command = "python3 -u src/Enrichment/enrichment.py "  + \
                     " --config %s " % (config_file) + \
                     " %s " % ("--force-run" if kwargs.get('force_run') else "") + \
                     " >> %s 2>&1 " % (log_file)
