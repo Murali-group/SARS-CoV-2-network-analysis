@@ -40,3 +40,9 @@ python3 run_subnetwork_stats_viz.py --krogan-subgraph
 ```
 python3 run_subnetwork_stats_viz.py --drugs --gs --username [USERNAME] --password [PASSWORD]
 ```
+
+- Get induced subgraph of krogan & drug nodes, along with neighbors that link krogan and drug nodes (path len at most 3).
+
+```
+python3 run_subnetwork_stats_viz.py --drugs_direct --gs --username [USERNAME] --password [PASSWORD]
+```

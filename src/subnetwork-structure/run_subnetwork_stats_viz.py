@@ -33,13 +33,14 @@ def parse_args():
 	parser.add_argument('--password',type=str,help='GraphSpace password. Required if --gs option is specified.')
 	parser.add_argument('--krogan-subgraph',action='store_true',help='Print and plot statistics about the Krogan induced subgraph.')
 	parser.add_argument('--drugs',action='store_true',help='Run PathLinker on the drug-ppi networks.')
+	parser.add_argument('--drugs_direct',action='store_true',help='Extract direct neighbors of drug-ppi networks (corresponds to PL paths of 1-3)')
 
 	args = parser.parse_args()
 	if args.gs and not (args.username or args.password):
 		sys.exit('Error: --username and --password required if --gs option is specified. Exiting.')
 	return args
 
-def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
+def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None,password=None):
 	if gs:
 		graphspace = connect_to_graphspace(username,password)
 
@@ -49,7 +50,7 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 	## mapped names
 	mapped = get_mapped_names()
 
-	if drugs:
+	if drugs or drugs_direct:
 		drug_edges,mapped_drugs = get_drug_edges()
 
 	##interactome list
@@ -62,13 +63,13 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 
 		G = nx.Graph()
 		G.add_nodes_from(positives)
-		if drugs:  ## make full netwokr (directed)
+		if drugs or drugs_direct:  ## make full netwokr (directed)
 			fullG = nx.DiGraph()
 
 		with gzip.open(interactome_files[ppi_name], 'rb') as fin:
 			for line in fin:
 				row = line.decode().strip().split()
-				if drugs:
+				if drugs or drugs_direct:
 					if ppi_name != 'stringv11' or float(row[score_col])>400:
 						fullG.add_edge(row[0],row[1],weight=float(row[score_col]))
 						fullG.add_edge(row[1],row[0],weight=float(row[score_col]))
@@ -83,7 +84,7 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 		
 		induced_subgraphs[ppi_name] = G
 
-		if drugs: ## add drugs and run PathLinker
+		if drugs or drugs_direct: ## add drugs and run PathLinker
 			## NOTE: if string, we need tom odify to log-transform edges.
 			print(' Before adding drugs: Graph has %d nodes and %d edges' % (nx.number_of_nodes(fullG),nx.number_of_edges(fullG)))
 			incident_edges = set([e for e in drug_edges if e[0] in fullG.nodes()])
@@ -97,6 +98,8 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 			print(' Graph has %d nodes and %d edges' % (nx.number_of_nodes(fullG),nx.number_of_edges(fullG)))
 			sources = positives
 			targets = set([e[1] for e in incident_edges]) # drugs
+
+		if drugs:
 			## add supersource and supersink
 			print(' Adding supersource and supersink')
 			for s in sources:
@@ -108,8 +111,7 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 			relevant_nodes = sources.union(targets)
 			relevant_nodes.add('source')
 			relevant_nodes.add('target')
-			graphspace = connect_to_graphspace('aritz@reed.edu','platypus')
-			induced_subgraph = fullG.subgraph(relevant_nodes).copy()
+			#induced_subgraph = fullG.subgraph(relevant_nodes).copy()
 			
 			## run KSP
 			pathgraph,k = run_KSP(fullG,'PL-%s' % (ppi_name),kval=500)
@@ -122,6 +124,48 @@ def main(krogan_subgraph=None,drugs=None,gs=None,username=None,password=None):
 				num_t = len(targets.intersection(pathgraph.nodes()))
 				title='%s: %d shortest paths from %d Krogan proteins (%.2f of total) to %d drugs (%.2f of total)' % (ppi_name,k,num_s,num_s/len(sources),num_t,num_t/len(targets))
 				post_ksp_to_graphspace(graphspace,pathgraph,sources,targets,mapped,mapped_drugs,title,gs_group='SARS-CoV-2-network-analysis',simplify=True)
+
+		if drugs_direct:
+			neighbor_nodes = set()
+			for s in sources:
+				if s in fullG:
+					neighbor_nodes.update(fullG.successors(s))
+			for t in targets:
+				if t in fullG:
+					neighbor_nodes.update(fullG.predecessors(t))
+			print(' %d sources, %d targets, and %d neighbors'% (len(sources),len(targets),len(neighbor_nodes)))
+			induced_subgraph = nx.DiGraph(fullG.subgraph(sources.union(targets).union(neighbor_nodes))).to_undirected()
+			print(' subgraph: Graph has %d nodes and %d edges' % (nx.number_of_nodes(induced_subgraph),nx.number_of_edges(induced_subgraph)))
+			## remove neighbor_nodes that don't have at least one source and one target.
+			to_remove = set()
+			to_remove_edges = set()
+			first = True
+			while len(to_remove)+len(to_remove_edges) > 0 or first:
+				first = False
+				to_remove = set()
+				to_remove_edges = set()
+				for n in induced_subgraph.nodes():
+					neighs = set(induced_subgraph.neighbors(n))
+					if n in sources or n in targets:
+						if len(neighs)==0:
+							to_remove.add(n)
+						for p in neighs:
+							if n in sources and p in sources:
+								to_remove_edges.add((p,n))
+						continue
+					
+					if len(sources.intersection(neighs)) == 0 or len(targets.intersection(neighs)) == 0:
+						to_remove.add(n)
+					else:
+						for p in neighs:
+							if p in neighbor_nodes:
+								to_remove_edges.add((p,n))
+		
+				induced_subgraph.remove_nodes_from(to_remove)
+				induced_subgraph.remove_edges_from(to_remove_edges)
+				print(' after removing %d nodes and %d addt\'l edges: Graph has %d nodes and %d edges' % (len(to_remove),len(to_remove_edges),nx.number_of_nodes(induced_subgraph),nx.number_of_edges(induced_subgraph)))
+			title = '%s: Krogan-drug links (path lengths of 1 or 2)' % (ppi_name)
+			post_ksp_to_graphspace(graphspace,induced_subgraph,sources,targets,mapped,mapped_drugs,title,gs_group='SARS-CoV-2-network-analysis',simplify=True, simplify_links=True)
 
 
 	if krogan_subgraph:
@@ -234,7 +278,8 @@ def post_to_graphspace(graphspace,network,mapped,title,gs_group=None):
 
 	return
 
-def post_ksp_to_graphspace(graphspace,orig,sources,targets,mapped,mapped_drugs,title,simplify=False,gs_group=None):
+def post_ksp_to_graphspace(graphspace,orig,sources,targets,mapped,mapped_drugs,title,simplify=False,simplify_links=False,gs_group=None):
+	print(' Posting graph with %d nodes and %d edges' % (nx.number_of_nodes(orig),nx.number_of_edges(orig)))
 	simplified_nodes = {}
 	if simplify:
 		pathgraph = copy.deepcopy(orig)
@@ -257,16 +302,50 @@ def post_ksp_to_graphspace(graphspace,orig,sources,targets,mapped,mapped_drugs,t
 		pathgraph.add_edges_from(edges_to_add)
 		pathgraph.remove_edges_from(edges_to_remove)
 		pathgraph.remove_nodes_from(nodes_to_remove)
-
+		print(' After simplifying, Posting graph with %d nodes and %d edges' % (nx.number_of_nodes(pathgraph),nx.number_of_edges(pathgraph)))
 	else:
 		pathgraph=orig
 
+
+	if simplify_links:
+		edges_to_add = set()
+		nodes_to_remove = set()
+		s2t ={}
+		for s in sources:
+			s2t[s] = {t:set() for t in targets}
+		for n in pathgraph.nodes():
+			if n in sources or n in targets or '-neighbors' in n:
+				continue
+
+			neighbors = list([val for val in pathgraph.neighbors(n) if '-neighbors' not in val])
+			if len(neighbors)==2:
+				#print('THIS NODE:',n,n in sources,n in targets)
+				#print('NEIGHBOR #0:',neighbors[0],neighbors[0] in sources,neighbors[0] in targets)
+				#print('NEIGHBOR #1:',neighbors[1],neighbors[1] in sources, neighbors[1] in targets)
+				#print()
+				if neighbors[0] in sources and neighbors[1] in targets:
+					s2t[neighbors[0]][neighbors[1]].add(n)
+				elif neighbors[1] in sources and neighbors[0] in targets:
+					s2t[neighbors[1]][neighbors[0]].add(n)
+		for s in sources:
+			for t in targets:
+				if len(s2t[s][t]) > 1: # collapse
+					new_node = '%s-%s-links' % (s,t)
+					simplified_nodes[new_node]=s2t[s][t]
+					edges_to_add.add((s,new_node))
+					edges_to_add.add((new_node,t))
+					nodes_to_remove.update(set(s2t[s][t]))
+		pathgraph.add_edges_from(edges_to_add)
+		pathgraph.remove_nodes_from(nodes_to_remove)
+		print(' After simplifying links, Posting graph with %d nodes and %d edges' % (nx.number_of_nodes(pathgraph),nx.number_of_edges(pathgraph)))
+
 	print(' Posting graph with %d nodes and %d edges' % (nx.number_of_nodes(pathgraph),nx.number_of_edges(pathgraph)))
+	#sys.exit()
 	G = GSGraph()
 	G.set_name(title)
 
 	for node in pathgraph.nodes():
-		if node not in targets and node not in simplified_nodes: ## proteins
+		if node not in targets and node not in simplified_nodes: ## proteins - rectangls
 			shape='rectangle'
 			width=90
 			height=45
@@ -274,6 +353,13 @@ def post_ksp_to_graphspace(graphspace,orig,sources,targets,mapped,mapped_drugs,t
 			popup='<a href="https://www.uniprot.org/uniprot/%s" target="_blank" style="color:#0000FF;">UniProtID: %s</a>' % (node,node)
 			if node in sources: # krogan nodes
 				color='#00B2FE'
+			elif node in simplified_nodes: ## multi human proteins
+				color='#888888'
+				label='%d human proteins' % (len(simplified_nodes[node]))
+				print(label)
+				popup = ''
+				for c in simplified_nodes[node]:
+					popup+='%s <a href="https://www.uniprot.org/uniprot/%s" target="_blank" style="color:#0000FF;">UniProtID: %s</a><br>' % (mapped.get(c,c),c,c)
 			else:
 				color='#AAAAAA'
 
