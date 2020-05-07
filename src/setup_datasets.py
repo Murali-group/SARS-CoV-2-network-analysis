@@ -30,8 +30,9 @@ def setup_mappings(datasets_dir, mapping_settings, **kwargs):
             try:
                 utils.download_file(mapping['url'], mapping_file)
             except:
-                print("Failed to download '%s' using the url '%s'. Skipping" % (mapping_file, mapping['url']))
-                continue
+                print("Failed to download '%s' using the url '%s'." % (mapping_file, mapping['url']))
+                print("Please either try again, manually download the file, or remove this section of the config file. Quitting")
+                sys.exit(1)
 
         # now parse the file
         #namespace_mappings[mapping['namespaces']] =  
@@ -336,21 +337,34 @@ def setup_networks(networks_dir, network_settings, namespace_mappings, **kwargs)
     """
     #global namespace_mappings
     for network in network_settings:
+        # this is the path to the file that will contain the pre-processed and map network
         network_file = "%s/%s/%s" % (
             networks_dir, network['name'], network['file_name'])
-
-        if not kwargs.get('force_download') and os.path.isfile(network_file):
-            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (network_file))
-            continue
-        elif kwargs.get('force_download') and os.path.isfile(network_file):
-            print("--force-download not yet setup to overwrite the networks. Please manually remove the file(s) and re-run")
-            continue
+        final_file = network_file
         # if this is a network collecton, then network file should be the name to give to the zip file with the collection inside
         if network.get('network_collection') is True:
             downloaded_file = network_file
+            # multiple networks will be extracted, and a 'net-files.txt' file
+            # will be placed in the dir with the names of all the networks.
+            # If that exists, then the download and mapping process must have finished
+            final_file = "%s/net-files.txt" % (os.path.dirname(network_file))
         # If this isn't a network collection, then download the file and keep the original filename
         else:
             downloaded_file = "%s/%s" % (os.path.dirname(network_file), network['url'].split('/')[-1])
+
+        net_dir = os.path.dirname(final_file)
+        if not kwargs.get('force_download') and os.path.isfile(final_file):
+            print("%s already exists. Use --force-download to overwrite and re-map to uniprot" % (final_file))
+            continue
+        # if setting up the networks didn't finish (i.e., it was killed early), then start over
+        elif not os.path.isfile(final_file) and os.path.isdir(net_dir):
+            print("%s not found. Deleting %s and its contents" % (final_file, net_dir))
+            shutil.rmtree(net_dir)
+        # otherwise, if force_download was used, then start over.
+        elif kwargs.get('force_download') and os.path.isdir(net_dir):
+            print("Deleting %s and its contents" % (net_dir))
+            shutil.rmtree(net_dir)
+
         # download the file 
         #try:
         utils.download_file(network['url'], downloaded_file)

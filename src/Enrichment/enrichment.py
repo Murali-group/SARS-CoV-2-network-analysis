@@ -13,9 +13,7 @@ import pandas as pd
 #import subprocess
 
 # packages in this repo
-# Murali: adding this line since I am getting a ModuleNotFoundError.
-sys.path.insert(0,"")
-from src import setup_datasets
+from src.utils import parse_utils as utils
 from src.FastSinkSource.src import main as run_eval_algs
 from src.FastSinkSource.src.utils import config_utils
 from src.FastSinkSource.src.algorithms import alg_utils
@@ -100,7 +98,7 @@ def main(config_map, **kwargs):
             print("WARNING: %s not found. skipping" % (gmt_file))
             sys.exit()
 
-        geneset_groups[name] = setup_datasets.parse_gmt_file(gmt_file)  
+        geneset_groups[name] = utils.parse_gmt_file(gmt_file)  
 
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap 
