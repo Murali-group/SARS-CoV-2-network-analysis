@@ -13,6 +13,8 @@ import pandas as pd
 #import subprocess
 
 # packages in this repo
+# Murali: adding this line since I am getting a ModuleNotFoundError.
+sys.path.insert(0,"")
 from src import setup_datasets
 from src.FastSinkSource.src import main as run_eval_algs
 from src.FastSinkSource.src.utils import config_utils
