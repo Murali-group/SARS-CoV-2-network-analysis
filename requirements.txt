@@ -11,5 +11,7 @@ requests
 tqdm
 # used for plotting
 seaborn 
-# used for CV and to compute the AUPRC and AUROC
+# used for CV
 sklearn 
+# used to compute the AUPRC and AUROC, and for gene set enrichment
+rpy2

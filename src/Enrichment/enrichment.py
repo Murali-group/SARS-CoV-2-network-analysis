@@ -1,3 +1,6 @@
+"""
+Script to test for enrichment of any given list of genes (UniProt IDs)
+"""
 
 import argparse
 import yaml
@@ -11,6 +14,17 @@ import time
 #from scipy import sparse
 import pandas as pd
 #import subprocess
+
+print("importing R packages")
+from rpy2.robjects.packages import importr
+from rpy2.robjects.vectors import StrVector
+utils_package = importr("utils")
+clusterProfiler = importr('clusterProfiler')
+# this package is needed by clusterProfiler, but importing it directly gives an error, so just import it into R
+#print("importing orgDB")
+#orgDB = importr('org.Hs.eg.db')
+base = importr('base')
+base.require('org.Hs.eg.db')
 
 # packages in this repo
 from src.utils import parse_utils as utils
@@ -33,40 +47,31 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to test for enrichment of the top predictions among given genesets")
+    parser = argparse.ArgumentParser(description="Script to test for enrichment of the given gene/protein list among given genesets. " + \
+                                     "Currently only tests for GO term enrichment")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, required=True,
                        help="Configuration file used when running FSS. " +
                        "Must have a 'genesets_to_test' section for this script. ")
-    group.add_argument('--k-to-test', '-k', type=int, action="append",
-                       help="k-value(s) for which to get the top-k predictions to test. " +
-                       "If not specified, will check the config file. Default=100")
-    group.add_argument('--range-k-to-test', '-K', type=int, nargs=3,
-                       help="Specify 3 integers: starting k, ending k, and step size. " +
-                       "If not specified, will check the config file.")
+    #group.add_argument('--out-dir', type=str, 
+    #                   help="path/to/output directory for enrichemnt files")
+    #group.add_argument('--compare-krogan-nodes',
+    #                   help="Also test for enrichment of terms when using the Krogan nodes.")
+    # Should be specified in the config file
+    #group.add_argument('--gmt-file', append=True,
+    #                   help="Test for enrichment using the genesets present in a GMT file.")
+    group.add_argument('--prot-list-file',
+                       help="Test for enrichment of a list of proteins (UniProt IDs) (e.g., Krogan nodes).")
+    group.add_argument('--prot-universe-file',
+                       help="Protein universe to use when testing for enrichment")
+    group.add_argument('--out-pref', 
+                       help="Output prefix where output files will be placed. " +
+                       "Default is outputs/enrichement/<name_of_prots_list_file>")
 
-    group = parser.add_argument_group('FastSinkSource Pipeline Options')
-    group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
-                       help="Algorithms for which to get results. Must be in the config file. " +
-                       "If not specified, will get the list of algs with 'should_run' set to True in the config file")
-    group.add_argument('--num-reps', type=int, 
-                       help="Number of times negative sampling was repeated to compute the average scores. Default=1")
-    group.add_argument('--sample-neg-examples-factor', type=float, 
-                       help="Factor/ratio of negatives to positives used when making predictions. " +
-                       "Not used for methods which use only positive examples.")
     group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the enrichment tests, and re-writing the output files")
-
-#    # additional parameters
-#    group = parser.add_argument_group('Additional options')
-#    group.add_argument('--forcealg', action="store_true", default=False,
-#            help="Force re-running algorithms if the output files already exist")
-#    group.add_argument('--forcenet', action="store_true", default=False,
-#            help="Force re-building network matrix from scratch")
-#    group.add_argument('--verbose', action="store_true", default=False,
-#            help="Print additional info about running times and such")
 
     return parser
 
@@ -79,8 +84,6 @@ def main(config_map, **kwargs):
     # extract the general variables from the config map
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
-    algs = config_utils.get_algs_to_run(alg_settings, **kwargs)
-    del kwargs['algs']
 
     genesets_to_test = config_map.get('genesets_to_test')
     if genesets_to_test is None or len(genesets_to_test) == 0:
@@ -100,56 +103,93 @@ def main(config_map, **kwargs):
 
         geneset_groups[name] = utils.parse_gmt_file(gmt_file)  
 
-    # for each dataset, extract the path(s) to the prediction files,
-    # read in the predictions, and test for the statistical significance of overlap 
-    for dataset in input_settings['datasets']:
-        print("Loading data for %s" % (dataset['net_version']))
-        # load the network and the positive examples for each term
-        net_obj, ann_obj, eval_ann_obj = run_eval_algs.setup_dataset(
-            dataset, input_dir, alg_settings, **kwargs) 
-        prots = net_obj.nodes
-        print("\t%d total prots" % (len(prots)))
-        # TODO using this for the SARS-CoV-2 project,
-        # but this should really be a general purpose script
-        # and to work on any number of terms 
-        orig_pos_idx, _ = alg_utils.get_term_pos_neg(ann_obj.ann_matrix, 0)
-        orig_pos = [prots[p] for p in orig_pos_idx]
-        print("\t%d original positive examples" % (len(orig_pos)))
-        #pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
-        #df = pd.read_csv(pos_neg_file, sep='\t')
-        #orig_pos = df[df['2020-03-sarscov2-human-ppi'] == 1]['prots']
-        #print("\t%d original positive examples" % (len(orig_pos)))
+    df = pd.read_csv(kwargs['prot_list_file'], sep='\t', header=None)
+    prots_to_test = list(df[df.columns[0]])
+    print("%d prots for which to test enrichment. (top 10: %s)" % (len(prots_to_test), prots_to_test[:10]))
+    prot_universe = None
+    # load the protein universe file
+    if kwargs.get('prot_universe_file') is not None:
+        df = pd.read_csv(kwargs['prot_universe_file'], sep='\t', header=None)
+        prot_universe = df[df.columns[0]]
+        print("\t%d prots in universe" % (len(prot_universe)))
 
-        # now load the predictions, test at the various k values, and TODO plot
-        k_to_test = dataset['k_to_test'] if 'k_to_test' in dataset else kwargs.get('k_to_test', [])
-        range_k_to_test = dataset['range_k_to_test'] if 'range_k_to_test' in dataset \
-                          else kwargs.get('range_k_to_test')
-        if range_k_to_test is not None:
-            k_to_test += list(range(
-                range_k_to_test[0], range_k_to_test[1], range_k_to_test[2]))
-        # if nothing was set, use the default value
-        if k_to_test is None or len(k_to_test) == 0:
-            k_to_test = [100]
-        print("\ttesting %d k values: %s" % (len(k_to_test), ", ".join([str(k) for k in k_to_test])))
+    out_pref = kwargs.get('out_pref')
+    if out_pref is None:
+        out_pref = "outputs/enrichment/%s" % (os.path.basename(kwargs['prot_list_file']).split('.')[0])
 
-        # now load the prediction scores
-        dataset_name = config_utils.get_dataset_name(dataset) 
-        alg_pred_files = config_utils.get_dataset_alg_prediction_files(
-            output_dir, dataset, alg_settings, algs, **kwargs)
-        for alg, pred_file in alg_pred_files.items():
-            if not os.path.isfile(pred_file):
-                print("Warning: %s not found. skipping" % (pred_file))
-                continue
-            print("reading: %s" % (pred_file))
-            df = pd.read_csv(pred_file, sep='\t')
-            # remove the original positives
-            df = df[~df['prot'].isin(orig_pos)]
-            df.reset_index(inplace=True, drop=True)
-            df = df[['prot', 'score']]
-            df.sort_values(by='score', ascending=False, inplace=True)
-            print(df.head())
+    bp_df, mf_df, cc_df = run_clusterProfiler_GO(
+        prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run')) 
+    # TODO figure out which genesets to test 
+    #for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
+    #    all_dfs[ont] = pd.concat([all_dfs[ont], df])
 
-        print("TODO finish this script by testing for enrichment")
+
+def run_clusterProfiler_GO(
+        prots_to_test, out_dir, prot_universe=None, forced=False):
+    """
+    
+    *returns*: a list of DataFrames of the enrichement of BP, MF, and CC
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    #out_file = "%s/enrichGO_BP.csv" % (out_dir)
+    #if not kwargs.get('force_run') and os.path.isfile(out_file):
+    #    print("%s already exists. Use --force-run to overwrite" % (out_file))
+    #else:
+    #    clusterProfiler_command = "Rscript src/Enrichment/prediction_GO_enrichment.R %s %s" % (
+    #        pred_filtered_file, out_dir)
+    #    utils.run_command(clusterProfiler_command)
+    #    print("enriched GO terms files: %s" % (out_dir))
+    # 
+    # now load those results and make a table
+    # TODO make this a seting
+    print("Running enrichGO from clusterProfiler")
+    if prot_universe is None:
+        print("ERROR: default prot universe not yet implemented. Quitting")
+        sys.exit()
+
+    for ont in ['BP', 'MF', 'CC']:
+        out_file = "%s/enrich-%s.csv" % (out_dir, ont)
+        if forced is False and os.path.isfile(out_file):
+            print("\t%s already exists. Use --force-run to overwrite" % (out_file))
+            continue
+        ego_BP = clusterProfiler.enrichGO(
+            gene          = StrVector(list(prots_to_test)),
+            universe      = StrVector(list(prot_universe)), 
+            keyType       = 'UNIPROT',
+            OrgDb         = base.get('org.Hs.eg.db'),
+            ont           = ont,
+            pAdjustMethod = "BH",
+            pvalueCutoff  = 0.01,
+            qvalueCutoff  = 0.05)
+        # converting doesn't seem to be working, so just write to file then read to file
+        #ego_BP = ro.conversion.rpy2py(ego_BP)
+        #with localconverter(ro.default_converter + pandas2ri.converter):
+        #  df = ro.conversion.rpy2py(ego_BP)
+        print("\twriting %s" % (out_file))
+        utils_package.write_table(ego_BP,out_file, sep=",")
+
+    ont_dfs = []
+    for ont in ['BP', 'MF', 'CC']:
+        out_file = "%s/enrich-%s.csv" % (out_dir, ont)
+        print("\treading %s" % (out_file))
+        df = pd.read_csv(out_file, index_col=0)
+        #df.columns = ["%s-k%s-%s-%s" % (alg, 200, dataset_name, col) for col in df.columns]
+        print(df.head())
+        ont_dfs.append(df) 
+    return ont_dfs
+
+
+def get_k_to_test(dataset, **kwargs):
+    k_to_test = dataset['k_to_test'] if 'k_to_test' in dataset else kwargs.get('k_to_test', [])
+    range_k_to_test = dataset['range_k_to_test'] if 'range_k_to_test' in dataset \
+                        else kwargs.get('range_k_to_test')
+    if range_k_to_test is not None:
+        k_to_test += list(range(
+            range_k_to_test[0], range_k_to_test[1], range_k_to_test[2]))
+    # if nothing was set, use the default value
+    if k_to_test is None or len(k_to_test) == 0:
+        k_to_test = [100]
+    return k_to_test
 
 
 if __name__ == "__main__":
