@@ -6,7 +6,7 @@ pandas==0.23.1
 pyyaml
 # progress bar
 tqdm
-# used for CV and to compute the AUPRC and AUROC 
+# used to compute the AUPRC and AUROC, and for gene set enrichment
+rpy2
+# used for CV
 sklearn
-# required for aptrank
-#cvxopt
