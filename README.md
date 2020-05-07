@@ -2,19 +2,26 @@
 Analysis of SARS-CoV-2 molecular networks
 
 ## Getting Started
-Required packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, wget, tqdm
+- Required Python packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, rpy2, wget, tqdm
+- Required R packages: PPROC
+- Recommended R packages: clusterProfiler, org.Hs.eg.db
 
-To install the required packages:
+We recommend using [Anaconda](https://www.anaconda.com/) for Python, especially to access the needed R packages. To setup your environment, use the following commands:
 
 ```
-pip3 install --user -r requirements.txt
-```
-  
-Optional: create a virtual environment with anaconda
-```
-conda create -n sarscov2-net python=3.7
+conda create -n sarscov2-net python=3.7 r=3.6
 conda activate sarscov2-net
 pip install -r requirements.txt
+```
+To install the R packages, start R and enter:
+```
+install.packages('https://cran.r-project.org/src/contrib/PRROC_1.3.1.tar.gz', type = 'source')
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager", repos='http://cran.us.r-project.org')
+
+BiocManager::install("clusterProfiler")
+BiocManager::install("org.Hs.eg.db")
+"""
 ```
 
 ## Download Datasets
@@ -52,7 +59,20 @@ python src/FastSinkSource/run_eval_algs.py  \
   --num-pred-to-write -1
 ```
 
-#### TODO Compare overlap of top predictions with various gene sets ([#6](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/6))
+#### Test for enrichment of top predictions with various gene sets ([#6](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/6))
+After the predictions have been generated, you can test for the enrichment of various genesets among the top _k_ predictions.
+
+The following command will test for enrichment of the top 332 predictions of each algorithm, and on each dataset/network in the config file:
+```
+python src/Enrichment/fss_enrichment.py \
+    --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
+    --k-to-test 332 --file-per-alg
+```
+
+TODO Currently only tests for enrichment of GO terms (BP, MF, CC).
+<!---
+To test for enrichment of any given list of genes (e.g., Krogan nodes), use the following command:
+--->
 #### TODO Post sub-network of the top predictions and their scores to GraphSpace
 ### Cross Validation
 Similar to the previous section, the options to run cross validation can either be set in the config file under `fastsinksource_pipeline_settings -> eval_settings`, or passed directly to `run_eval_algs.py`. The relevant options are below. See `python src/FastSinkSource/run_eval_algs.py --help` for more details.
