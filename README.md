@@ -68,6 +68,8 @@ python src/Enrichment/fss_enrichment.py \
     --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
     --k-to-test 332 --file-per-alg
 ```
+
+TODO Currently only tests for enrichment of GO terms (BP, MF, CC).
 <!---
 To test for enrichment of any given list of genes (e.g., Krogan nodes), use the following command:
 --->
