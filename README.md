@@ -13,14 +13,10 @@ conda create -n sarscov2-net python=3.7 r=3.6
 conda activate sarscov2-net
 pip install -r requirements.txt
 ```
-To install the R packages, start R and enter:
+To install the R packages:
 ```
-install.packages('https://cran.r-project.org/src/contrib/PRROC_1.3.1.tar.gz', type = 'source')
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager", repos='http://cran.us.r-project.org')
-
-BiocManager::install("clusterProfiler")
-BiocManager::install("org.Hs.eg.db")
+R -e "install.packages('https://cran.r-project.org/src/contrib/PRROC_1.3.1.tar.gz', type = 'source')"
+conda install -c bioconda bioconductor-clusterprofiler
 """
 ```
 
