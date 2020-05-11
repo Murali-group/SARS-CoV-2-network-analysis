@@ -13,3 +13,7 @@ tqdm
 seaborn 
 # used for CV and to compute the AUPRC and AUROC
 sklearn 
+# for reading the EMMAA file
+ndex2
+# for creating integer linear programs
+#pulp
