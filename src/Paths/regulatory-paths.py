@@ -15,6 +15,8 @@ def main(config_map, **kwargs):
     *config_map*: everything in the config file
     *kwargs*: all of the options passed into the script
     """
+    # TODO: There should be a command line option to convert the cx file into other formats, which we can process further quite easily.
+
     # convert file into cx format (used by NDEx). TODO: read this file name from a config file.
     emmaa_covid_digraph_cx = ndex2.create_nice_cx_from_file('../datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.cx')
     emmaa_covid_digraph_cx.print_summary()
@@ -22,10 +24,15 @@ def main(config_map, **kwargs):
     emmaa_covid_digraph_nx = nx.DiGraph()
     ndex2.nice_cx_network.DefaultNetworkXFactory().get_graph(emmaa_covid_digraph_cx, emmaa_covid_digraph_nx)
     # I want to check how large the edgelist file is. 103 MB as a edge list vs. 176MB in cx format. TODO: read this file name from a config file.
-    nx.write_edgelist(emmaa_covid_digraph_nx, '../datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.edgelist')
+    #nx.write_edgelist(emmaa_covid_digraph_nx, '../datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.edgelist')
 
-    # read file of sources (e.g., predictions with scores/ranks)
-    # read file of targets (e.g., human proteins that interact with SARS-CoV-2 proteins)
+    # TODO: compute various statistics on emmaa_covid_digraph_nx.
+    
+    # TODO: add command-line or config file option to ignore some edge types.
+    
+    # read file of sources (e.g., predictions with scores/ranks). TODO: Should link to the overall pipeline to get the filenames automatically.
+    
+    # read file of targets (e.g., human proteins that interact with SARS-CoV-2 proteins). TODO: this file name should be in the master config file.
 
     # the sign of a path is the product of the signs of the edges in it. We assing "+" to "activation" and "-" to inhibition. For now, we are ignoring other edges.
     
