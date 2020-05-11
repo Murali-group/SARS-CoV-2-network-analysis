@@ -3,6 +3,8 @@ import gzip
 import sys
 import collections
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
+
 import time
 import argparse
 import copy 
@@ -24,6 +26,7 @@ interactome_score_col = {'stringv11':15,
 	'tissuenet_v2-gtex-rnaseq-lung':2}
 uniprot_mapping_file = '../../datasets/mappings/human/uniprot-reviewed-status.tab.gz'
 drug_target_file = '../../datasets/drug-targets/pharmgkb/prot-chem-relationships.tsv'
+jeff_preds = 'jeff-preds/2020-05-10-Lung-GM+-SVM.tsv'
 
 def parse_args():
 	parser = argparse.ArgumentParser(description='viz and analysis some simple network statistics about the Krogan nodes, the PPIs, and the drug-protein interactions.')
@@ -32,15 +35,35 @@ def parse_args():
 	parser.add_argument('--username',type=str,help='GraphSpace username. Required if --gs option is specified.')
 	parser.add_argument('--password',type=str,help='GraphSpace password. Required if --gs option is specified.')
 	parser.add_argument('--krogan-subgraph',action='store_true',help='Print and plot statistics about the Krogan induced subgraph.')
+	parser.add_argument('--krogan-neighbors',action='store_true',help='Get krogan neighbors.')
 	parser.add_argument('--drugs',action='store_true',help='Run PathLinker on the drug-ppi networks.')
-	parser.add_argument('--drugs_direct',action='store_true',help='Extract direct neighbors of drug-ppi networks (corresponds to PL paths of 1-3)')
+	parser.add_argument('--drugs-direct',action='store_true',help='Extract direct neighbors of drug-ppi networks (corresponds to PL paths of 1-3).')
+	parser.add_argument('--preds',action='store_true',help='visualize preds for krogan-neighbors, drugs, or drugs-direct. Nothing else is run - assumes that these files exist.')
 
 	args = parser.parse_args()
 	if args.gs and not (args.username or args.password):
 		sys.exit('Error: --username and --password required if --gs option is specified. Exiting.')
+
+	if args.preds and not (args.krogan_neighbors or args.drugs or args.drugs_direct):
+		sys.exit('Error: --preds needs to have at least one of krogan-neighbors, drugs, or drugs-direct.')
+
 	return args
 
-def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None,password=None):
+def read_neighbors(infile,with_drugs=False):
+	subgraph_nodes = {}
+	with open(infile) as fin:
+		for line in fin:
+			if line[0] == '#':
+				continue
+			row = line.strip().split()
+			subgraph_nodes[row[0]] = int(row[2]) # node: num Krogan neighbors
+	return subgraph_nodes
+
+
+def main(krogan_subgraph=None,krogan_neighbors=None,drugs=None,drugs_direct=None,gs=None,username=None,password=None,preds=None):
+	##interactome list
+	interactomes = ['tissuenet_v2-hpa-protein-lung','tissuenet_v2-gtex-rnaseq-lung','tissuenet_v2-hpa-rnaseq-lung']#,'stringv11']
+
 	if gs:
 		graphspace = connect_to_graphspace(username,password)
 
@@ -53,8 +76,42 @@ def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None
 	if drugs or drugs_direct:
 		drug_edges,mapped_drugs = get_drug_edges()
 
-	##interactome list
-	interactomes = ['tissuenet_v2-hpa-protein-lung','tissuenet_v2-gtex-rnaseq-lung','tissuenet_v2-hpa-rnaseq-lung']#,'stringv11']
+	if preds:
+		## GeneMania+ Rank
+		name_mapper = {'tissuenet_v2-hpa-protein-lung':'HPA-P-Lung GM+ Rank','tissuenet_v2-gtex-rnaseq-lung':'HPA-R-Lung GM+ Rank','tissuenet_v2-hpa-rnaseq-lung':'GTEx-R-Lung GM+ Rank'}
+		if krogan_neighbors:
+			M = []
+			bin_M = []
+			max_val = 0
+			for ppi_name in interactomes:
+				print('processing',ppi_name)
+				preds = read_preds(jeff_preds,name_mapper[ppi_name])
+				preds = preds[:500]
+				subgraph_nodes = read_neighbors('output/%s-krogan_neighbors.txt' %(ppi_name))
+				print()
+				row = [subgraph_nodes.get(n,0) for n,r in sorted(preds, key=lambda x: x[1])]
+				M.append(row)
+				bin_M.append([1 if n>0 else 0 for n in row])
+			plt.figure(figsize=(8,5))
+			ax = plt.subplot(2,1,1)
+			plt.imshow(bin_M,cmap = 'gray_r',interpolation='nearest',aspect=80)#)norm=LogNorm(vmin=0.01, vmax=max([max(n) for n in M]))
+			plt.colorbar()
+			plt.yticks(range(3),interactomes)
+			plt.xlabel('First 500 Predictions')
+			plt.title('Prediction with at least Krogan neighbor')
+			ax = plt.subplot(2,1,2)
+			plt.imshow(M,cmap = 'gray_r',interpolation='nearest',aspect=80)#)norm=LogNorm(vmin=0.01, vmax=max([max(n) for n in M]))
+			plt.colorbar()
+			plt.yticks(range(3),interactomes)
+			plt.xlabel('First 500 Predictions')
+			plt.title('Prediction with $x$ Krogan neighbors')
+
+			plt.tight_layout()
+			plt.savefig('krogan-neighbor-predictions.png')
+			print('wrote to krogan-neighbor-predictions.png')
+
+		print('Done with preds. Returning.')
+		return
 
 	induced_subgraphs = {}
 	for ppi_name in interactomes:
@@ -65,6 +122,9 @@ def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None
 		G.add_nodes_from(positives)
 		if drugs or drugs_direct:  ## make full netwokr (directed)
 			fullG = nx.DiGraph()
+		if krogan_neighbors:
+			neighborG = nx.Graph()
+			neighborG.add_nodes_from(positives)
 
 		with gzip.open(interactome_files[ppi_name], 'rb') as fin:
 			for line in fin:
@@ -76,13 +136,25 @@ def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None
 				if row[0] in positives and row[1] in positives:
 					if ppi_name != 'stringv11' or float(row[score_col])>400:
 						G.add_edge(row[0],row[1],weight=float(row[score_col]))
+				if krogan_neighbors and (row[0] in positives or row[1] in positives):
+					if ppi_name != 'stringv11' or float(row[score_col])>400:
+						neighborG.add_edge(row[0],row[1],weight=float(row[score_col]))
 		if krogan_subgraph and gs:
 			if ppi_name == 'stringv11':
 				post_to_graphspace(graphspace,G,mapped,'%s > 400 (Krogan Positives)' % (ppi_name), gs_group='SARS-CoV-2-network-analysis')
 			else:
 				post_to_graphspace(graphspace,G,mapped,'%s (Krogan Positives)' % (ppi_name), gs_group='SARS-CoV-2-network-analysis')
+				
+		if krogan_neighbors and gs:
+			if ppi_name == 'stringv11':
+				post_to_graphspace(graphspace,neighborG,mapped,'%s > 400 (Krogan Neighbors)' % (ppi_name), gs_group='SARS-CoV-2-network-analysis')
+			else:
+				post_to_graphspace(graphspace,neighborG,mapped,'%s (Krogan Neighbors)' % (ppi_name), gs_group='SARS-CoV-2-network-analysis')
 		
 		induced_subgraphs[ppi_name] = G
+
+		if krogan_neighbors:
+			print_neighbors(neighborG,positives,ppi_name+'-krogan_neighbors.txt')
 
 		if drugs or drugs_direct: ## add drugs and run PathLinker
 			## NOTE: if string, we need tom odify to log-transform edges.
@@ -117,6 +189,7 @@ def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None
 			pathgraph,k = run_KSP(fullG,'PL-%s' % (ppi_name),kval=500)
 			#run_KSP(induced_subgraph,'PL-%s' % (ppi_name))
 
+			print_neighbors(pathgraph,positives,ppi_name+'-pathlinker.txt',drugs=targets,directed=True)
 			if gs:
 				#if k <= 200:
 				#	post_ksp_to_graphspace(graphspace,pathgraph,sources,targets,mapped,mapped_drugs,'PL %s (k=%d) %f' % (ppi_name,k,time.time()),gs_group=None)
@@ -164,13 +237,70 @@ def main(krogan_subgraph=None,drugs=None,drugs_direct=None,gs=None,username=None
 				induced_subgraph.remove_nodes_from(to_remove)
 				induced_subgraph.remove_edges_from(to_remove_edges)
 				print(' after removing %d nodes and %d addt\'l edges: Graph has %d nodes and %d edges' % (len(to_remove),len(to_remove_edges),nx.number_of_nodes(induced_subgraph),nx.number_of_edges(induced_subgraph)))
-			title = '%s: Krogan-drug links (path lengths of 1 or 2)' % (ppi_name)
-			post_ksp_to_graphspace(graphspace,induced_subgraph,sources,targets,mapped,mapped_drugs,title,gs_group='SARS-CoV-2-network-analysis',simplify=True, simplify_links=True)
+			
+			print_neighbors(induced_subgraph,positives,ppi_name+'-drugs_direct.txt',drugs=targets)
+			if gs:
+				num_s = len(sources.intersection(induced_subgraph.nodes()))
+				num_t = len(targets.intersection(induced_subgraph.nodes()))
+				title = '%s: Krogan-drug links - %d (%.2f) total Krogan to %d (%.2f) total drugs' % (ppi_name,num_s,num_s/len(sources),num_t,num_t/len(targets))
+				post_ksp_to_graphspace(graphspace,induced_subgraph,sources,targets,mapped,mapped_drugs,title,gs_group='SARS-CoV-2-network-analysis',simplify=True, simplify_links=True)
 
 
 	if krogan_subgraph:
 		plot_degree_dist(interactomes,induced_subgraphs)
 
+
+	return
+
+def read_preds(infile,column_name,with_drugs=False,thres=500):
+	header = None
+	num_heads = 0
+	header_index = -1
+	preds = []
+	with open(infile) as fin:
+		for line in fin:
+			if num_heads < 3:
+				if not header:
+					header = line.split('\t')
+					header[-1] = header[-1].strip()
+					#print(len(header))
+				else:
+					row = line.split('\t')
+					#print(len(row))
+					header = [header[i]+' '+row[i] for i in range(len(header))]
+					header[-1] = header[-1].strip()
+				num_heads+=1
+			else:
+				if header_index == -1:
+					header_index = header.index(column_name)
+					print('Header Index is ',header_index)
+				row = line.split('\t')
+				row[-1] = row[-1].strip()
+				#print(row[0],len(row))
+				preds.append([row[0],row[header_index]])
+	return preds
+
+
+def print_neighbors(G,positives,filename,drugs=None,directed=False):
+	filename = 'output/'+filename
+	out = open(filename,'w')
+	out.write('#Graph has %d nodes and %d edges\n' % (len(G.nodes()),len(G.edges())))
+	out.write('#Node\tDegree\tNumPosNeighbors\tNumDrugNeighbors\n')
+	for n in G.nodes():
+		if n in positives:
+			continue
+		if directed:
+			neighbors = set(G.successors(n)).union(set(G.predecessors(n)))
+		else:
+			neighbors = set(G.neighbors(n))
+		numpos = len(positives.intersection(neighbors))
+		if drugs:
+			numdrugs = len(drugs.intersection(neighbors))
+		else:
+			numdrugs = -1
+		out.write('%s\t%d\t%d\t%d\n' %(n,len(neighbors),numpos,numdrugs))
+	out.close()
+	print('wrote to %s' % filename)
 	return
 
 def run_KSP(fullG,outprefix, kval=500): ## modified from PL's run.y
