@@ -81,7 +81,13 @@ https://graphspace.org/ allows you to visualize and interact with the prediction
 
 Here's an example of how to post the top 5 predictions made by GM+ when using STRING, and the shortest paths from those to the virus proteins:
 ```
-python src/graphspace/sars_cov2_post_to_gs.py --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml --sarscov2-human-ppis datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv --user <email> --pass <password> --k-to-test 5 --name-postfix=-test --alg genemaniaplus --parent-nodes
+python src/graphspace/sars_cov2_post_to_gs.py \
+  --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
+  --sarscov2-human-ppis datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv \
+  --user <email> --pass <password> \
+  --k-to-test 5 --name-postfix=-test \
+  --alg genemaniaplus \
+  --parent-nodes
 ```
 
 <!---
