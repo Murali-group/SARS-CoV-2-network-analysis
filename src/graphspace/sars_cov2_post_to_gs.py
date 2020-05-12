@@ -305,14 +305,15 @@ def main(config_map, **kwargs):
             curr_scores = dict(zip(df['prot'], df['score']))
             df.sort_values(by='score', ascending=False, inplace=True)
             #print(df.head())
-            pred_nodes = list(df[:k_to_test[0]]['prot'])
+            pred_nodes = set(list(df[:k_to_test[0]]['prot']))
+            node_types = {} 
             if drug_nodes is not None:
                 top_k_drug_nodes = list(df[df['prot'].isin(drug_nodes)][:k_to_test[0]]['prot'])
                 pred_nodes = get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges)
+                node_types = {d: 'drug' for d in drug_nodes}
 
             pred_nodes -= (set(virus_nodes) | set(krogan_nodes))
             all_nodes = set(pred_nodes) | set(krogan_nodes)
-            node_types = {d: 'drug' for d in drug_nodes}
 
             # build the network to post
             pred_edges, graph_attr, attr_desc, node_type_rank = build_subgraph(
@@ -354,7 +355,7 @@ def main(config_map, **kwargs):
                     continue
                 if node_desc is not None and n in node_desc:
                     attr_desc[n].update(node_desc[n])
-                node_type = 'drugbank' if n in drug_nodes else 'uniprot'
+                node_type = 'drugbank' if drug_nodes and n in drug_nodes else 'uniprot'
                 popups[n] = gs.buildNodePopup(n, node_type=node_type, attr_val=attr_desc)
             #for u,v in prededges:
             #    popups[(u,v)] = gs.buildEdgePopup(u,v, node_labels=uniprot_to_gene, attr_val=attr_desc)
