@@ -2,6 +2,8 @@ pandas
 numpy 
 scipy 
 networkx 
+# used to upload and visualize networks on GraphSpace
+graphspace_python
 # python package to read yaml files
 pyyaml
 # used to download files
