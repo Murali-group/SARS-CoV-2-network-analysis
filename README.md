@@ -2,7 +2,7 @@
 Analysis of SARS-CoV-2 molecular networks
 
 ## Getting Started
-- Required Python packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, rpy2, wget, tqdm
+- Required Python packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, rpy2, wget, tqdm, graphspace_python
 - Required R packages: PPROC
 - Recommended R packages: clusterProfiler, org.Hs.eg.db
 
