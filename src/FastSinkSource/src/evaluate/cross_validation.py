@@ -1,9 +1,9 @@
-# needed for cross-validation
 import os
 from tqdm import tqdm, trange
 import numpy as np
 from scipy import sparse
 try:
+    # needed for cross-validation
     from sklearn.model_selection import KFold
 except ImportError:
     pass
@@ -89,6 +89,8 @@ def run_cv_all_terms(
             # because each fold contains a different set of positives/negatives, and combined they contain all positives/negatives,
             # store all of the prediction scores from each fold in a matrix
             combined_fold_scores = sparse.lil_matrix(ann_matrix.shape, dtype=np.float)
+            # also keep track of the fold each node belongs to
+            node_folds = {}
             for curr_fold, (train_ann_mat, test_ann_mat) in enumerate(ann_matrix_folds):
                 print("*  "*20)
                 print("Fold %d" % (curr_fold+1))
@@ -117,6 +119,7 @@ def run_cv_all_terms(
                     curr_comb_scores[test_pos] = curr_term_scores[test_pos]
                     curr_comb_scores[test_neg] = curr_term_scores[test_neg]
                     combined_fold_scores[i] = curr_comb_scores 
+                    node_folds.update({n: curr_fold for n in list(test_pos) + list(test_neg)})
 
             # replace the term_scores in the runner to combined_fold_scores to evaluate
             run_obj.term_scores = combined_fold_scores 
@@ -129,7 +132,7 @@ def run_cv_all_terms(
                 run_obj, ann_obj, out_file,
                 #non_pos_as_neg_eval=opts.non_pos_as_neg_eval,
                 alg=run_obj.name, rep=rep if num_reps > 1 else None,
-                append=True, **kwargs)
+                append=True, node_folds=node_folds, **kwargs)
 
     print("Finished running cross-validation")
     return
@@ -137,7 +140,7 @@ def run_cv_all_terms(
 
 def get_output_prefix(
         folds, rep, sample_neg_examples_factor=None,
-        curr_seed=None):
+        curr_seed=None, comb_type='max', **kwargs):
     """
     Get the prefix of the output cross-validation results file
     *folds*: number of cross-validation folds
