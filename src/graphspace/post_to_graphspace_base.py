@@ -5,6 +5,7 @@
 #print("Importing Libraries")
 
 import sys, os
+from collections import defaultdict
 from optparse import OptionParser
 from graphspace_python.api.client import GraphSpace
 from graphspace_python.graphs.classes.gsgraph import GSGraph
@@ -14,6 +15,7 @@ from graphspace_python.graphs.classes.gsgraph import GSGraph
 #sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 #from src.utils import file_utils as utils
 import sys
+import pandas as pd
 
 
 def main(args):
@@ -92,23 +94,24 @@ def readGraphAttr(graph_attr_file):
     # then to set the attributes of 'parent1', specify it as the node
     color blue    parent1  -
     """
-    graph_attr = {}
+    graph_attr = defaultdict(dict)
     # description of a style, style_attr tuple 
     # can also contain edge-str: name: value
     # which can be used when building popups
-    attr_desc = {}
+    attr_desc = defaultdict(dict)
 
     # keep the order of the pathways by order of highest posterior probability
     #pathway_colors = collections.OrderedDict()
     print("Adding graph attributes from '%s' (must have 3 tab-delimited columns)" % (graph_attr_file))
     # TODO the last column (here always '-') can be given as a description
     #lines = utils.readColumns(graph_attr_file, 1,2,3,4)
-    lines = utils.readColumns(graph_attr_file, 1,2,3)
-    print("\tread %d lines" % (len(lines)))
+    #lines = utils.readColumns(graph_attr_file, 1,2,3)
+    df = pd.read_csv(graph_attr_file, sep='\t', header=None)
+    print("\tread %d lines" % (len(df)))
     # reverse the lines so the pathways at the top of the file will overwrite the pathways at the bottom
     #for style, style_attr, items, desc in lines[::-1]:
-    for style, style_attr, items in lines[::-1]:
-        for item in items.split('|'):
+    for style, style_attr, items, desc in df.values[::-1]:
+        for item in str(items).split('|'):
             # if this is an edge, then split it by the '-'
             if len(item.split('-')) == 2:
                 item = tuple(item.split('-'))
@@ -119,7 +122,7 @@ def readGraphAttr(graph_attr_file):
             if item not in graph_attr:
                 graph_attr[item] = {}
                 graph_attr[item][style] = style_attr
-        #attr_desc[(style, style_attr)] = desc
+        attr_desc[(style, style_attr)] = desc
         #graph_attributes[group_number] = {"style": style, "style_attr": style_attr, "prots": prots.split(','), "desc":desc}
 
     return graph_attr, attr_desc
@@ -162,7 +165,7 @@ def post_graph_to_graphspace(G, username, password, graph_name, apply_layout=Non
     """
     # post to graphspace
     gs = GraphSpace(username, password)
-    print("\nPosting graph '%s' to graphspace\n" % (graph_name))
+    #print("\nPosting graph '%s' to graphspace\n" % (graph_name))
     gs_graph = gs.get_graph(graph_name, owner_email=username)
 
     layout = None
@@ -245,9 +248,9 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
         # this dictionary will pass along any extra parameters that are not usually handled by GraphSpace
         attr_dict = {}
         # A 'group' node is also known as a 'compound' or 'parent' node
-        if n in graph_attr and 'group' in graph_attr[n]:
+        if n in graph_attr and 'parent' in graph_attr[n]:
             # set the group of this node
-            group = graph_attr[n]['group']
+            group = graph_attr[n]['parent']
             attr_dict['parent'] = group
 
         # if there is no popup, then have the popup just be the node name
@@ -302,11 +305,13 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
         # TODO directed vs undirected edges into an option
         G.add_edge(node_labels[u],node_labels[v],directed=directed,popup=edge_popup)
 
-        attr_dict = {}
-        arrow_shape = 'triangle'  # target-arrow-shape
-        color = "#D8D8D8"  # line-color
-        edge_style = 'solid'  # line-style
-        width = 1.5  # width
+        # edge style defaults:
+        attr_dict = {
+            'width': 1.5,
+            # this should be the default for directed edges
+            #'target-arrow-shape': 'triangle',
+            'line-style': 'solid'}
+        color = "#D8D8D8"  # in the attr_dict, this is 'line-color'
         if (u,v) in graph_attr:
             # any attribute can be set in the graph_attr dict and the defaults will be overwritten
             for style in graph_attr[(u,v)]:
@@ -316,7 +321,7 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
 
         #print(width, color, arrow_shape, edge_style)
         G.add_edge_style(node_labels[u], node_labels[v], attr_dict=attr_dict,
-                         directed=directed, color=color, width=width, arrow_shape=arrow_shape, edge_style=edge_style)
+                         directed=directed, color=color) 
     return G
 
 

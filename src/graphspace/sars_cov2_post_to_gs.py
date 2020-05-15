@@ -29,6 +29,7 @@ orange = "#eb9007"
     #'color': "#f2630a",  # orange
     #'color': "#f27d29",  # orange
 green = "#15ab33"
+green2 = "#21c442"
 light_blue = "#9ecbf7"
 light_blue2 = "#479aed"  # a bit darker blue than the node
 gray = "#6b6b6b"
@@ -43,15 +44,17 @@ default_node_styles = {
     'shape': 'ellipse',
     'width': 25,
     'height': 25,
-    'group': human_group,
+    #'group': human_group,
     }
 default_edge_styles = {
     #'color': gray,
-    'color': green,
+    'color': green2,
+    'opacity': 0.6,
     }
 drug_node_styles = {
     'color': orange,  
     'shape': 'star',
+    'text-valign':'bottom',
     'width': 40,
     'height': 40,
     'group': drug_group
@@ -73,11 +76,12 @@ krogan_node_styles = {
     'shape': 'rectangle',
     'width': 30,
     'height': 30,
-    'group': krogan_group,
+    #'group': krogan_group,
     }
 virhost_edge_styles = {
     'color': light_blue2,
     'width': 3,
+    'opacity': 0.6,
     }
 node_styles = {
     'drug': drug_node_styles,
@@ -131,14 +135,20 @@ def setup_opts():
     group.add_argument('--drug-id-mapping-file', type=str, 
                        help="Table parsed from DrugBank xml with drug names and other info. " + \
                        "Will post the subnetwork of the shortest path from the top k drugs to the virus nodes")
+    group.add_argument('--drug-targets-file', type=str, 
+                       help="This option can be specified to add the drug-target edges to the predictions")
+    group.add_argument('--drug-list-file', type=str, 
+                      help="File containing a list of drugs for which to filter the drug targets")
     group.add_argument('--k-to-test', '-k', type=int, action="append",
                        help="k-value(s) for which to get the top-k predictions to test. " +
                        "If not specified, will check the config file. Default=100")
     #group.add_argument('--range-k-to-test', '-K', type=int, nargs=3,
     #                   help="Specify 3 integers: starting k, ending k, and step size. " +
     #                   "If not specified, will check the config file.")
-    #group.add_argument('--node-to-post', type=str, action="append",
-    #                  help="UniProt ID of a taxon node for which to get neighbors. Can specify multiple")
+    group.add_argument('--node-list-file', type=str, 
+                      help="File containing a list of nodes for which to post a subgraph")
+    group.add_argument('--node-to-post', type=str, action="append",
+                      help="UniProt ID of a taxon node for which to get neighbors. Can specify multiple")
 
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
@@ -160,8 +170,8 @@ def setup_opts():
                       help='Username\'s GraphSpace account password. Required')
     #group.add_argument('', '--graph-name', type=str, metavar='STR', default='test',
     #                  help='Graph name for posting to GraphSpace. Default = "test".')
-    #group.add_argument('', '--outprefix', type=str, metavar='STR', default='test',
-    #                  help='Prefix of name to place output files. Required.')
+    group.add_argument('--out-pref', type=str, metavar='STR',
+                      help='Prefix of name to place output files. ')
     group.add_argument('--name-postfix', type=str, default='',
                       help='Postfix of graph name to post to graphspace.')
     group.add_argument('--group', type=str,
@@ -180,6 +190,9 @@ def setup_opts():
                       help="Name of the layout of the graph specified by the --apply-layout option to apply. Default: 'layout1'")
     group.add_argument('--parent-nodes', action="store_true", default=False,
                       help='Use parent/group/compound nodes for the different node types')
+    group.add_argument('--graph-attr-file',
+                       help='File used to specify graph attributes. Tab-delimited with columns: 1: style, 2: style attribute, ' + \
+                       '3: nodes/edges to which styles will be applied separated by \'|\' (edges \'-\' separated), 4th: Description of style to add to node popup.')
 
 #    # additional parameters
 #    group = parser.add_argument_group('Additional options')
@@ -206,6 +219,9 @@ def main(config_map, **kwargs):
 
     # this dictionary will hold all the styles 
     graph_attr = defaultdict(dict)
+    attr_desc = defaultdict(dict)
+    if kwargs.get('graph_attr_file'):
+        graph_attr, attr_desc = gs.readGraphAttr(kwargs['graph_attr_file'])
     # load the namespace mappings
     uniprot_to_gene = None
     # also add the protein name
@@ -228,10 +244,25 @@ def main(config_map, **kwargs):
         for d, name in uniprot_to_gene.items():
             new_name = fix_drug_name(name)
             uniprot_to_gene[d] = new_name
-        #sys.exit()
         # now get extra drug info
         #uniprot_to_prot_names.update({d: group_nodes for d, group_nodes in zip(df['drugbank_id'], df['group_nodes'].astype(str))})
         drug_nodes = set(list(df['drugbank_id'].values))
+    drugG = None 
+    if kwargs.get('drug_targets_file'):
+        print("Reading %s" % (kwargs['drug_targets_file']))
+        df = pd.read_csv(kwargs['drug_targets_file'], sep='\t', header=None) 
+        drugG = nx.from_pandas_edgelist(df, source=0, target=1)
+
+    node_list = [] 
+    if kwargs.get('node_list_file'):
+        print("Reading %s" % (kwargs['node_list_file']))
+        node_list = set(pd.read_csv(kwargs['node_list_file'], sep='\t', header=None, squeeze=True).tolist())
+    if kwargs.get('drug_list_file'):
+        print("Reading %s" % (kwargs['drug_list_file']))
+        drug_list = set(pd.read_csv(kwargs['drug_list_file'], sep='\t', header=None, usecols=[0], squeeze=True).tolist())
+        #node_list |= drug_list
+    if kwargs.get('node_to_post'):
+        node_list |= set(kwargs['node_to_post'])
 
     # load human-virus ppis
     df = pd.read_csv(kwargs['sarscov2_human_ppis'], sep='\t')
@@ -266,7 +297,7 @@ def main(config_map, **kwargs):
         print("Loading data for %s" % (dataset['net_version']))
         # load the network and the positive examples for each term
         net_obj, ann_obj, eval_ann_obj = run_eval_algs.setup_dataset(
-            dataset, input_dir, alg_settings, **kwargs) 
+            dataset, input_dir, **kwargs) 
         prots = net_obj.nodes
         print("\t%d total prots" % (len(prots)))
         # TODO using this for the SARS-CoV-2 project,
@@ -305,10 +336,17 @@ def main(config_map, **kwargs):
             curr_scores = dict(zip(df['prot'], df['score']))
             df.sort_values(by='score', ascending=False, inplace=True)
             #print(df.head())
-            pred_nodes = set(list(df[:k_to_test[0]]['prot']))
+            if len(node_list) > 0:
+                pred_nodes = get_paths_to_virus_nodes(node_list, net_obj, virhost_edges)
+            else:
+                pred_nodes = set(list(df[:k_to_test[0]]['prot']))
             node_types = {} 
-            if drug_nodes is not None:
-                top_k_drug_nodes = list(df[df['prot'].isin(drug_nodes)][:k_to_test[0]]['prot'])
+            # if the drug nodes were part of the network, then get the top predicted drugs from the prediction scores
+            if drug_nodes is not None and drugG is None:
+                if len(node_list) > 0:
+                    top_k_drug_nodes = node_list
+                else:
+                    top_k_drug_nodes = list(df[df['prot'].isin(drug_nodes)][:k_to_test[0]]['prot'])
                 pred_nodes = get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges)
                 node_types = {d: 'drug' for d in drug_nodes}
 
@@ -316,9 +354,10 @@ def main(config_map, **kwargs):
             all_nodes = set(pred_nodes) | set(krogan_nodes)
 
             # build the network to post
-            pred_edges, graph_attr, attr_desc, node_type_rank = build_subgraph(
+            pred_edges, graph_attr, attr_desc2, node_type_rank = build_subgraph(
                 alg, pred_nodes, curr_scores, all_nodes,
-                net_obj, graph_attr, node_types, **kwargs)
+                net_obj, graph_attr, node_types, max_edge_width=8, **kwargs)
+            attr_desc.update(attr_desc2)
 
             # add the node rank to the name of the node
             for n, rank in node_type_rank.items():
@@ -326,6 +365,29 @@ def main(config_map, **kwargs):
 
             # now also add the virus edges for the human prots that interact with predicted prots
             net_nodes = set([n for e in pred_edges for n in e])
+            # add the drugs that target the predicted nodes, if specified
+            if drugG is not None:
+                drugs_skipped = 0
+                before = len(pred_edges)
+                if len(node_list) > 0:
+                    drugs_with_target = [n for n in node_list if drugG.has_node(n)]
+                else:
+                    drugs_with_target = [n for n in net_nodes if drugG.has_node(n)]
+                for n in drugs_with_target:
+                    for d in drugG.neighbors(n):
+                        if drugG.degree[d] >= kwargs.get('degree_cutoff',100):
+                            drugs_skipped += 1
+                        elif kwargs.get('drug_list_file') and d not in drug_list:
+                            continue
+                        else:
+                            pred_edges.add((d,n))
+                            graph_attr[d].update(drug_node_styles)
+                            graph_attr[(d,n)].update(drug_edge_styles) 
+                            # also add a popup with the # targets
+                            attr_desc[d]['# targets'] = drugG.degree[d]
+                print("\tadded %d drug-target edges" % (len(pred_edges) - before))
+                if drugs_skipped > 0:
+                    print("\t%d drug-target edges skipped from drug with > %s targets" % (drugs_skipped, kwargs.get('degree_cutoff',100)))
             pred_edges.update(set([(v,h) for v,h in virhost_edges if h in net_nodes]))
             net_nodes = set([n for e in pred_edges for n in e])
             print("\t%d edges, %d nodes" % (len(pred_edges), len(net_nodes)))
@@ -338,7 +400,7 @@ def main(config_map, **kwargs):
                     #graph_attr[n]['group'] = virus_group
                 elif n in krogan_nodes:
                     # styles for the human nodes
-                    graph_attr[n] = krogan_node_styles 
+                    graph_attr[n].update(krogan_node_styles)
                     #graph_attr[n]['group'] = 
                 #elif drug_nodes is not None and n in drug_nodes:
                 #    graph_attr[n]['group'] = "DrugBank Drugs"
@@ -357,14 +419,15 @@ def main(config_map, **kwargs):
                     attr_desc[n].update(node_desc[n])
                 node_type = 'drugbank' if drug_nodes and n in drug_nodes else 'uniprot'
                 popups[n] = gs.buildNodePopup(n, node_type=node_type, attr_val=attr_desc)
-            #for u,v in prededges:
-            #    popups[(u,v)] = gs.buildEdgePopup(u,v, node_labels=uniprot_to_gene, attr_val=attr_desc)
+            for u,v in pred_edges:
+                popups[(u,v)] = gs.buildEdgePopup(u,v, node_labels=uniprot_to_gene, attr_val=attr_desc)
             G = gs.constructGraph(pred_edges, node_labels=uniprot_to_gene, graph_attr=graph_attr, popups=popups)
             
             # set of group nodes to add to the graph
             if kwargs.get('parent_nodes'):
-                group_nodes_to_add = [virus_group, krogan_group, drug_group, human_group]
-                add_group_nodes(G, group_nodes_to_add)
+                #group_nodes_to_add = [virus_group, krogan_group, drug_group, human_group]
+                group_nodes_to_add = set(attr['parent'] for n, attr in graph_attr.items() if 'parent' in attr) 
+                add_group_nodes(G, group_nodes_to_add, graph_attr, attr_desc)
 
             # TODO add an option to build the 'graph information' tab legend/info
             # build the 'Graph Information' metadata
@@ -383,16 +446,27 @@ def main(config_map, **kwargs):
                 alg, graph_exp_name, k_to_test[0], kwargs.get('name_postfix',''))
                 #"test","", "")
 
-            #if kwargs.get('node_to_post') is not None:
-            #    graph_name += '-'.join(kwargs['node_to_post'])
+            if kwargs.get('node_to_post') is not None:
+                graph_name += '-'.join(kwargs['node_to_post'])
             G.set_name(graph_name)
             # also set the legend
             G = set_legend(G)
             # example command: python src/post_to_graphspace.py --edges toxic-sub-bind-edges.txt --net inputs/2017_10-seq-sim/2017_10-seq-sim-net.txt --username jeffl@vt.edu --password f1fan --graph-name toxic-substance-binding-cc-test5 --graph-attr graph_attr.txt --tag test1 --tag test2 --set-edge-width
+            # write the posted network to a file if specified
+            if kwargs.get('out_pref'):
+                out_file = "%s%s.txt" % (kwargs['out_pref'], graph_name)
+                os.makedirs(os.path.dirname(out_file), exist_ok=True)
+                print("writing network to %s" % (out_file))
+                # remove any newlines from the node name if they're there
+                node_labels = {n: n.replace('\n','-') for n in G.nodes(data=False)}
+                G2 = nx.relabel_nodes(G, node_labels, copy=True)
+                nx.write_edgelist(G2, out_file)
+
             gs.post_graph_to_graphspace(
                     G, kwargs['username'], kwargs['password'], graph_name, 
                     apply_layout=kwargs['apply_layout'], layout_name=kwargs['layout_name'],
                     group=kwargs['group'], make_public=kwargs['make_public'])
+
 
 
 def get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges):
@@ -406,21 +480,29 @@ def get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges):
     krogan_nodes = set(h for v,h in virhost_edges)
     # remove the edges from drugs to krogan nodes if they are there
     # since those weren't used during network propagation
-    for d in top_k_drug_nodes:
-        for n in krogan_nodes:
-            if G.has_edge(d,n):
-                G.remove_edge(d,n)
-    print("\tfinding the shortest paths from each drug nod to the virus nodes")
+    # UPDATE: I can control that with the drug network passed in
+    #for d in top_k_drug_nodes:
+    #    for n in krogan_nodes:
+    #        if G.has_edge(d,n):
+    #            G.remove_edge(d,n)
+    print("\tfinding the shortest paths from %d nodes to the virus nodes" % (len(top_k_drug_nodes)))
+    no_path = set()
     nodes_on_paths = set()
     for d in tqdm(top_k_drug_nodes):
         shortest_paths = defaultdict(set)
         for v in set(v for v,h in virhost_edges):
-            shortest_path = nx.shortest_path(G, source=d, target=v)
+            try:
+                shortest_path = nx.shortest_path(G, source=d, target=v)
+            except nx.exception.NetworkXNoPath:
+                shortest_path = []
+                no_path.add(d)
             sp_len = len(shortest_path)-1
             shortest_paths[sp_len].update(set(shortest_path))
         min_len = min(shortest_paths.keys())
         nodes_on_paths.update(shortest_paths[min_len])
     print("\t%d total nodes on the shortest paths" % (len(nodes_on_paths)))
+    if len(no_path) > 0:
+        print("\t%d nodes with no path to a virus node" % (len(no_path)))
     return nodes_on_paths
 
 
@@ -456,7 +538,7 @@ def build_subgraph(
 
     # set the default styles
     for n in predicted_nodes:
-        graph_attr[n] = default_node_styles.copy()
+        graph_attr[n].update(default_node_styles.copy())
         if node_types is not None and n in node_types:
             graph_attr[n].update(node_styles[node_types[n]])
     for u,v in prededges:
@@ -503,18 +585,16 @@ def build_subgraph(
     edge_weights = defaultdict(float)
     for u,v in tqdm(prededges):
         e = (u,v)
-        if e not in attr_desc:
-            attr_desc[e] = {}
-        if e not in graph_attr:
-            graph_attr[e] = {}
-        attr_desc[e]["Edge weight"] = "%0.1f" % (W[node2idx[u]][:,node2idx[v]].A.flatten()[0])
+        w = W[node2idx[u]][:,node2idx[v]].A.flatten()[0]
+        edge_weights[e] = w
+        attr_desc[e]["Edge weight"] = "%0.1f" % (w)
         # make the edges somewhat opaque for a better visual style
-        graph_attr[e]['opacity'] = 0.7
+        #graph_attr[e]['opacity'] = 0.6
 
     # set the width of the edges by the network weight
     #edge_weights = {(u,v): float(W[node2idx[u]][:,node2idx[v]].A.flatten()[0]) for u,v in prededges}
-    for e,w in edge_weights.items():
-        attr_desc[e]["Final edge weight"] = "%0.1f" % (w)
+    #for e,w in edge_weights.items():
+    #    attr_desc[e]["Final edge weight"] = "%0.1f" % (w)
     # TODO set the min and max as parameters or something
     #max_weight = 180 
     #if net_obj.multi_net:
@@ -529,8 +609,10 @@ def build_subgraph(
         if edge_weights[e] > max_weight:
             edge_weights[e] = max_weight 
     if min_weight != max_weight:
-        graph_attr = gs.set_edge_width(prededges, edge_weights, graph_attr,
-                                    a=2, b=12, min_weight=min_weight, max_weight=max_weight)
+        graph_attr = gs.set_edge_width(
+            prededges, edge_weights, graph_attr,
+            a=kwargs.get('min_edge_width',2), b=kwargs.get('max_edge_width',12),
+            min_weight=min_weight, max_weight=max_weight)
 
     return prededges, graph_attr, attr_desc, node_type_rank
 
@@ -594,6 +676,9 @@ def set_legend(G):
 def fix_drug_name(name, split_over_lines=25):
     # remove the special characters from the name, since graphspace can't handle those apgrouply
     name = name.replace("'","")
+    if len(name) > 50:
+        name = name[:15] + '[...]'
+        return name
     # split the name to two lines if its too long
     if split_over_lines is not None and len(name) > split_over_lines:
         if " " in name:
@@ -620,26 +705,27 @@ def fix_drug_name(name, split_over_lines=25):
     return name
 
 
-def add_group_nodes(G, group_nodes_to_add):
+def add_group_nodes(G, group_nodes_to_add, graph_attr, attr_desc):
     for group in group_nodes_to_add:
-#        # TODO add a popup for the group which would be a description of the function or pathway
-#        if ('group', group) in attr_desc:
-#            popup = attr_desc[('group', group)]
-#        else:
-#            popup = group
-#
-#        if group in graph_attr and 'label' in graph_attr[group]:
-#            label = graph_attr[group]['label']
-#        else:
-#            label = group.replace("_", " ")
+        # TODO add a popup for the group which would be a description of the function or pathway
+        if ('parent', group) in attr_desc:
+            popup = attr_desc[('parent', group)]
+        else:
+            popup = group
+
+        if group in graph_attr and 'label' in graph_attr[group]:
+            label = graph_attr[group]['label']
+        else:
+            label = group.replace("_", " ")
 
         #popup = group
         # leave off the label for now because it is written under the edges and is difficult to see in many cases
         # I requested this feature on the cytoscapejs github repo: https://github.com/cytoscape/cytoscape.js/issues/1900
         #G.add_node(group, popup=popup, k=k_value, label=label)
-        G.add_node(group, label=group)
+        G.add_node(group, popup=popup, label=label)
 
         # TODO streamline this better
+        color = None
         for g2, styles in [
                 (virus_group, virus_node_styles),
                 (krogan_group, krogan_node_styles),
@@ -648,6 +734,7 @@ def add_group_nodes(G, group_nodes_to_add):
             if group == g2:
                 color = styles['color']
         attr_dict = {} 
+        color = color if color else graph_attr[group].get('color') 
         # set the background opacity so the background is not the same color as the nodes
         attr_dict["background-opacity"] = 0.3
         attr_dict['font-weight'] = "bolder"
