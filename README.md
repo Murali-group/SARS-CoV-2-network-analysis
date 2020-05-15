@@ -66,10 +66,34 @@ python src/Enrichment/fss_enrichment.py \
 ```
 
 TODO Currently only tests for enrichment of GO terms (BP, MF, CC).
+
+To test for enrichment of any given list of genes (e.g., Krogan nodes), use the following type of command:
+```
+python src/Enrichment/enrichment.py \
+  --prot-list-file fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/2020-03-24-sarscov2-human-ppi.txt \
+  --prot-universe-file fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt \
+  --out-pref outputs/enrichment/krogan \
+  --add-prot-list-to-prot-universe
+```
+
+#### Post sub-network of the top predictions and their scores to GraphSpace
+https://graphspace.org/ allows you to visualize and interact with the predictions made by the methods. In addition, you can share graphs with a group to easily allow others to do the same. 
+
+Here's an example of how to post the top 5 predictions made by GM+ when using STRING, and the shortest paths from those to the virus proteins:
+```
+python src/graphspace/sars_cov2_post_to_gs.py \
+  --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
+  --sarscov2-human-ppis datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv \
+  --user <email> --pass <password> \
+  --k-to-test 5 --name-postfix=-test \
+  --alg genemaniaplus \
+  --parent-nodes
+```
+
 <!---
-To test for enrichment of any given list of genes (e.g., Krogan nodes), use the following command:
+When making predictions for drugs, you can a
 --->
-#### TODO Post sub-network of the top predictions and their scores to GraphSpace
+
 ### Cross Validation
 Similar to the previous section, the options to run cross validation can either be set in the config file under `fastsinksource_pipeline_settings -> eval_settings`, or passed directly to `run_eval_algs.py`. The relevant options are below. See `python src/FastSinkSource/run_eval_algs.py --help` for more details.
   - `cross_validation_folds`
