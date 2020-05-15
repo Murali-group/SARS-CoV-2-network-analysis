@@ -45,7 +45,8 @@ def convert_string_naming_scheme(string_nets_str):
     """
     # TODO I could use an ordered set/dict
     string_nets = []
-    for name in string_nets_str.split(','):
+    split_str = string_nets_str.split(',') if not isinstance(string_nets_str, list) else string_nets_str
+    for name in split_str:
         if name in STRING_NAME_MAPPING:
             for n in STRING_NAME_MAPPING[name]:
                 if n not in string_nets:
