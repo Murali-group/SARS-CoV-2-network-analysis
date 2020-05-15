@@ -45,6 +45,8 @@ def setup_opts():
     group.add_argument('--config', type=str, required=True,
                        help="Configuration file used when running FSS. " +
                        "Must have a 'genesets_to_test' section for this script. ")
+    group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
+                       help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
     #group.add_argument('--compare-krogan-nodes',
     #                   help="Also test for enrichment of terms when using the Krogan nodes.")
     # Should be specified in the config file
@@ -69,6 +71,9 @@ def setup_opts():
     group.add_argument('--range-k-to-test', '-K', type=int, nargs=3,
                        help="Specify 3 integers: starting k, ending k, and step size. " +
                        "If not specified, will check the config file.")
+    group.add_argument('--stat-sig-cutoff', type=float, 
+                       help="Cutoff on the node p-value for a node to be considered in the topk. " + \
+                       "The p-values should already have been computed with run_eval_algs.py")
     group.add_argument('--add-orig-pos-to-prot-universe', action='store_true',
                        help="Add the positives listed in the pos_neg_file (e.g., Krogan nodes) to the prot universe ")
 
@@ -105,7 +110,14 @@ def main(config_map, **kwargs):
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
     algs = config_utils.get_algs_to_run(alg_settings, **kwargs)
+    print("algs: %s" % (str(algs)))
     del kwargs['algs']
+
+    # load the namespace mappings
+    uniprot_to_gene = None
+    if kwargs.get('id_mapping_file'):
+        uniprot_to_gene = enrichment.load_gene_names(kwargs.get('id_mapping_file'))
+        kwargs['uniprot_to_gene'] = uniprot_to_gene
 
     # genesets_to_test = config_map.get('genesets_to_test')
     # if genesets_to_test is None or len(genesets_to_test) == 0:
@@ -134,8 +146,8 @@ def main(config_map, **kwargs):
         print("Loading data for %s" % (dataset['net_version']))
         base_out_dir = "%s/enrichment/%s/%s" % (output_dir, dataset['net_version'], dataset['exp_name'])
         # load the network and the positive examples for each term
-        net_obj, ann_obj, eval_ann_obj = run_eval_algs.setup_dataset(
-            dataset, input_dir, alg_settings, **kwargs) 
+        net_obj, ann_obj, _ = run_eval_algs.setup_dataset(
+            dataset, input_dir, **kwargs) 
         prots = net_obj.nodes
         prot_universe = set(prots)
         print("\t%d prots in universe" % (len(prot_universe)))
@@ -172,9 +184,12 @@ def main(config_map, **kwargs):
             df.reset_index(inplace=True, drop=True)
             #df = df[['prot', 'score']]
             df.sort_values(by='score', ascending=False, inplace=True)
-            print(df.head())
+            if kwargs.get('stat_sig_cutoff'):
+                df = config_utils.get_pvals_apply_cutoff(df, pred_file, **kwargs)
             # write these results to file
-            pred_filtered_file = "%s/%s/%s-filtered.tsv" % (base_out_dir, alg, os.path.basename(pred_file).split('.')[0])
+            pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
+                base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
+                "-p%s"%str(kwargs['stat_sig_cutoff']).replace('.','_') if kwargs.get('stat_sig_cutoff') else "")
             os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
             if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
                 print("writing %s" % (pred_filtered_file))
@@ -186,7 +201,7 @@ def main(config_map, **kwargs):
                 # now run clusterProfiler from R
                 out_dir = pred_filtered_file.split('.')[0]
                 bp_df, mf_df, cc_df = enrichment.run_clusterProfiler_GO(
-                    topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run')) 
+                    topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs) 
                 for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
                     # make it into a multi-column-level dataframe
                     tuples = [(dataset_name, alg, col) for col in df.columns]
@@ -204,7 +219,7 @@ def main(config_map, **kwargs):
             df = df.swaplevel(0,1,axis=1)
             for alg, df_alg in df.groupby(level=0, axis=1):
                 df_alg.dropna(how='all', inplace=True)
-                #print(df_alg.head())
+                print(df_alg.head())
                 out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
                 write_combined_table(df_alg, out_file, dataset_level=1) 
         else:
@@ -220,13 +235,18 @@ def write_combined_table(df, out_file, dataset_level=0):
     # also add the number of datasets/networks for which each term is enriched
     id_counts = defaultdict(int)
     for dataset, df_d in df.groupby(level=dataset_level, axis=1):
+        #print(df_d.head())
         # get just the last level of columns
         #df_d.columns = df_d.columns.levels[-1]
         df_d.columns = df_d.columns.droplevel([0,1])
         df_d.dropna(how='all', inplace=True)
+        print(df_d.head())
+        #print(df_d.index)
+        #print(df_d['Description'].head())
         id_to_name.update(dict(zip(df_d.index, df_d['Description'])))
         for geneset_id in df_d.index:
             id_counts[geneset_id] += 1
+        #print(pd.Series(id_to_name).head())
 
     df.insert(0, 'Count', pd.Series(id_counts))
     df.insert(0, 'Description', pd.Series(id_to_name))

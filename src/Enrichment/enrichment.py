@@ -55,6 +55,8 @@ def setup_opts():
     group.add_argument('--config', type=str, required=True,
                        help="Configuration file used when running FSS. " +
                        "Must have a 'genesets_to_test' section for this script. ")
+    group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
+                       help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
     #group.add_argument('--out-dir', type=str, 
     #                   help="path/to/output directory for enrichemnt files")
     #group.add_argument('--compare-krogan-nodes',
@@ -69,6 +71,12 @@ def setup_opts():
     group.add_argument('--out-pref', 
                        help="Output prefix where output files will be placed. " +
                        "Default is outputs/enrichement/<name_of_prots_list_file>")
+    group.add_argument('--pval-cutoff', type=float, default=0.01,
+                       help="Cutoff on the corrected p-value for enrichment.")
+    group.add_argument('--qval-cutoff', type=float, default=0.05,
+                       help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
+    group.add_argument('--add-prot-list-to-prot-universe', action='store_true',
+                       help="Add the positives listed in the pos_neg_file (e.g., Krogan nodes) to the prot universe ")
 
     group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the enrichment tests, and re-writing the output files")
@@ -84,6 +92,12 @@ def main(config_map, **kwargs):
     # extract the general variables from the config map
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
+
+    # load the namespace mappings
+    uniprot_to_gene = None
+    if kwargs.get('id_mapping_file'):
+        uniprot_to_gene = load_gene_names(kwargs.get('id_mapping_file'))
+        kwargs['uniprot_to_gene'] = uniprot_to_gene
 
     genesets_to_test = config_map.get('genesets_to_test')
     if genesets_to_test is None or len(genesets_to_test) == 0:
@@ -112,20 +126,26 @@ def main(config_map, **kwargs):
         df = pd.read_csv(kwargs['prot_universe_file'], sep='\t', header=None)
         prot_universe = df[df.columns[0]]
         print("\t%d prots in universe" % (len(prot_universe)))
+        if kwargs.get('add_prot_list_to_prot_universe'): 
+            # make sure the list of proteins passed in are in the universe
+            size_prot_universe = len(prot_universe)
+            prot_universe = set(prots_to_test) | set(prot_universe)
+            if len(prot_universe) != size_prot_universe:
+                print("\t%d prots from the prots_to_test added to the universe" % (len(prot_universe) - size_prot_universe))
 
     out_pref = kwargs.get('out_pref')
     if out_pref is None:
         out_pref = "outputs/enrichment/%s" % (os.path.basename(kwargs['prot_list_file']).split('.')[0])
 
     bp_df, mf_df, cc_df = run_clusterProfiler_GO(
-        prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run')) 
+        prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs) 
     # TODO figure out which genesets to test 
     #for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
     #    all_dfs[ont] = pd.concat([all_dfs[ont], df])
 
 
 def run_clusterProfiler_GO(
-        prots_to_test, out_dir, prot_universe=None, forced=False):
+        prots_to_test, out_dir, prot_universe=None, forced=False, **kwargs):
     """
     
     *returns*: a list of DataFrames of the enrichement of BP, MF, and CC
@@ -159,8 +179,8 @@ def run_clusterProfiler_GO(
             OrgDb         = base.get('org.Hs.eg.db'),
             ont           = ont,
             pAdjustMethod = "BH",
-            pvalueCutoff  = 0.01,
-            qvalueCutoff  = 0.05)
+            pvalueCutoff  = kwargs.get('pval_cutoff',0.01),
+            qvalueCutoff  = kwargs.get('qval_cutoff',0.05))
         # converting doesn't seem to be working, so just write to file then read to file
         #ego_BP = ro.conversion.rpy2py(ego_BP)
         #with localconverter(ro.default_converter + pandas2ri.converter):
@@ -173,6 +193,11 @@ def run_clusterProfiler_GO(
         out_file = "%s/enrich-%s.csv" % (out_dir, ont)
         print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
+        # add the gene names if specified
+        if kwargs.get('uniprot_to_gene'):
+            gene_map = kwargs['uniprot_to_gene']
+            df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+            df.to_csv(out_file)
         #df.columns = ["%s-k%s-%s-%s" % (alg, 200, dataset_name, col) for col in df.columns]
         print(df.head())
         ont_dfs.append(df) 
@@ -190,6 +215,16 @@ def get_k_to_test(dataset, **kwargs):
     if k_to_test is None or len(k_to_test) == 0:
         k_to_test = [100]
     return k_to_test
+
+
+def load_gene_names(id_mapping_file):
+    df = pd.read_csv(id_mapping_file, sep='\t', header=0) 
+    ## keep only the first gene for each UniProt ID
+    uniprot_to_gene = {p: genes.split(' ')[0] for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
+    if 'Protein names' in df.columns:
+        uniprot_to_prot_names = dict(zip(df['Entry'], df['Protein names'].astype(str)))
+        #node_desc = {n: {'Protein names': uniprot_to_prot_names[n]} for n in uniprot_to_prot_names}
+    return uniprot_to_gene
 
 
 if __name__ == "__main__":
