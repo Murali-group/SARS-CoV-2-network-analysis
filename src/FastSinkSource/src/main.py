@@ -17,6 +17,7 @@ from .algorithms import runner as runner
 from .evaluate import eval_utils as eval_utils
 from .evaluate import cross_validation as cross_validation
 from .evaluate import eval_leave_one_species_out as eval_loso
+from .evaluate import stat_sig as eval_stat_sig
 from .utils import file_utils as utils
 from .utils import net_utils
 from .utils import string_utils as string_utils
@@ -77,6 +78,11 @@ def setup_opts():
     group.add_argument('--early-prec', '-E', type=str, action="append", default=["k1", "0.1"],
             help="Report the precision at the specified recall value (between 0 and 1). " + \
             "If prefixed with 'k', for a given term, the precision at (k * # ann) # of nodes is given. Default: k1, 0.1")
+    group.add_argument('--eval-stat-sig-nodes', type=int,
+            help="Evaluate the node statistical significance by repeating predictions with multiple subsets. " +
+            "Specify the # repetitions.")
+    group.add_argument('--num-bins', type=int, default=10,
+            help="Number of bins into which the nodes will be split (using k-means of the degree distribution. Default=10")
 
     # additional parameters
     group = parser.add_argument_group('Additional options')
@@ -106,11 +112,15 @@ def run(config_map, **kwargs):
     print("Running with these kwargs: " + str(kwargs))
 
     for dataset in input_settings['datasets']:
+        kwargs['dataset_name'] = config_utils.get_dataset_name(dataset)
         # add options specified for this dataset to kwargs  
-        # youngs_neg: for a term t, a gene g cannot be a negative for t if g shares an annotation with any gene annotated to t 
-        #kwargs['youngs_neg'] = dataset.get('youngs_neg') 
+        if dataset.get('stat_sig_drug_nodes') is not None:
+            kwargs['stat_sig_drug_nodes'] = "%s/%s/%s" % (
+                input_dir, dataset['net_version'], dataset['stat_sig_drug_nodes'])
+            kwargs['curr_dataset'] = dataset
+            kwargs['curr_input_dir'] = input_dir
 
-        net_obj, ann_obj, eval_ann_obj = setup_dataset(dataset, input_dir, alg_settings, **kwargs) 
+        net_obj, ann_obj, eval_ann_obj = setup_dataset(dataset, input_dir, **kwargs) 
         # if there are no annotations, then skip this dataset
         if len(ann_obj.terms) == 0:
             print("No terms found. Skipping this dataset")
@@ -161,6 +171,11 @@ def run(config_map, **kwargs):
                 kwargs[arg] = "%s/%s" % (input_dir, dataset[arg]) 
             # now run the leave-one-species-out eval
             eval_loso.eval_loso(alg_runners, ann_obj, eval_ann_obj=eval_ann_obj, **kwargs)
+
+        if kwargs.get('eval_stat_sig_nodes'):
+            eval_stat_sig.eval_stat_sig_nodes_runners(
+                alg_runners, net_obj, ann_obj, num_random_sets=kwargs['eval_stat_sig_nodes'], **kwargs) 
+    print("Finished")
 
 
 def setup_net(input_dir, dataset, **kwargs):
@@ -277,7 +292,7 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
     return selected_terms, ann_obj, eval_ann_obj
 
 
-def setup_dataset(dataset, input_dir, alg_settings, **kwargs):
+def setup_dataset(dataset, input_dir, **kwargs):
     if kwargs.get('verbose'):
         utils.print_memory_usage()
     # setup the network matrix first
@@ -388,5 +403,5 @@ def run_algs(alg_runners, **kwargs):
                          run_obj.out_file, num_pred_to_write=num_pred_to_write)
 
     #eval_loso.write_stats_file(runners_to_run, params_results)
-    print(params_results)
-    print("Finished")
+    #print(params_results)
+    return runners_to_run
