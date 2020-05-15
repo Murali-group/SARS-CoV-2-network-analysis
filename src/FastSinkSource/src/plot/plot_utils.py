@@ -21,6 +21,7 @@ import pandas as pd
 import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
+sns.set_context('paper')
 
 # my local imports
 from ..algorithms import runner as runner
@@ -98,7 +99,7 @@ def setup_opts():
     group = parser.add_argument_group("Evaluation options")
     group.add_argument('--cross-validation-folds', '-C', type=int,
                      help="Get results from cross validation using the specified # folds")
-    group.add_argument('--num-reps', type=int, default=1,
+    group.add_argument('--num-reps', type=int, 
                      help="If --exp-type is <cv-Xfold>, this number of times CV was repeated. Default=1")
     group.add_argument('--cv-seed', type=int,
                      help="Seed used when running CV")
@@ -209,11 +210,11 @@ def main(config_map, ax=None, out_pref='', **kwargs):
                 print("no results found. Quitting")
                 sys.exit()
             # limit to the specified terms
-            if kwargs['only_terms'] is not None:
+            if kwargs.get('only_terms') is not None:
                 df_all = df_all[df_all['#term'].isin(kwargs['only_terms'])]
 
-            title = '-'.join(df_all['plot_exp_name'].unique())
-            plot_curves(df_all, title=title, **kwargs)
+            kwargs['title'] = '-'.join(df_all['plot_exp_name'].unique())
+            plot_curves(df_all, **kwargs)
     else:
         # get the path to the specified files for each alg
         df_all = load_all_results(input_settings, alg_settings, output_settings, **kwargs)
@@ -314,13 +315,8 @@ def setup_variables(config_map, out_pref='', **kwargs):
     """
     Function to setup the various args specified in kwargs
     """
-    input_settings = config_map['input_settings']
-    #input_dir = input_settings['input_dir']
-    alg_settings = config_map['algs']
-    output_settings = config_map['output_settings']
-    # update the settings specified in this script with those set in the yaml file
-    if config_map.get('eval_settings'):
-        kwargs.update(config_map['eval_settings'])
+    input_settings, input_dir, output_dir, alg_settings, kwargs \
+        = config_utils.setup_config_variables(config_map, **kwargs)
     if config_map.get('plot_settings'):
         #config_map['plot_settings'].update(kwargs)
         kwargs.update(config_map['plot_settings'])
@@ -343,7 +339,7 @@ def setup_variables(config_map, out_pref='', **kwargs):
 
     if out_pref == "":
         out_pref = "%s/viz/%s/%s/" % (
-                output_settings['output_dir'], 
+                output_dir, 
                 input_settings['datasets'][0]['net_version'], 
                 input_settings['datasets'][0]['exp_name'])
     if kwargs.get('only_terms_file') is not None:
@@ -360,7 +356,7 @@ def setup_variables(config_map, out_pref='', **kwargs):
         out_pref += kwargs.get('postfix','')
         os.makedirs(os.path.dirname(out_pref), exist_ok=True)
 
-    return input_settings, alg_settings, output_settings, out_pref, kwargs
+    return input_settings, alg_settings, config_map['output_settings'], out_pref, kwargs
 
 
 def savefig(out_file, **kwargs):
@@ -625,13 +621,14 @@ def plot_curves(df, out_pref="test", title="", ax=None, **kwargs):
     # make a prec-rec plot per term
     for term in sorted(df["#term"].unique()):
         curr_df = df[df['#term'] == term]
+        plot_df = curr_df.copy()
         # get only the positive examples to plot prec_rec
-        curr_df = curr_df[curr_df['pos/neg'] == 1]
+        #curr_df = curr_df[curr_df['pos/neg'] == 1]
         # also put the fmax on the plot, and add it to the label
         new_alg_names = []
         fmax_points = {}
         for alg in curr_df['Algorithm'].unique():
-            df_alg = curr_df[curr_df['Algorithm'] == alg]
+            df_alg = plot_df[plot_df['Algorithm'] == alg]
             #print(df_alg['prec'], df_alg['rec'])
             fmax, idx = eval_utils.compute_fmax(df_alg['prec'].values, df_alg['rec'].values, fmax_idx=True)
             new_alg_name = "%s (%0.3f)" % (alg, fmax)
@@ -639,11 +636,12 @@ def plot_curves(df, out_pref="test", title="", ax=None, **kwargs):
             fmax_points[alg] = (df_alg['prec'].values[idx], df_alg['rec'].values[idx])
 
         fig, ax = plt.subplots()
-        # TODO show the standard deviation from the repititions
-        sns.lineplot(x='rec', y='prec', hue='Algorithm', data=curr_df,
-                ci=None, ax=ax, legend=False,
+        sns.lineplot(x='rec', y='prec', hue='Algorithm', data=plot_df,
+                    #ci=kwargs.get('ci',95), ax=ax, legend=False,
+                    # use this to show the individual replicates
+                    units='repetition', estimator=None, lw=0.3, alpha=0.1,
+                    ax=ax, legend=False,
                 )
-                #xlim=(0,1), ylim=(0,1), ci=None)
 
         ax.set_xlim(-0.02,1.02)
         ax.set_ylim(-0.02,1.02)
@@ -893,43 +891,41 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
     Small helper function to load the results specifically for cross-validation
     """
     folds = kwargs.get('cross_validation_folds')
-    cv_seed = kwargs.get('cv_seed')
-    neg_factor = kwargs.get('sample_neg_examples_factor')
     # for 100+ reps, loading each individual file is taking a while, so store them in a secondary file
-    if kwargs.get('num_reps',1) > 1:
-        #rep_file = get_rep_file(
-        #    dataset, alg, alg_params, results_dir=output_settings['output_dir'],
-        #    eval_type=eval_type, **kwargs,)
-        eval_type = cv.get_output_prefix(folds, "1-%s"%kwargs['num_reps'], neg_factor, cv_seed)
-        combos = [dict(zip(alg_params.keys(), val)) for val in itertools.product(
-                *(alg_params[param] for param in alg_params))]
-        params_str = "param-combos%d" % (len(combos))
-        if len(combos) == 1:
-            params_str = runner.get_runner_params_str(alg, combos[0], dataset=dataset)
-        out_dir = "%s/%s/%s" % (
-            results_dir, dataset['net_version'], dataset['exp_name'])
-        rep_file = "%s/%s/%s%s%s%s.txt" % (
-            out_dir, alg, eval_type, params_str, kwargs.get('postfix', ''), kwargs.get('prec_rec_str'))
-        if os.path.isfile(rep_file) and not kwargs.get('forceread'):
-            print("reading processed repetition files from %s. Use --forceread to start from scratch and overwrite" % (rep_file))
-            reps_df = pd.read_csv(rep_file, sep='\t')
-            return reps_df
-    reps_df = pd.DataFrame()
-    for rep in range(1,kwargs.get('num_reps',1)+1):
-        curr_seed = None
-        if cv_seed is not None:
-            curr_seed = cv_seed + rep-1
-        eval_type = cv.get_output_prefix(folds, rep, neg_factor, curr_seed)
-        df = load_alg_results(
-            dataset, alg, alg_params, 
-            results_dir=results_dir, eval_type=eval_type, **kwargs)
-        add_dataset_settings(dataset, df) 
-        df['rep'] = rep
-        reps_df = pd.concat([reps_df, df])
-    if kwargs.get('num_reps',1) > 1 and len(reps_df) > 0:
-        print("Writing %s" % (rep_file)) 
-        reps_df.to_csv(rep_file, sep='\t')
-    return reps_df
+#    if kwargs.get('num_reps',1) > 1:
+#        #rep_file = get_rep_file(
+#        #    dataset, alg, alg_params, results_dir=output_settings['output_dir'],
+#        #    eval_type=eval_type, **kwargs,)
+#        eval_type = cv.get_output_prefix(folds, "1-%s"%kwargs['num_reps'],  **kwargs)
+#        combos = [dict(zip(alg_params.keys(), val)) for val in itertools.product(
+#                *(alg_params[param] for param in alg_params))]
+#        params_str = "param-combos%d" % (len(combos))
+#        if len(combos) == 1:
+#            params_str = runner.get_runner_params_str(alg, combos[0], dataset=dataset)
+#        out_dir = "%s/%s/%s" % (
+#            results_dir, dataset['net_version'], dataset['exp_name'])
+#        rep_file = "%s/%s/%s%s%s%s.txt" % (
+#            out_dir, alg, eval_type, params_str, kwargs.get('postfix', ''), kwargs.get('prec_rec_str'))
+#        if os.path.isfile(rep_file) and not kwargs.get('forceread'):
+#            print("reading processed repetition files from %s. Use --forceread to start from scratch and overwrite" % (rep_file))
+#            reps_df = pd.read_csv(rep_file, sep='\t')
+#            return reps_df
+    #reps_df = pd.DataFrame()
+    #for rep in range(1,kwargs.get('num_reps',1)+1):
+    #curr_seed = None
+    #if cv_seed is not None:
+    #    curr_seed = cv_seed + rep-1
+    eval_type = cv.get_output_prefix(folds, kwargs.get('num_reps',1), **kwargs)
+    df = load_alg_results(
+        dataset, alg, alg_params, 
+        results_dir=results_dir, eval_type=eval_type, **kwargs)
+    add_dataset_settings(dataset, df) 
+        #df['rep'] = rep
+        #reps_df = pd.concat([reps_df, df])
+#    if kwargs.get('num_reps',1) > 1 and len(reps_df) > 0:
+#        print("Writing %s" % (rep_file)) 
+#        reps_df.to_csv(rep_file, sep='\t')
+    return df
 
 
 def add_dataset_settings(dataset, df):
