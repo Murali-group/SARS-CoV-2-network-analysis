@@ -82,8 +82,9 @@ def evaluate_ground_truth(
         eprec_vals = []
         if early_prec is not None:
             # compute the early precision at specified values
+            pred_ranks = [rank for _,_,rank,_,_ in pos_neg_stats] 
             eprec_vals = compute_early_prec(
-                prec, recall, pos_neg_stats, early_prec, term_num_pos[term])
+                prec, recall, recall_vals=early_prec, pred_ranks=pred_ranks, num_pos=term_num_pos[term])
         term_stats[term] = (fmax, avgp, auprc, auroc, eprec_vals)
         if kwargs['verbose']:
             print("%s fmax: %0.4f" % (term, fmax))
@@ -270,7 +271,23 @@ def compute_auprc_auroc(pos_scores, neg_scores):
 #    return auroc
 
 
-def compute_early_prec(prec, rec, pos_neg_stats, recall_vals, num_pos):
+def compute_early_prec(prec, rec, recall_vals=[0.1], pred_ranks=None, num_pos=None):
+    """
+    Compute the precision at specific values of recall
+    *prec*: list of precision values
+    *rec*: list of recall values
+    *recall_vals*: list of recall points for which to compute precision.  
+        If 'k' is with the value (e.g., "k2"), then find the precision after k*num_pos predictions have been made
+
+    The following two options are only used if 'k' recall vals are passed in:
+    *pred_ranks*: list that gives the prediction rank of the values in *prec* and *rec*, 
+        which would be used to find the specific point where k*num_pos predictions lie on the prec/rec curve
+        For example, suppose num_pos=10, num_neg=30, and num_nodes=100. *prec*, *rec*, and *pred_ranks* would each have 40 values, 
+        and *pred_ranks* would contain the rank of the pos and neg nodes among the 100 nodes.
+    *num_pos*: original number of positive examples for this term
+
+    *returns*: A list of precision values at the specified *recall_vals*
+    """
     early_prec_values = []
     for curr_recall in recall_vals:
         # if a k recall is specified, get the precision at the recall which is k * # ann in the left-out species
@@ -278,9 +295,9 @@ def compute_early_prec(prec, rec, pos_neg_stats, recall_vals, num_pos):
             k_val = float(curr_recall.replace('k',''))
             num_nodes_to_get = k_val * num_pos 
             # the pos_neg_stats tracks the prec for every node.
-            # So find the precision value for first node with an index >= (k * # ann)
-            for idx, (_, _, _, _, curr_num_pos) in enumerate(pos_neg_stats): 
-                if curr_num_pos >= num_nodes_to_get:
+            # So find the precision value for first node with a rank >= (k * # ann)
+            for idx, rank in enumerate(pred_ranks): 
+                if rank >= num_nodes_to_get:
                     break
             # get the precision at the corresponding index
             p = prec[idx]
