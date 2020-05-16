@@ -1,6 +1,8 @@
 # don't add the outputs or temporary/test files
 outputs*/
 *test*
+datasets/
+fss_inputs/
 # python
 *.pyc
 __pycache__
