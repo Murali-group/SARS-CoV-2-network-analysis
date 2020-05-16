@@ -2,19 +2,22 @@
 Analysis of SARS-CoV-2 molecular networks
 
 ## Getting Started
-Required packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, wget, tqdm
+- Required Python packages: networkx, numpy, scipy, pandas, sklearn, pyyaml, rpy2, wget, tqdm, graphspace_python
+- Required R packages: PPROC
+- Recommended R packages: clusterProfiler, org.Hs.eg.db
 
-To install the required packages:
+We recommend using [Anaconda](https://www.anaconda.com/) for Python, especially to access the needed R packages. To setup your environment, use the following commands:
 
 ```
-pip3 install --user -r requirements.txt
-```
-  
-Optional: create a virtual environment with anaconda
-```
-conda create -n sarscov2-net python=3.7
+conda create -n sarscov2-net python=3.7 r=3.6
 conda activate sarscov2-net
 pip install -r requirements.txt
+```
+To install the R packages:
+```
+R -e "install.packages('https://cran.r-project.org/src/contrib/PRROC_1.3.1.tar.gz', type = 'source')"
+conda install -c bioconda bioconductor-clusterprofiler
+"""
 ```
 
 ## Download Datasets
@@ -52,8 +55,45 @@ python src/FastSinkSource/run_eval_algs.py  \
   --num-pred-to-write -1
 ```
 
-#### TODO Compare overlap of top predictions with various gene sets ([#6](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/6))
-#### TODO Post sub-network of the top predictions and their scores to GraphSpace
+#### Test for enrichment of top predictions with various gene sets ([#6](https://github.com/Murali-group/SARS-CoV-2-network-analysis/issues/6))
+After the predictions have been generated, you can test for the enrichment of various genesets among the top _k_ predictions.
+
+The following command will test for enrichment of the top 332 predictions of each algorithm, and on each dataset/network in the config file:
+```
+python src/Enrichment/fss_enrichment.py \
+    --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
+    --k-to-test 332 --file-per-alg
+```
+
+TODO Currently only tests for enrichment of GO terms (BP, MF, CC).
+
+To test for enrichment of any given list of genes (e.g., Krogan nodes), use the following type of command:
+```
+python src/Enrichment/enrichment.py \
+  --prot-list-file fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/2020-03-24-sarscov2-human-ppi.txt \
+  --prot-universe-file fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt \
+  --out-pref outputs/enrichment/krogan \
+  --add-prot-list-to-prot-universe
+```
+
+#### Post sub-network of the top predictions and their scores to GraphSpace
+https://graphspace.org/ allows you to visualize and interact with the predictions made by the methods. In addition, you can share graphs with a group to easily allow others to do the same. 
+
+Here's an example of how to post the top 5 predictions made by GM+ when using STRING, and the shortest paths from those to the virus proteins:
+```
+python src/graphspace/sars_cov2_post_to_gs.py \
+  --config fss_inputs/config_files/stringv11/400-nf5-nr100.yaml \
+  --sarscov2-human-ppis datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv \
+  --user <email> --pass <password> \
+  --k-to-test 5 --name-postfix=-test \
+  --alg genemaniaplus \
+  --parent-nodes
+```
+
+<!---
+When making predictions for drugs, you can a
+--->
+
 ### Cross Validation
 Similar to the previous section, the options to run cross validation can either be set in the config file under `fastsinksource_pipeline_settings -> eval_settings`, or passed directly to `run_eval_algs.py`. The relevant options are below. See `python src/FastSinkSource/run_eval_algs.py --help` for more details.
   - `cross_validation_folds`

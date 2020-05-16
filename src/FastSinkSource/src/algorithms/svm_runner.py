@@ -1,5 +1,5 @@
 
-from tqdm import tqdm, trange
+#from tqdm import tqdm, trange
 #from rpy2.robjects import *
 #from rpy2 import robjects as ro
 import numpy as np
@@ -48,11 +48,11 @@ def run(run_obj):
         run_obj.cv = False
         train_mat = ann_mat
         test_mat = ann_mat
-    
+
     # stores the scores for all the terms
     scores = sparse.lil_matrix(ann_mat.shape, dtype=np.float)        #   dim: term x genes
-    
-    for term in tqdm(run_obj.terms_to_run):    
+
+    for term in run_obj.terms_to_run:
         idx = run_obj.termidx[term]
 
         if run_obj.net_obj.weight_gmw is True:

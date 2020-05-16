@@ -124,6 +124,7 @@ dataset_settings:
 
 #            # couldn't download the file automatically, so I just put it in the right location
 #            # The name of the originally downloaded zip file is: drugbank_all_target_polypeptide_ids.csv.zip
+#            # downloaded from here: https://www.drugbank.ca/releases/latest#protein-identifiers
 #            # To parse the file, put the file 'all.csv' here: datasets/drug-targets/drugbank/all.csv
 #            # and uncomment this section
 #          - name: "drugbank"
@@ -243,8 +244,8 @@ dataset_settings:
 fastsinksource_pipeline_settings:
     # Base directory where the inputs to the FastSinkSource pipeline will be placed
     input_dir: "fss_inputs"
-    exp_name: "2020-03-sarscov2-human-ppi" 
-    pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi/pos.txt"
+    exp_name: "2020-03-sarscov2-human-ppi-ace2" 
+    pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt"
     # *name*: name of the corresponding downloaded network under "datasets_to_download"
     # *network_collection*: T/F use this flag to run all of the networks in the collection
     # *net_version*: if multiple network comparisons will be run, use this to distinguish between them
@@ -305,24 +306,25 @@ fastsinksource_pipeline_settings:
 #        drug_target_names: ["drugbank"]
 #        net_version: "tissuenet-v2-drugbank/hpa-rnaseq"
 
-    # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
-    # and corresponding options to pass to the script
-    genesets_to_test:
-    # *name*: name of the corresponding downloaded geneset under "datasets_to_download"
-    # *k_to_test*: list of k-values to get the top-k predictions to test. 
-    # *incremental_k_to_test*: list of 3 integers: starting k, ending k, and step size
-    # *pval_corr*: Method to use for multiple hypothesis testing correction.
-    #              options: "BF" (Bonferroni), "BH" (Benjamini-Hochberg)
-      - name: "covid19-crowd"
-        data_type: "genesets"
-        #k_to_test: [20, 50, 100]
-        incremental_k_to_test: [10, 100, 10]
-        pval_corr: "BF"
-      - name: "pharmgkb"
-        data_type: "drug-targets"
-        #k_to_test: [20, 50, 100]
-        incremental_k_to_test: [10, 100, 10]
-        pval_corr: "BF"
+        #    TODO finish implemented the genesets to test
+#    # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
+#    # and corresponding options to pass to the script
+#    genesets_to_test:
+#    # *name*: name of the corresponding downloaded geneset under "datasets_to_download"
+#    # *k_to_test*: list of k-values to get the top-k predictions to test. 
+#    # *incremental_k_to_test*: list of 3 integers: starting k, ending k, and step size
+#    # *pval_corr*: Method to use for multiple hypothesis testing correction.
+#    #              options: "BF" (Bonferroni), "BH" (Benjamini-Hochberg)
+#      - name: "covid19-crowd"
+#        data_type: "genesets"
+#        #k_to_test: [20, 50, 100]
+#        incremental_k_to_test: [10, 100, 10]
+#        pval_corr: "BF"
+#      - name: "pharmgkb"
+#        data_type: "drug-targets"
+#        #k_to_test: [20, 50, 100]
+#        incremental_k_to_test: [10, 100, 10]
+#        pval_corr: "BF"
 
     # the outputs will follow this structure:
     # outputs/<net_version>/<exp_name>/<alg_name>/output_files
