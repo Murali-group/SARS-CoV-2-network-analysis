@@ -1,0 +1,201 @@
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, logistic_regression, sinksource, svm
+	9 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  7.18it/s]100%|██████████| 1/1 [00:00<00:00,  7.13it/s]
+defaultdict(<class 'int'>, {'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.04837369918823242, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.048388650000000144})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  7.31it/s]100%|██████████| 1/1 [00:00<00:00,  7.29it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.03826260566711426, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.038269296000000175})
+Running genemania with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 10.10it/s]
+defaultdict(<class 'int'>, {'genemania-a1_0-tol1e-05_wall_time': 0.09342169761657715, 'genemania-a1_0-tol1e-05_process_time': 0.4340330459999997})
+Running genemaniaplus with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 10.48it/s]
+defaultdict(<class 'int'>, {'genemaniaplus-a1_0-tol1e-05_wall_time': 0.09093999862670898, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.7274899469999996})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 70.50it/s]
+defaultdict(<class 'int'>, {'local-l0_wall_time': 0.009769439697265625, 'local-l0_process_time': 0.07818326999999936})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 61.66it/s]
+defaultdict(<class 'int'>, {'localplus-l0_wall_time': 0.009713888168334961, 'localplus-l0_process_time': 0.07771817899999967})
+Running logistic_regression with these parameters: {'max_iters': 100}
+  0%|          | 0/1 [00:00<?, ?it/s]  0%|          | 0/1 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 360, in <module>
+    run(config_map, **kwargs)
+  File "src/FastSinkSource/run_eval_algs.py", line 130, in run
+    run_algs(alg_runners, **kwargs) 
+  File "src/FastSinkSource/run_eval_algs.py", line 331, in run_algs
+    run_obj.run()
+  File "src/FastSinkSource/src/algorithms/runner.py", line 77, in run
+    return LibMapper[self.name].run(self)
+  File "src/FastSinkSource/src/algorithms/logistic_regression_runner.py", line 115, in run
+    clf = logReg.training(X_train, lab, max_iters)
+  File "src/FastSinkSource/src/algorithms/logistic_regression.py", line 11, in training
+    logReg_clf.fit(P, labels)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/sklearn/linear_model/_logistic.py", line 1558, in fit
+    " class: %r" % classes_[0])
+ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: 1.0
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, logistic_regression, sinksource, svm
+	9 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  7.46it/s]100%|██████████| 1/1 [00:00<00:00,  7.41it/s]
+defaultdict(<class 'int'>, {'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.038457393646240234, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.03846843499999997})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  7.49it/s]100%|██████████| 1/1 [00:00<00:00,  7.46it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.03836941719055176, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.038371076999999865})
+Running genemania with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 11.05it/s]
+defaultdict(<class 'int'>, {'genemania-a1_0-tol1e-05_wall_time': 0.08490538597106934, 'genemania-a1_0-tol1e-05_process_time': 0.41318396400000035})
+Running genemaniaplus with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 11.19it/s]
+defaultdict(<class 'int'>, {'genemaniaplus-a1_0-tol1e-05_wall_time': 0.08487892150878906, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.6788646839999997})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 122.00it/s]
+defaultdict(<class 'int'>, {'local-l0_wall_time': 0.003901958465576172, 'local-l0_process_time': 0.031220025999999734})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 97.91it/s]
+defaultdict(<class 'int'>, {'localplus-l0_wall_time': 0.0039052963256835938, 'localplus-l0_process_time': 0.03123543299999998})
+Running logistic_regression with these parameters: {'max_iters': 100}
+  0%|          | 0/1 [00:00<?, ?it/s]  0%|          | 0/1 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 360, in <module>
+    run(config_map, **kwargs)
+  File "src/FastSinkSource/run_eval_algs.py", line 130, in run
+    run_algs(alg_runners, **kwargs) 
+  File "src/FastSinkSource/run_eval_algs.py", line 331, in run_algs
+    run_obj.run()
+  File "src/FastSinkSource/src/algorithms/runner.py", line 77, in run
+    return LibMapper[self.name].run(self)
+  File "src/FastSinkSource/src/algorithms/logistic_regression_runner.py", line 115, in run
+    clf = logReg.training(X_train, lab, max_iters)
+  File "src/FastSinkSource/src/algorithms/logistic_regression.py", line 11, in training
+    logReg_clf.fit(P, labels)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/sklearn/linear_model/_logistic.py", line 1558, in fit
+    " class: %r" % classes_[0])
+ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: 1.0
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, logistic_regression, sinksource, svm
+	9 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  7.49it/s]100%|██████████| 1/1 [00:00<00:00,  7.46it/s]
+defaultdict(<class 'int'>, {'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.03832721710205078, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.03832737900000005})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.94it/s]100%|██████████| 1/1 [00:00<00:00,  6.89it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.048616647720336914, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.04862984199999998})
+Running genemania with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  9.88it/s]100%|██████████| 1/1 [00:00<00:00,  9.83it/s]
+defaultdict(<class 'int'>, {'genemania-a1_0-tol1e-05_wall_time': 0.09568500518798828, 'genemania-a1_0-tol1e-05_process_time': 0.43370199799999964})
+Running genemaniaplus with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 10.32it/s]
+defaultdict(<class 'int'>, {'genemaniaplus-a1_0-tol1e-05_wall_time': 0.09232115745544434, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.7381882420000005})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 69.08it/s]
+defaultdict(<class 'int'>, {'local-l0_wall_time': 0.009975671768188477, 'local-l0_process_time': 0.07981667999999953})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 58.61it/s]
+defaultdict(<class 'int'>, {'localplus-l0_wall_time': 0.009941577911376953, 'localplus-l0_process_time': 0.07955038700000028})
+Running logistic_regression with these parameters: {'max_iters': 100}
+  0%|          | 0/1 [00:00<?, ?it/s]  0%|          | 0/1 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 360, in <module>
+    run(config_map, **kwargs)
+  File "src/FastSinkSource/run_eval_algs.py", line 130, in run
+    run_algs(alg_runners, **kwargs) 
+  File "src/FastSinkSource/run_eval_algs.py", line 331, in run_algs
+    run_obj.run()
+  File "src/FastSinkSource/src/algorithms/runner.py", line 77, in run
+    return LibMapper[self.name].run(self)
+  File "src/FastSinkSource/src/algorithms/logistic_regression_runner.py", line 115, in run
+    clf = logReg.training(X_train, lab, max_iters)
+  File "src/FastSinkSource/src/algorithms/logistic_regression.py", line 11, in training
+    logReg_clf.fit(P, labels)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/sklearn/linear_model/_logistic.py", line 1558, in fit
+    " class: %r" % classes_[0])
+ValueError: This solver needs samples of at least 2 classes in the data, but the data contains only one class: 1.0
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, sinksource
+	7 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.30it/s]100%|██████████| 1/1 [00:00<00:00,  6.27it/s]
+defaultdict(<class 'int'>, {'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.037828922271728516, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.037835440000000276})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  6.42it/s]100%|██████████| 1/1 [00:00<00:00,  6.37it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.037990570068359375, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.0379934030000002})
+Running genemania with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  9.41it/s]100%|██████████| 1/1 [00:00<00:00,  9.36it/s]
+defaultdict(<class 'int'>, {'genemania-a1_0-tol1e-05_wall_time': 0.10204815864562988, 'genemania-a1_0-tol1e-05_process_time': 0.4481508650000001})
+Running genemaniaplus with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00,  9.64it/s]100%|██████████| 1/1 [00:00<00:00,  9.59it/s]
+defaultdict(<class 'int'>, {'genemaniaplus-a1_0-tol1e-05_wall_time': 0.09955883026123047, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.796167724})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 70.48it/s]
+defaultdict(<class 'int'>, {'local-l0_wall_time': 0.009699344635009766, 'local-l0_process_time': 0.0776313420000001})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 70.97it/s]
+defaultdict(<class 'int'>, {'localplus-l0_wall_time': 0.00941014289855957, 'localplus-l0_process_time': 0.07530792699999989})
+Running sinksource with these parameters: {'alpha': 1.0, 'eps': '1e-4', 'max_iters': 1000}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:01<00:00,  1.02s/it]100%|██████████| 1/1 [00:01<00:00,  1.02s/it]
+defaultdict(<class 'int'>, {'sinksource-l0-a1_0-eps1e-4-maxi1000_wall_time': 0.9000236988067627, 'sinksource-l0-a1_0-eps1e-4-maxi1000_process_time': 0.90002695})
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksource doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksource//pred-scores-l0-a0_99-eps0-maxi10.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksourceplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksourceplus//pred-scores-l0-a0_99-eps0-maxi10.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemania doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemania//pred-scores-a1_0-tol1e-05.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemaniaplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemaniaplus//pred-scores-a1_0-tol1e-05.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//local doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//local//pred-scores-l0.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//localplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//localplus//pred-scores-l0.txt
+Dir outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//sinksource doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//sinksource//pred-scores-l0-a1_0-eps1e-4-maxi1000.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksource//pred-scores-l0-a0_99-eps0-maxi10-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksourceplus//pred-scores-l0-a0_99-eps0-maxi10-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemania//pred-scores-a1_0-tol1e-05-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemaniaplus//pred-scores-a1_0-tol1e-05-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//local//pred-scores-l0-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//localplus//pred-scores-l0-stats.txt
+Writing stats to outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//sinksource//pred-scores-l0-a1_0-eps1e-4-maxi1000-stats.txt
+{'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.037828922271728516, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.037835440000000276, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.037990570068359375, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.0379934030000002, 'genemania-a1_0-tol1e-05_wall_time': 0.10204815864562988, 'genemania-a1_0-tol1e-05_process_time': 0.4481508650000001, 'genemaniaplus-a1_0-tol1e-05_wall_time': 0.09955883026123047, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.796167724, 'local-l0_wall_time': 0.009699344635009766, 'local-l0_process_time': 0.0776313420000001, 'localplus-l0_wall_time': 0.00941014289855957, 'localplus-l0_process_time': 0.07530792699999989, 'sinksource-l0-a1_0-eps1e-4-maxi1000_wall_time': 0.9000236988067627, 'sinksource-l0-a1_0-eps1e-4-maxi1000_process_time': 0.90002695}
+Finished
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, sinksource
+	7 total runners
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksource//pred-scores-l0-a0_99-eps0-maxi10.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//fastsinksourceplus//pred-scores-l0-a0_99-eps0-maxi10.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemania//pred-scores-a1_0-tol1e-05.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//genemaniaplus//pred-scores-a1_0-tol1e-05.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//local//pred-scores-l0.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//localplus//pred-scores-l0.txt already exists. Use --forcealg to overwite
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-9606-uniprot-links-full-v11//sinksource//pred-scores-l0-a1_0-eps1e-4-maxi1000.txt already exists. Use --forcealg to overwite
+Generating inputs
+Running the algorithms
+{}
+Finished

@@ -1,0 +1,94 @@
+Dir fss_inputs/networks/stringv11-indv/400/sparse-nets doesn't exist. Creating it
+	creating sparse nets and writing to fss_inputs/networks/stringv11-indv/400/sparse-nets/c400-13-sparse-nets.mat
+0it [00:00, ?it/s]0it [00:00, ?it/s]
+Reading 1 STRING networks
+  0%|          | 0/1 [00:00<?, ?it/s]                                     Reading network from fss_inputs/networks/stringv11-indv/400/9606-uniprot-links-full-v11.txt.gz
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [01:32<00:00, 92.21s/it]100%|██████████| 1/1 [01:32<00:00, 92.22s/it]
+	18886 nodes and 977789 edges
+	relabeling node IDs with integers
+	converting graph to sparse matrices
+  0%|          | 0/13 [00:00<?, ?it/s]	getting subnetwork for 'neighborhood'
+  8%|▊         | 1/13 [00:12<02:33, 12.79s/it]	getting subnetwork for 'neighborhood_transferred'
+	0 edges. skipping.
+ 15%|█▌        | 2/13 [00:14<01:43,  9.40s/it]	getting subnetwork for 'fusion'
+ 23%|██▎       | 3/13 [00:15<01:09,  6.97s/it]	getting subnetwork for 'cooccurence'
+ 31%|███       | 4/13 [00:16<00:46,  5.19s/it]	getting subnetwork for 'homology'
+ 38%|███▊      | 5/13 [00:17<00:31,  3.95s/it]	getting subnetwork for 'coexpression'
+ 46%|████▌     | 6/13 [00:18<00:22,  3.15s/it]	getting subnetwork for 'coexpression_transferred'
+ 54%|█████▍    | 7/13 [00:22<00:20,  3.37s/it]	getting subnetwork for 'experiments'
+ 62%|██████▏   | 8/13 [00:29<00:21,  4.35s/it]	getting subnetwork for 'experiments_transferred'
+ 69%|██████▉   | 9/13 [00:31<00:15,  3.77s/it]	getting subnetwork for 'database'
+ 77%|███████▋  | 10/13 [00:36<00:12,  4.12s/it]	getting subnetwork for 'database_transferred'
+ 85%|████████▍ | 11/13 [00:41<00:08,  4.40s/it]	getting subnetwork for 'textmining'
+	0 edges. skipping.
+ 92%|█████████▏| 12/13 [00:42<00:03,  3.42s/it]	getting subnetwork for 'textmining_transferred'
+100%|██████████| 13/13 [00:51<00:00,  5.02s/it]100%|██████████| 13/13 [00:51<00:00,  3.98s/it]
+	writing sparse networks to fss_inputs/networks/stringv11-indv/400/sparse-nets/c400-13-sparse-nets.mat
+	writing node2idx labels to fss_inputs/networks/stringv11-indv/400/sparse-nets/c400-node-ids.txt
+	writing network names, which can be used to figure out which network is at which index in the sparse-nets file, to fss_inputs/networks/stringv11-indv/400/sparse-nets/c400-13-net-names.txt
+	normalizing the networks
+
+Setting up annotation matrix
+Reading positive and negative annotations for each protein from fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+Building a sparse matrix of annotations
+	1 terms, 332 prots, 332 annotations. 332 positives, 0 negatives
+	writing sparse annotations to fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/pos.txt.npz
+	reshaping 332 prots to 18886 prots (328 in common)
+Writing sparse annotations to fss_inputs/networks/stringv11-indv/400/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, local, localplus, logistic_regression, sinksource, svm
+	8 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]	term 2020-03-sarscov2-human-ppi: 328 positives, 0 negatives
+WARNING: 0 positive and/or 0 negative examples
+	Using average kernel
+	network weights: neighborhood: 0.09090909090909091, fusion: 0.09090909090909091, cooccurence: 0.09090909090909091, homology: 0.09090909090909091, coexpression: 0.09090909090909091, coexpression_transferred: 0.09090909090909091, experiments: 0.09090909090909091, experiments_transferred: 0.09090909090909091, database: 0.09090909090909091, database_transferred: 0.09090909090909091, textmining_transferred: 0.09090909090909091
+
+100%|██████████| 1/1 [00:00<00:00,  2.31it/s]100%|██████████| 1/1 [00:00<00:00,  2.31it/s]
+defaultdict(<class 'int'>, {'fastsinksource_weight_time': 0.30329026900000144, 'fastsinksource-gmw-l0-a0_99-eps0-maxi10_wall_time': 0.04567360877990723, 'fastsinksource-gmw-l0-a0_99-eps0-maxi10_process_time': 0.04565709599998513})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]	term 2020-03-sarscov2-human-ppi: 328 positives, 0 negatives
+WARNING: 0 positive and/or 0 negative examples
+	Using average kernel
+	network weights: neighborhood: 0.09090909090909091, fusion: 0.09090909090909091, cooccurence: 0.09090909090909091, homology: 0.09090909090909091, coexpression: 0.09090909090909091, coexpression_transferred: 0.09090909090909091, experiments: 0.09090909090909091, experiments_transferred: 0.09090909090909091, database: 0.09090909090909091, database_transferred: 0.09090909090909091, textmining_transferred: 0.09090909090909091
+
+100%|██████████| 1/1 [00:00<00:00,  2.57it/s]100%|██████████| 1/1 [00:00<00:00,  2.57it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus_weight_time': 0.2592498399999954, 'fastsinksourceplus-gmw-l0-a0_99-eps0-maxi10_wall_time': 0.04563593864440918, 'fastsinksourceplus-gmw-l0-a0_99-eps0-maxi10_process_time': 0.04563635400000976})
+Running genemania with these parameters: {'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]	term 2020-03-sarscov2-human-ppi: 328 positives, 0 negatives
+WARNING: 0 positive and/or 0 negative examples
+	Using average kernel
+	network weights: neighborhood: 0.09090909090909091, fusion: 0.09090909090909091, cooccurence: 0.09090909090909091, homology: 0.09090909090909091, coexpression: 0.09090909090909091, coexpression_transferred: 0.09090909090909091, experiments: 0.09090909090909091, experiments_transferred: 0.09090909090909091, database: 0.09090909090909091, database_transferred: 0.09090909090909091, textmining_transferred: 0.09090909090909091
+
+100%|██████████| 1/1 [00:00<00:00,  2.10it/s]100%|██████████| 1/1 [00:00<00:00,  2.10it/s]
+defaultdict(<class 'int'>, {'genemania_weight_time': 0.3576930670000138, 'genemania-gmw-a1_0-tol1e-05_wall_time': 0.10826778411865234, 'genemania-gmw-a1_0-tol1e-05_process_time': 0.6197215450000044})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]	term 2020-03-sarscov2-human-ppi: 328 positives, 0 negatives
+WARNING: 0 positive and/or 0 negative examples
+	Using average kernel
+	network weights: neighborhood: 0.09090909090909091, fusion: 0.09090909090909091, cooccurence: 0.09090909090909091, homology: 0.09090909090909091, coexpression: 0.09090909090909091, coexpression_transferred: 0.09090909090909091, experiments: 0.09090909090909091, experiments_transferred: 0.09090909090909091, database: 0.09090909090909091, database_transferred: 0.09090909090909091, textmining_transferred: 0.09090909090909091
+
+100%|██████████| 1/1 [00:00<00:00,  3.36it/s]100%|██████████| 1/1 [00:00<00:00,  3.36it/s]
+defaultdict(<class 'int'>, {'local_weight_time': 1.006107988000025, 'local-gmw-l0_wall_time': 0.004572391510009766, 'local-gmw-l0_process_time': 0.004577990000001364})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]	term 2020-03-sarscov2-human-ppi: 328 positives, 0 negatives
+WARNING: 0 positive and/or 0 negative examples
+	Using average kernel
+	network weights: neighborhood: 0.09090909090909091, fusion: 0.09090909090909091, cooccurence: 0.09090909090909091, homology: 0.09090909090909091, coexpression: 0.09090909090909091, coexpression_transferred: 0.09090909090909091, experiments: 0.09090909090909091, experiments_transferred: 0.09090909090909091, database: 0.09090909090909091, database_transferred: 0.09090909090909091, textmining_transferred: 0.09090909090909091
+
+100%|██████████| 1/1 [00:00<00:00,  3.70it/s]100%|██████████| 1/1 [00:00<00:00,  3.69it/s]
+defaultdict(<class 'int'>, {'localplus_weight_time': 0.2618333340000163, 'localplus-gmw-l0_wall_time': 0.004560232162475586, 'localplus-gmw-l0_process_time': 0.004565116000009084})
+Running logistic_regression with these parameters: {'max_iters': 100}
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 360, in <module>
+    run(config_map, **kwargs)
+  File "src/FastSinkSource/run_eval_algs.py", line 130, in run
+    run_algs(alg_runners, **kwargs) 
+  File "src/FastSinkSource/run_eval_algs.py", line 331, in run_algs
+    run_obj.run()
+  File "src/FastSinkSource/src/algorithms/runner.py", line 72, in run
+    return LibMapper[self.name].run(self)
+  File "src/FastSinkSource/src/algorithms/logistic_regression_runner.py", line 61, in run
+    if run_obj.train_mat is not None and run_obj.test_mat is not None:
+AttributeError: 'Runner' object has no attribute 'train_mat'

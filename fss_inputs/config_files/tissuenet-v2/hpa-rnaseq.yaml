@@ -1,0 +1,208 @@
+algs:
+  fastsinksource:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  fastsinksourceplus:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  genemania:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  genemaniaplus:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  local:
+    should_run:
+    - true
+  localplus:
+    should_run:
+    - true
+  logistic_regression:
+    max_iters:
+    - 100
+    should_run:
+    - false
+  sinksource:
+    alpha:
+    - 1.0
+    eps:
+    - 1e-4
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    max_iters:
+    - 1000
+    should_run:
+    - false
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-adrenal
+    net_files:
+    - adrenal.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-appendix
+    net_files:
+    - appendix.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-bonemarrow
+    net_files:
+    - bonemarrow.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain
+    net_files:
+    - brain.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-colon
+    net_files:
+    - colon.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-endometrium
+    net_files:
+    - endometrium.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-esophagus
+    net_files:
+    - esophagus.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-fallopiantube
+    net_files:
+    - fallopiantube.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-fat
+    net_files:
+    - fat.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-gallbladder
+    net_files:
+    - gallbladder.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-heart
+    net_files:
+    - heart.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-kidney
+    net_files:
+    - kidney.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-liver
+    net_files:
+    - liver.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-lung
+    net_files:
+    - lung.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-lymphnode
+    net_files:
+    - lymphnode.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-ovary
+    net_files:
+    - ovary.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-placenta
+    net_files:
+    - placenta.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-prostate
+    net_files:
+    - prostate.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-rectum
+    net_files:
+    - rectum.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-salivarygland
+    net_files:
+    - salivarygland.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skeletalmuscle
+    net_files:
+    - skeletalmuscle.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skin
+    net_files:
+    - skin.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-smallintestine
+    net_files:
+    - smallintestine.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-smoothmuscle
+    net_files:
+    - smoothmuscle.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-spleen
+    net_files:
+    - spleen.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-stomach
+    net_files:
+    - stomach.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-testis
+    net_files:
+    - testis.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-thyroid
+    net_files:
+    - thyroid.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-tonsil
+    net_files:
+    - tonsil.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  input_dir: fss_inputs
+output_settings:
+  output_dir: outputs/

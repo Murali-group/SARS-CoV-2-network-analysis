@@ -1,0 +1,11 @@
+neighborhood
+fusion
+cooccurence
+homology
+coexpression
+coexpression_transferred
+experiments
+experiments_transferred
+database
+database_transferred
+textmining_transferred

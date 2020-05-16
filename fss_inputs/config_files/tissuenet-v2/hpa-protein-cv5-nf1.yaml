@@ -1,0 +1,292 @@
+algs:
+  fastsinksource:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  fastsinksourceplus:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  genemania:
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  local:
+    should_run:
+    - true
+  localplus:
+    should_run:
+    - true
+  logistic_regression:
+    max_iters:
+    - 100
+    should_run:
+    - true
+  sinksource:
+    alpha:
+    - 1.0
+    eps:
+    - 1e-4
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    max_iters:
+    - 1000
+    should_run:
+    - true
+eval_settings:
+  cross_validation_folds: 5
+  sample_neg_examples_factor: 1
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-adipocytes
+    net_files:
+    - adipocytes.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-appendix
+    net_files:
+    - appendix.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-bone-marrow_hematopoietic-cells
+    net_files:
+    - bone-marrow_hematopoietic-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-cerebellum
+    net_files:
+    - brain-cerebellum.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-cerebral-coretx
+    net_files:
+    - brain-cerebral-coretx.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-hippocampus
+    net_files:
+    - brain-hippocampus.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-lateral-ventricle
+    net_files:
+    - brain-lateral-ventricle.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-breast
+    net_files:
+    - breast.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-bronchus_respiratory-epithelial-cells
+    net_files:
+    - bronchus_respiratory-epithelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-cervix
+    net_files:
+    - cervix.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-chondrocytes
+    net_files:
+    - chondrocytes.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-colon
+    net_files:
+    - colon.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-duodenum_glandular-cells
+    net_files:
+    - duodenum_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-endometrium
+    net_files:
+    - endometrium.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-epididymis_glandular-cells
+    net_files:
+    - epididymis_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-esophagus_squamous-epithelial-cells
+    net_files:
+    - esophagus_squamous-epithelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-fallopian-tube_glandular-cells
+    net_files:
+    - fallopian-tube_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-fibroblasts
+    net_files:
+    - fibroblasts.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-gallbladder_glandular-cells
+    net_files:
+    - gallbladder_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-glandular-cells
+    net_files:
+    - glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-heart-muscle_myocytes
+    net_files:
+    - heart-muscle_myocytes.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-kidney
+    net_files:
+    - kidney.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-liver
+    net_files:
+    - liver.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-lung
+    net_files:
+    - lung.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-lymph-node
+    net_files:
+    - lymph-node.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-nasopharynx_respiratory-epithelial-cells
+    net_files:
+    - nasopharynx_respiratory-epithelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-oral-mucosa_squamous-epithelial-cells
+    net_files:
+    - oral-mucosa_squamous-epithelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-ovary
+    net_files:
+    - ovary.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-pancreas
+    net_files:
+    - pancreas.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-parathyroid-gland
+    net_files:
+    - parathyroid-gland.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-peripheral-nerve
+    net_files:
+    - peripheral-nerve.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-placenta
+    net_files:
+    - placenta.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-prostate_glandular-cells
+    net_files:
+    - prostate_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-rectum_glandular-cells
+    net_files:
+    - rectum_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-salivary-gland_glandular-cells
+    net_files:
+    - salivary-gland_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-seminal-vesicle_glandular-cells
+    net_files:
+    - seminal-vesicle_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skeletal-muscle_myocytes
+    net_files:
+    - skeletal-muscle_myocytes.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skin
+    net_files:
+    - skin.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-small-intestine_glandular-cells
+    net_files:
+    - small-intestine_glandular-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-smooth-muscle_smooth-muscle-cells
+    net_files:
+    - smooth-muscle_smooth-muscle-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-spleen
+    net_files:
+    - spleen.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-stomach
+    net_files:
+    - stomach.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-testis
+    net_files:
+    - testis.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-thyroid-gland
+    net_files:
+    - thyroid-gland.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-tonsil
+    net_files:
+    - tonsil.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-urinary-bladder_urothelial-cells
+    net_files:
+    - urinary-bladder_urothelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-vagina_squamous-epithelial-cells
+    net_files:
+    - vagina_squamous-epithelial-cells.tsv.gz
+    net_version: networks/tissuenet-v2/hpa-protein
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  input_dir: fss_inputs
+output_settings:
+  output_dir: outputs/

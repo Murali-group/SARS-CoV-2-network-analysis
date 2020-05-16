@@ -1,0 +1,283 @@
+algs:
+  fastsinksource:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  fastsinksourceplus:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  genemania:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  genemaniaplus:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  local:
+    should_run:
+    - true
+  localplus:
+    should_run:
+    - true
+  logistic_regression:
+    max_iters:
+    - 100
+    should_run:
+    - false
+  sinksource:
+    alpha:
+    - 1.0
+    eps:
+    - 1e-4
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    max_iters:
+    - 1000
+    should_run:
+    - false
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-adipose-subcutaneous
+    net_files:
+    - adipose-subcutaneous.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-adipose-visceral-omentum
+    net_files:
+    - adipose-visceral-omentum.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-artery-aorta
+    net_files:
+    - artery-aorta.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-artery-coronary
+    net_files:
+    - artery-coronary.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-artery-tibial
+    net_files:
+    - artery-tibial.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-amygdala
+    net_files:
+    - brain-amygdala.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-anterior-cingulate-cortex-ba24
+    net_files:
+    - brain-anterior-cingulate-cortex-ba24.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-caudate-basal-ganglia
+    net_files:
+    - brain-caudate-basal-ganglia.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-cerebellar-hemisphere
+    net_files:
+    - brain-cerebellar-hemisphere.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-cerebellum
+    net_files:
+    - brain-cerebellum.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-cortex
+    net_files:
+    - brain-cortex.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-frontal-cortex-ba9
+    net_files:
+    - brain-frontal-cortex-ba9.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-hippocampus
+    net_files:
+    - brain-hippocampus.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-hypothalamus
+    net_files:
+    - brain-hypothalamus.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-nucleus-accumbens-basal-ganglia
+    net_files:
+    - brain-nucleus-accumbens-basal-ganglia.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-putamen-basal-ganglia
+    net_files:
+    - brain-putamen-basal-ganglia.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-spinal-cord-cervical-c-1
+    net_files:
+    - brain-spinal-cord-cervical-c-1.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-brain-substantia-nigra
+    net_files:
+    - brain-substantia-nigra.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-breast-mammary-tissue
+    net_files:
+    - breast-mammary-tissue.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-cells-ebv-transformed-lymphocytes
+    net_files:
+    - cells-ebv-transformed-lymphocytes.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-cells-transformed-fibroblasts
+    net_files:
+    - cells-transformed-fibroblasts.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-colon-sigmoid
+    net_files:
+    - colon-sigmoid.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-esophagus-gastroesophageal-junction
+    net_files:
+    - esophagus-gastroesophageal-junction.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-esophagus-mucosa
+    net_files:
+    - esophagus-mucosa.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-esophagus-muscularis
+    net_files:
+    - esophagus-muscularis.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-heart-atrial-appendage
+    net_files:
+    - heart-atrial-appendage.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-heart-left-ventricle
+    net_files:
+    - heart-left-ventricle.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-liver
+    net_files:
+    - liver.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-lung
+    net_files:
+    - lung.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-minor-salivary-gland
+    net_files:
+    - minor-salivary-gland.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-muscle-skeletal
+    net_files:
+    - muscle-skeletal.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-nerve-tibial
+    net_files:
+    - nerve-tibial.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-ovary
+    net_files:
+    - ovary.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-pituitary
+    net_files:
+    - pituitary.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-prostate
+    net_files:
+    - prostate.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skin-not-sun-exposed-suprapubic
+    net_files:
+    - skin-not-sun-exposed-suprapubic.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-skin-sun-exposed-lower-leg
+    net_files:
+    - skin-sun-exposed-lower-leg.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-stomach
+    net_files:
+    - stomach.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-testis
+    net_files:
+    - testis.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-thyroid
+    net_files:
+    - thyroid.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-uterus
+    net_files:
+    - uterus.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-vagina
+    net_files:
+    - vagina.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-whole-blood
+    net_files:
+    - whole-blood.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  - exp_name: 2020-03-sarscov2-human-ppi-whole-brain
+    net_files:
+    - whole-brain.tsv.gz
+    net_version: networks/tissuenet-v2/gtex-rnaseq
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi/pos.txt
+  input_dir: fss_inputs
+output_settings:
+  output_dir: outputs/

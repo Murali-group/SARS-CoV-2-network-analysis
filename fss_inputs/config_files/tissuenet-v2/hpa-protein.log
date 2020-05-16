@@ -1,0 +1,97 @@
+Reading network from fss_inputs/networks/tissuenet-v2/hpa-protein/adipocytes.tsv.gz
+	converting uniprot ids to node indexes / ids
+	creating sparse matrix
+### Matrix not symmetric!
+### Matrix converted to symmetric.
+	writing sparse matrix to fss_inputs/networks/tissuenet-v2/hpa-protein/adipocytes.tsv.npz
+	writing node2idx labels to fss_inputs/networks/tissuenet-v2/hpa-protein/adipocytes.tsv.npz-node-ids.txt
+
+Reading annotation matrix from fss_inputs/pos-neg/2020-03-sarscov2-human-ppi/pos.txt.npz
+	reshaping 332 prots to 4865 prots (149 in common)
+Writing sparse annotations to fss_inputs/networks/tissuenet-v2/hpa-protein/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, sinksource
+	7 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 82.31it/s]
+defaultdict(<class 'int'>, {'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.002099275588989258, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.0020977320000001853})
+Running fastsinksourceplus with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 88.97it/s]
+defaultdict(<class 'int'>, {'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.002096891403198242, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.002087187999999962})
+Running genemania with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 94.39it/s]
+defaultdict(<class 'int'>, {'genemania-a1_0-tol1e-05_wall_time': 0.008903741836547852, 'genemania-a1_0-tol1e-05_process_time': 0.00890434700000009})
+Running genemaniaplus with these parameters: {'alpha': 1.0, 'tol': '1e-05'}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 94.43it/s]
+defaultdict(<class 'int'>, {'genemaniaplus-a1_0-tol1e-05_wall_time': 0.008972406387329102, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.008953634000000044})
+Running local with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 493.74it/s]
+defaultdict(<class 'int'>, {'local-l0_wall_time': 0.00024580955505371094, 'local-l0_process_time': 0.00024529799999983837})
+Running localplus with these parameters: {}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 471.48it/s]
+defaultdict(<class 'int'>, {'localplus-l0_wall_time': 0.000232696533203125, 'localplus-l0_process_time': 0.0002327230000003233})
+Running sinksource with these parameters: {'alpha': 1.0, 'eps': '1e-4', 'max_iters': 1000}
+  0%|          | 0/1 [00:00<?, ?it/s]100%|██████████| 1/1 [00:00<00:00, 18.07it/s]
+defaultdict(<class 'int'>, {'sinksource-l0-a1_0-eps1e-4-maxi1000_wall_time': 0.04536008834838867, 'sinksource-l0-a1_0-eps1e-4-maxi1000_process_time': 0.045363920000000224})
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksource doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksource//pred-scores-l0-a0_99-eps0-maxi10.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksourceplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksourceplus//pred-scores-l0-a0_99-eps0-maxi10.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemania doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemania//pred-scores-a1_0-tol1e-05.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemaniaplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemaniaplus//pred-scores-a1_0-tol1e-05.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//local doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//local//pred-scores-l0.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//localplus doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//localplus//pred-scores-l0.txt
+Dir outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//sinksource doesn't exist. Creating it
+	writing top 10 scores to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//sinksource//pred-scores-l0-a1_0-eps1e-4-maxi1000.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksource//pred-scores-l0-a0_99-eps0-maxi10-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//fastsinksourceplus//pred-scores-l0-a0_99-eps0-maxi10-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemania//pred-scores-a1_0-tol1e-05-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//genemaniaplus//pred-scores-a1_0-tol1e-05-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//local//pred-scores-l0-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//localplus//pred-scores-l0-stats.txt
+Writing stats to outputs//networks/tissuenet-v2/hpa-protein/2020-03-sarscov2-human-ppi-adipocytes//sinksource//pred-scores-l0-a1_0-eps1e-4-maxi1000-stats.txt
+{'fastsinksource-l0-a0_99-eps0-maxi10_wall_time': 0.002099275588989258, 'fastsinksource-l0-a0_99-eps0-maxi10_process_time': 0.0020977320000001853, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_wall_time': 0.002096891403198242, 'fastsinksourceplus-l0-a0_99-eps0-maxi10_process_time': 0.002087187999999962, 'genemania-a1_0-tol1e-05_wall_time': 0.008903741836547852, 'genemania-a1_0-tol1e-05_process_time': 0.00890434700000009, 'genemaniaplus-a1_0-tol1e-05_wall_time': 0.008972406387329102, 'genemaniaplus-a1_0-tol1e-05_process_time': 0.008953634000000044, 'local-l0_wall_time': 0.00024580955505371094, 'local-l0_process_time': 0.00024529799999983837, 'localplus-l0_wall_time': 0.000232696533203125, 'localplus-l0_process_time': 0.0002327230000003233, 'sinksource-l0-a1_0-eps1e-4-maxi1000_wall_time': 0.04536008834838867, 'sinksource-l0-a1_0-eps1e-4-maxi1000_process_time': 0.045363920000000224}
+Finished
+Reading network from fss_inputs/networks/tissuenet-v2/hpa-protein/appendix.tsv.gz
+	converting uniprot ids to node indexes / ids
+	creating sparse matrix
+### Matrix not symmetric!
+### Matrix converted to symmetric.
+	writing sparse matrix to fss_inputs/networks/tissuenet-v2/hpa-protein/appendix.tsv.npz
+	writing node2idx labels to fss_inputs/networks/tissuenet-v2/hpa-protein/appendix.tsv.npz-node-ids.txt
+Reading annotation matrix from fss_inputs/networks/tissuenet-v2/hpa-protein/sparse-anns/2020-03-sarscov2-human-ppi-pos.npz
+Algs to run: fastsinksource, fastsinksourceplus, genemania, genemaniaplus, local, localplus, sinksource
+	7 total runners
+Generating inputs
+Running the algorithms
+Running fastsinksource with these parameters: {'alpha': 0.99, 'eps': 0, 'max_iters': 10}
+	storing scores for only 4865 target prots
+  0%|          | 0/1 [00:00<?, ?it/s]  0%|          | 0/1 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 360, in <module>
+    run(config_map, **kwargs)
+  File "src/FastSinkSource/run_eval_algs.py", line 130, in run
+    run_algs(alg_runners, **kwargs) 
+  File "src/FastSinkSource/run_eval_algs.py", line 331, in run_algs
+    run_obj.run()
+  File "src/FastSinkSource/src/algorithms/runner.py", line 77, in run
+    return LibMapper[self.name].run(self)
+  File "src/FastSinkSource/src/algorithms/fastsinksource_runner.py", line 120, in run
+    term_scores[idx] = scores
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/scipy/sparse/lil.py", line 336, in __setitem__
+    IndexMixin.__setitem__(self, key, x)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/scipy/sparse/_index.py", line 122, in __setitem__
+    x, _ = _broadcast_arrays(x, i)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/scipy/sparse/_index.py", line 24, in _broadcast_arrays
+    x, y = np.broadcast_arrays(a, b)
+  File "<__array_function__ internals>", line 6, in broadcast_arrays
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/numpy/lib/stride_tricks.py", line 264, in broadcast_arrays
+    shape = _broadcast_shape(*args)
+  File "/home/tasnina/anaconda3/envs/sarscov2-net/lib/python3.7/site-packages/numpy/lib/stride_tricks.py", line 191, in _broadcast_shape
+    b = np.broadcast(*args[:32])
+ValueError: shape mismatch: objects cannot be broadcast to a single shape
