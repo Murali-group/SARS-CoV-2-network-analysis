@@ -1,6 +1,7 @@
 """
 Script to test for enrichment of FSS outputs
 """
+#Was facing problem while importing module, Will have to fix this path
 import sys
 sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
 import argparse
