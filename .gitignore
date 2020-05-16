@@ -1,8 +1,6 @@
 # don't add the outputs or temporary/test files
 outputs*/
 *test*
-datasets/
-fss_inputs/
 # python
 *.pyc
 __pycache__
@@ -13,4 +11,5 @@ __pycache__
 # emacs backup files
 *~
 *#
-
+datasets/
+fss_inputs/
