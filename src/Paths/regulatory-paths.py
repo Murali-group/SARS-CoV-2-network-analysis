@@ -1,38 +1,307 @@
-# standalone script to parse EMMAA files from NDEx and analyse them for logical paths from a source to a target.
+# standalone script to parse EMMAA, DrugBank, and Krogan files and analyse them for logical paths from a source to a target.
 
-
-from ndex2.nice_cx_network import NiceCXNetwork
-import ndex2.client as nc
-import ndex2
-import networkx as nx
 import pandas as pd
 import os
+import xml.etree.ElementTree as xml
+import argparse
+import json
 
+class Node:
+    def __init__(self, id, type):
+        self.id = id
+        self.type = type
+        self.edges = set()
 
+class Edge:
+    def __init__(self, node, weight, description):
+        self.node = node
+        self.description = description
+        if (True):
+          self.weight = 1
+#TODO config based condition
+        else:
+          self.weight = weight
+
+    def __hash__(self):
+        return hash(self.node.id) + hash(self.weight)
+
+    def __eq__(self, other):
+        if isinstance(other, Edge):
+            return self.node.id == other.node.id and self.weight == other.weight
+        else:
+            return False
+
+human_ppi_nodes = {}
+virus_human_ppi_nodes = {}
+drug_target_nodes = {}
+
+def parse_args():
+    parser = setup_opts()
+    args = parser.parse_args()
+    kwargs = vars(args)
+    print("Starting with configuration: " + str(vars(args)))
+    if args.config:
+        with open(args.config, 'r') as conf:
+            #config_map = yaml.load(conf, Loader=yaml.FullLoader)
+            config_map = yaml.load(conf)
+    else:
+        config_map = {}
+
+    return config_map, kwargs
+
+def setup_opts():
+    ## Parse command line args.
+    parser = argparse.ArgumentParser(description="Script to compute activating and inhibatory regulatory paths from drug candidates to each viral protein.")
+
+    # general parameters
+    group = parser.add_argument_group('Main Options')
+    
+    group.add_argument('--config', type=str, default="",
+                       help="Configuration file used to run TODO")
+    
+    group.add_argument('--virus-human-ppis', type=str, default="datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv",
+                       help="Viral proteins and the human proteins they interact with. PPIs should be the first two columns, as in the Krogan data set obtained from https://www.biorxiv.org/content/biorxiv/early/2020/03/22/2020.03.22.002386/DC5/embed/media-5.xlsx?download=true." +
+                       "Default=datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi.tsv")
+    
+    group.add_argument('--drug-targets', type=str, default="datasets/drug-targets/drugbank/drugbank.xml",
+                       help="Drugs and the human proteins they interact with, as in the full database XML obtained from DrugBank: https://www.drugbank.ca/releases/5-1-6/downloads/all-full-database" + 
+                       "Default=datasets/drug-targets/drugbank/drugbank.xml") 
+
+    group.add_argument('--human-regulatory-network', type=str, default="datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.json",
+                       help="Regulatory network of human protein-protein interactions, as in the network obtained from EMMAA: https://emmaa.s3.amazonaws.com/assembled/covid19/statements_2020-05-11-18-12-05.json" +
+                       "Default=datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.json")
+    
+    group.add_argument('--output', type=str, default="output",
+                       help="Directory in which output should be written" +
+                       "Default=output")
+
+    group.add_argument('--pathlinker-output', type=str, default = None,
+                       help="Directory containing PathLinker output that should be annotated" +
+                       "Default=None")
+
+    return parser
 
 def main(config_map, **kwargs):
     """
     *config_map*: everything in the config file
     *kwargs*: all of the options passed into the script
     """
-    # TODO: There should be a command line option to convert the cx file into other formats, which we can process further quite easily.
 
-    # convert file into cx format (used by NDEx). TODO: read this file name from a config file.
-    emmaa_covid_digraph_cx = ndex2.create_nice_cx_from_file('../datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.cx')
-    emmaa_covid_digraph_cx.print_summary()
-    # convert cx-format graph to NetworkX format. notice that second last letter is 'n' and not 'c', as in the previous variable.
-    emmaa_covid_digraph_nx = nx.DiGraph()
-    ndex2.nice_cx_network.DefaultNetworkXFactory().get_graph(emmaa_covid_digraph_cx, emmaa_covid_digraph_nx)
-    # I want to check how large the edgelist file is. 103 MB as a edge list vs. 176MB in cx format. TODO: read this file name from a config file.
-    #nx.write_edgelist(emmaa_covid_digraph_nx, '../datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.edgelist')
-
-    # TODO: compute various statistics on emmaa_covid_digraph_nx.
-    
     # TODO: add command-line or config file option to ignore some edge types.
     
     # read file of sources (e.g., predictions with scores/ranks). TODO: Should link to the overall pipeline to get the filenames automatically.
     
     # read file of targets (e.g., human proteins that interact with SARS-CoV-2 proteins). TODO: this file name should be in the master config file.
+    emmaa_activates = ['Activation', 'Complex', 'IncreaseAmount', 'Phosphorylation']
+    emmaa_inhibits = ['Inhibition', 'DecreaseAmount', 'Dephosphorylation']
+    print("Parsing Human Regulatory Network...")
+    with open(kwargs['human_regulatory_network']) as f:
+        network = json.load(f)
+        
+        for interaction in network:
+            if interaction['type'] in emmaa_activates:
+                weight = float(interaction['belief'])
+            elif interaction['type'] in emmaa_inhibits:
+                weight = -float(interaction['belief'])
+            else:
+                continue
+        
+            if 'subj' in interaction and 'obj' in interaction:
+                subject_name = interaction['subj']['name'].replace("\n", "")
+                object_name = interaction['obj']['name'].replace("\n", "")
+                if subject_name in human_ppi_nodes:
+                    subject_node = human_ppi_nodes[subject_name]
+                else:
+                    subject_node = Node(subject_name, 'human')
+                    human_ppi_nodes[subject_name] = subject_node
+                
+                if object_name in human_ppi_nodes:
+                    object_node = human_ppi_nodes[object_name]
+                else:
+                    object_node = Node(object_name, 'human')
+                    human_ppi_nodes[object_name] = object_node
+
+                edge = Edge(object_node, weight, interaction['type'])
+                subject_node.edges.add(edge)
+
+    # read file of sources (e.g., predictions with scores/ranks)
+    
+    drugbank_activates = ['activator', 'adduct', 'agonist', 'carrier', 'chaperone', 'catalytic activity',
+        'cofactor', 'cross-linking/alkylation', 'inducer', 'intercalation', 'partial agonist',
+        'positive allosteric modulator', 'positive modulator', 'potentiator', 'protector',
+        'stabilization', 'stimulator', 'transporter']
+    drugbank_inhibits = [
+        'aggregation inhibitor', 'antagonist', 'antisense oligonucleotide', 'blocker', 'chelator'
+        'cleavage', 'conversion inhibitor', 'degradation', 'desensitize the target',
+        'disruptor', 'downregulator', 'inactivator', 'incorporation into and destabilization',
+        'inhibition of synthesis', 'inhibitor', 'inhibitory allosteric modulator',
+        'inhibits downstream inflammation cascades', 'inverse agonist', 'metabolizer',
+        'negative modulator', 'neutralizer', 'nucleotide exchange blocker',
+        'partial antagonist', 'reducer', 'suppressor', 'translocation inhibitor', 'weak inhibitor']
+    
+    print("Parsing Drug Targets...")
+    with open(kwargs['drug_targets']) as f:
+        drugs = xml.parse(f)
+
+        for drug in drugs.getroot():
+
+            drug_name = drug.find('{http://www.drugbank.ca}name').text
+            if drug_name in drug_target_nodes:
+                drug_node = drug_target_nodes[drug_name]
+            else:
+                drug_node = Node(drug_name, 'drug')
+                drug_target_nodes[drug_name] = drug_node
+
+            for target in drug.find('{http://www.drugbank.ca}targets'):
+                weight = 0
+                for action in target.find('{http://www.drugbank.ca}actions'):
+                    if action.text in drugbank_activates:
+                        weight = 1
+                        interaction = action.text
+                    elif action.text in drugbank_inhibits:
+                        weight = -1
+                        interaction = action.text
+                
+                protein = target.find('{http://www.drugbank.ca}polypeptide')
+                if protein and weight != 0:
+                    protein_id = protein.find('{http://www.drugbank.ca}gene-name').text
+                    if protein_id in drug_target_nodes:
+                        protein_node = drug_target_nodes[protein_id]
+                    else:
+                        protein_node = Node(protein_id, 'human')
+                        drug_target_nodes[protein_id] = protein_node
+
+                    edge = Edge(protein_node, weight, interaction)
+                    drug_node.edges.add(edge)
+
+    # read file of targets (e.g., human proteins that interact with SARS-CoV-2 proteins)
+    # TODO: read this file name from a config file.
+    print('Parsing Virus Human Protein Interactions...')
+    virus_human_ppi = pd.read_csv(kwargs['virus_human_ppis'], sep='\t')
+    virus_human_ppi["#Bait"] = virus_human_ppi["#Bait"]
+    for index, row in virus_human_ppi.iterrows():
+        virus_protein = row["#Bait"]
+        human_protein = row["PreyGene"]
+
+        if human_protein in virus_human_ppi_nodes:
+            human_node = virus_human_ppi_nodes[human_protein]
+        else:
+            human_node = Node(human_protein, 'human')
+            virus_human_ppi_nodes[human_protein] = human_node
+
+        if virus_protein in virus_human_ppi_nodes:
+            virus_node = virus_human_ppi_nodes[virus_protein]
+        else:
+            virus_node = Node(virus_protein, 'virus')
+            virus_human_ppi_nodes[virus_protein] = virus_node
+
+        edge = Edge(virus_node, 1, 'Human-Virus PPI')
+        human_node.edges.add(edge)
+
+    if (kwargs['pathlinker_output']) :
+        for input in os.listdir(kwargs['pathlinker_output']):
+            if '_k-100-paths' in input:
+                shortest_paths = pd.read_csv(kwargs['pathlinker_output'] + input, sep='\t')
+
+                for index, row in shortest_paths.iterrows():
+                    path = row['path'].split('|')
+                    sign = 1
+                    annotated = None
+                    drug = drug_target_nodes[path[0]]
+                    for edge in drug.edges:
+                        if edge.node.id == path[1].split('"')[1]:
+                            annotated = path[0] + "--(" + edge.description + ")-->" + path[1] 
+                            if edge.description in drugbank_inhibits:
+                                sign = -sign
+                    if not annotated:
+                        print(drug.id)
+                     
+                    for i in range(1, len(path) - 2):
+                        protein = human_ppi_nodes[path[i].split('"')[1]]
+                        for edge in protein.edges:
+                            if edge.node.id == path[i + 1].split('"')[1]:
+                                annotated += "--(" + edge.description + ")-->" + path[i + 1]
+                                if edge.description in emmaa_inhibits:
+                                    sign = -sign
+
+                    virus = virus_human_ppi_nodes[path[-2].split('"')[1]]
+                    for edge in virus.edges:
+                            if edge.node.id == path[-1].split('"')[1]:
+                                annotated += "--(" + edge.description + ")-->" + path[-1]
+                    
+                    shortest_paths.at[index, 'annotated'] = annotated
+                    if sign >= 0:
+                        shortest_paths.at[index, 'result'] = 'Activation'
+                    else:
+                        shortest_paths.at[index, 'result'] = 'Inhibition'
+                
+                shortest_paths.to_csv(kwargs['output'] + input.replace('_k-100-paths', '_k-100-annotated-paths'), sep = '\t')
+
+    if (kwargs['pathlinker_output']) :
+        exit();
+
+    print("Network summaries:")
+
+    print("Number of nodes in EMMAA Human PPI: " + str(len(human_ppi_nodes.keys())))
+    num_edges = 0
+    for node in human_ppi_nodes.values():
+        num_edges += len(node.edges)
+    print("Number of edges in EMMAA Human PPI: " + str(num_edges) + "\n")
+
+    print("Number of nodes in DrubBank drug targets: " + str(len(drug_target_nodes.keys())))
+    num_edges = 0
+    for node in drug_target_nodes.values():
+        num_edges += len(node.edges)
+    print("Number of edges in DrugBank drug targets: " + str(num_edges) + "\n")
+
+    print("Number of nodes in Krogan Human Virus PPI: " + str(len(virus_human_ppi_nodes.keys())))
+    num_edges = 0
+    for node in virus_human_ppi_nodes.values():
+        num_edges += len(node.edges)
+    print("Number of edges in Krogan Human Virus PPI: " + str(num_edges) + "\n")         
+
+    print("Number of nodes in intersection of EMMAA, Krogan, and DrugBank: " + str(len(set(human_ppi_nodes.keys()) & set(drug_target_nodes.keys()) & set(virus_human_ppi_nodes.keys()))))
+    print("Number of nodes in intersection of EMMAA and Krogan: " + str(len(set(human_ppi_nodes.keys()) & set(virus_human_ppi_nodes.keys()))))
+    print("Number of nodes in intersection of EMMAA and DrugBank: " + str(len(set(human_ppi_nodes.keys()) & set(drug_target_nodes.keys()))))
+    print("Number of nodes in intersection of Krogan and DrugBank: " + str(len(set(virus_human_ppi_nodes.keys()) & set(drug_target_nodes.keys()))))
+    
+
+    print("Generating PathLinker input...")
+    relevant_drug_targets = (set(human_ppi_nodes.keys()) & set(drug_target_nodes.keys())).union( 
+                            (set(virus_human_ppi_nodes.keys()) & set(drug_target_nodes.keys())))
+
+    with open(kwargs['output'] + '/network.tsv', 'w') as network:
+        for node in human_ppi_nodes:
+            for edge in human_ppi_nodes[node].edges:
+                network.write("\t".join(['"' + human_ppi_nodes[node].id + '"', '"' + edge.node.id + '"', str(edge.weight)]) + '\n')
+
+    drug_sources = []
+    with open(kwargs['output'] + '/network.tsv', 'a') as network:
+        for node in drug_target_nodes:
+            drug_source = False
+            for target in drug_target_nodes[node].edges:
+                 if target.node.id in relevant_drug_targets:
+                     network.write("\t".join(['"' + drug_target_nodes[node].id + '"', '"' + target.node.id + '"', str(edge.weight)]) + '\n')
+                     drug_source = True
+            
+            if drug_source:
+                drug_sources.append(node)
+    
+    virus_targets = []
+    with open(kwargs['output'] + '/network.tsv', 'a') as network:
+        for node in virus_human_ppi_nodes:
+            if virus_human_ppi_nodes[node].type == 'virus':
+                virus_targets.append(node)
+            for edge in virus_human_ppi_nodes[node].edges:
+                network.write("\t".join(['"' + virus_human_ppi_nodes[node].id + '"', '"' + edge.node.id + '"', str(edge.weight)]) + '\n') # '1']) + '\n')
+
+#TODO break up into methods: parseDrug, parseKrogan, generatePathLinker input, etc.
+#TODO drug filter config
+    for drug in drug_sources:
+        with open(kwargs['output'] + '/' + drug.replace(" ", "_").replace("/","_") +'.tsv', 'w') as types:
+            types.write("\t".join(['"' + drug + '"', 'source']) + '\n')
+            for target in virus_targets:
+                types.write("\t".join(['"' + target + '"', 'target']) + '\n')
 
     # the sign of a path is the product of the signs of the edges in it. We assing "+" to "activation" and "-" to inhibition. For now, we are ignoring other edges.
     
@@ -42,10 +311,9 @@ def main(config_map, **kwargs):
     # for each source, compute k shortest regular-language constrained paths to each target where the sign of the path is positive.
 
     # for each source, compute k shortest regular-language constrained paths to each target where the sign of the path is negative.
-    
 
 
 if __name__ == "__main__":
-    config_map, kwargs = [0, 1] #parse_args()
-    main(config_map) #, kwargs)
+    config_map, kwargs = parse_args()
+    main(config_map, **kwargs)
     
