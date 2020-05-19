@@ -1,14 +1,12 @@
 """
 Script to test for enrichment of any given list of genes (UniProt IDs)
 """
-#Was facing problem while importing module, Will have to fix this path
-import sys
-sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
+
 import argparse
 import yaml
 from collections import defaultdict
 import os
-
+import sys
 #from tqdm import tqdm
 import copy
 import time
@@ -22,6 +20,7 @@ from rpy2.robjects.packages import importr
 from rpy2.robjects.vectors import StrVector
 utils_package = importr("utils")
 clusterProfiler = importr('clusterProfiler')
+ReactomePA = importr('ReactomePA')
 # this package is needed by clusterProfiler, but importing it directly gives an error, so just import it into R
 #print("importing orgDB")
 #orgDB = importr('org.Hs.eg.db')
@@ -29,7 +28,7 @@ base = importr('base')
 base.require('org.Hs.eg.db')
 
 # packages in this repo
-
+sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
 from src.utils import parse_utils as utils
 from src.FastSinkSource.src import main as run_eval_algs
 from src.FastSinkSource.src.utils import config_utils
@@ -188,7 +187,7 @@ def run_clusterProfiler_GO(
         #ego_BP = ro.conversion.rpy2py(ego_BP)
         #with localconverter(ro.default_converter + pandas2ri.converter):
         #  df = ro.conversion.rpy2py(ego_BP)
-        print("\twriting %s" % (out_file))
+        # print("\twriting %s" % (out_file))
         utils_package.write_table(ego_BP,out_file, sep=",")
 
     ont_dfs = []
@@ -202,7 +201,7 @@ def run_clusterProfiler_GO(
             df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
             df.to_csv(out_file)
         #df.columns = ["%s-k%s-%s-%s" % (alg, 200, dataset_name, col) for col in df.columns]
-        print(df.head())
+        # print(df.head())
         ont_dfs.append(df)
     return ont_dfs
 
@@ -234,15 +233,52 @@ def run_clusterProfiler_KEGG(
         qvalueCutoff=0.05
         )
 
-        print("\twriting %s" % (out_file))
-        utils_package.write_table(e_kegg,out_file, sep=",")
+        # print("\twriting %s" % (out_file))
+        utils_package.write_csv(e_kegg,out_file)
 
-        print("\treading %s" % (out_file))
-        df = pd.read_csv(out_file, index_col=0)
-        print(df.head())
-        return df
+        # print("\treading %s" % (out_file))
+    df = pd.read_csv(out_file, index_col=0)
+    # print('KEGG from enrich.py\n', df.head())
+    return df
 
+def run_ReactomePA_Reactome(
+        prots_to_test, out_dir, prot_universe=None, forced=False):
+    """
+    *returns*: a DataFrames of the enrichement of Reactome pathways
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    #out_file = "%s/enrich-KEGG.csv" % (out_dir)
 
+    # TODO make this a seting
+    print("Running enrich Reactome from ReactomePA")
+    if prot_universe is None:
+        print("ERROR: default prot universe not yet implemented. Quitting")
+        sys.exit()
+
+    out_file = "%s/enrich-Reactome.csv" % (out_dir)
+    if forced is False and os.path.isfile(out_file):
+        print("\t%s already exists. Use --force-run to overwrite" % (out_file))
+    else:
+        # mapping from uniprot to EntrezID
+        test_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prots_to_test)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = 'org.Hs.eg.db')
+        test_prot_entrez_ids =  test_prot_uniprot_to_entrez_id_mapping[1]
+
+        universe_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prot_universe)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = 'org.Hs.eg.db')
+        universe_prot_entrez_ids =  universe_prot_uniprot_to_entrez_id_mapping[1]
+
+        e_reactome = ReactomePA.enrichPathway(
+        gene = test_prot_entrez_ids,
+        universe = universe_prot_entrez_ids,
+        pAdjustMethod="BH",
+        pvalueCutoff=0.01,
+        qvalueCutoff=0.05,
+        readable = True
+        )
+
+        utils_package.write_csv(e_reactome, out_file)
+
+    df = pd.read_csv(out_file, index_col=0)
+    return df
 
 def get_k_to_test(dataset, **kwargs):
     k_to_test = dataset['k_to_test'] if 'k_to_test' in dataset else kwargs.get('k_to_test', [])

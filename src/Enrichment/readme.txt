@@ -1,4 +1,4 @@
-script to copy:
+script for copying:
 /data/jeff-law/projects/2020-03-covid-19/SARS-CoV-2-network-analysis/src/meta_scripts/copy_files.sh 
 
 here's an example command for enrichment: 
