@@ -47,8 +47,8 @@ def setup_opts():
                        "Must have a 'genesets_to_test' section for this script. ")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-    #group.add_argument('--compare-krogan-nodes',
-    #                   help="Also test for enrichment of terms when using the Krogan nodes.")
+    group.add_argument('--compare-krogan-terms',
+                       help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv) inside. Will be added to the combined table")
     # Should be specified in the config file
     #group.add_argument('--gmt-file', append=True,
     #                   help="Test for enrichment using the genesets present in a GMT file.")
@@ -140,6 +140,7 @@ def main(config_map, **kwargs):
     # store all the enriched terms in a single dataframe
     all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
 
+    num_algs_with_results = 0 
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap 
     for dataset in input_settings['datasets']:
@@ -177,6 +178,7 @@ def main(config_map, **kwargs):
             if not os.path.isfile(pred_file):
                 print("Warning: %s not found. skipping" % (pred_file))
                 continue
+            num_algs_with_results += 1 
             print("reading: %s" % (pred_file))
             df = pd.read_csv(pred_file, sep='\t')
             # remove the original positives
@@ -209,16 +211,46 @@ def main(config_map, **kwargs):
                     df.columns = index
                     all_dfs[ont] = pd.concat([all_dfs[ont], df], axis=1)
 
+    if num_algs_with_results == 0:
+        print("No results found. Quitting")
+        sys.exit()
+
+    if kwargs.get('compare_krogan_terms'):
+        krogan_dir = kwargs['compare_krogan_terms']
+        for geneset, g_df in all_dfs.items():
+            #if geneset == 'GO':
+            #    for ont in ['BP', 'MF', 'CC']:
+            # load the enriched terms for the krogan nodes
+            out_file = "%s/enrich-%s.csv" % (krogan_dir, geneset)
+            if not os.path.isfile(out_file):
+                print("ERROR: %s not found. Quitting" % (out_file))
+                sys.exit()
+            print("\treading %s" % (out_file))
+            df = pd.read_csv(out_file, index_col=0)
+            # drop the terms that don't have a pval < 0.01 and aren't in the FSS results
+            terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff',0.01)]['ID'].values))
+            print("\t%d krogan terms to keep" % (len(terms_to_keep)))
+            df = df[df['ID'].isin(terms_to_keep)]
+            # also apply the 
+            tuples = [('Krogan', '-', col) for col in df.columns]
+            index = pd.MultiIndex.from_tuples(tuples)
+            df.columns = index
+            all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
+
     # now write the combined df to a file
     out_pref = kwargs.get('out_pref')
     if out_pref is None:
-        out_pref = "%s/enrichment/combined/%s-" % (
-            output_dir, os.path.basename(kwargs['config']).split('.')[0])
+        pval_str = str(kwargs.get('pval_cutoff',0.01)).replace('.','_')
+        out_pref = "%s/enrichment/combined%s-%s/%s-" % (
+            output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
+            pval_str, os.path.basename(kwargs['config']).split('.')[0])
     for geneset, df in all_dfs.items():
         if kwargs.get('file_per_alg'):
             df = df.swaplevel(0,1,axis=1)
             for alg, df_alg in df.groupby(level=0, axis=1):
                 df_alg.dropna(how='all', inplace=True)
+                # TODO add back the krogan terms
+                #if kwargs.get('compare_krogan_terms') and :
                 print(df_alg.head())
                 out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
                 write_combined_table(df_alg, out_file, dataset_level=1) 
