@@ -79,7 +79,6 @@ def setup_opts():
                        help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
     group.add_argument('--add-prot-list-to-prot-universe', action='store_true',
                        help="Add the positives listed in the pos_neg_file (e.g., Krogan nodes) to the prot universe ")
-
     group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the enrichment tests, and re-writing the output files")
 
@@ -141,6 +140,10 @@ def main(config_map, **kwargs):
 
     bp_df, mf_df, cc_df = run_clusterProfiler_GO(
         prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
+
+    KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'))
+
+    reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'))
     # TODO figure out which genesets to test
     #for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
     #    all_dfs[ont] = pd.concat([all_dfs[ont], df])
