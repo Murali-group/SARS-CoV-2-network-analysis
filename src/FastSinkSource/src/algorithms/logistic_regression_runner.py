@@ -7,6 +7,7 @@ from scipy import sparse
 import time
 from . import alg_utils
 from . import logistic_regression as logReg
+from . import svm
 
 
 def setupInputs(run_obj):
@@ -36,8 +37,19 @@ def setupInputs(run_obj):
 
 
 def setup_params_str(weight_str, params, name):
-    iters = params['max_iters']
-    return "{}-{}-maxi{}".format(weight_str, name, str_(iters))
+    penalty = params.get('penalty', 'l2')
+    reg_strength = params.get('C', 1.0)
+    tol = params.get('tol', 1.0)
+    iters = params.get('max_iters', 1000)
+    params_str = "{}-{}-C{}-tol{}-maxi{}".format(
+        weight_str, penalty, str_(reg_strength), str_(tol), str_(iters))
+    # temporarily use the old format while I regenerate the results
+    #params_str = "{}-{}-maxi{}".format(
+    #    weight_str, name, str_(iters))
+    # TODO include the 'loss' parameter?
+    if name == "svm":
+        pass
+    return params_str
 
 
 def setupOutputs(run_obj):
@@ -54,7 +66,6 @@ def run(run_obj):
 
     # get the labels matrix and transpose it to have label names as columns
     ann_mat = run_obj.ann_matrix
-    max_iters = params['max_iters']
     print("Running %s with these parameters: %s" % (alg, params))
     # see if train and test annotation matrices from the cross validation pipeline exist
         # if not, set train and test to the original annotation matrix itself
@@ -69,9 +80,9 @@ def run(run_obj):
         test_mat = ann_mat
 
     # stores the scores for all the terms
-    scores = sparse.lil_matrix(ann_mat.shape, dtype=np.float)        #   dim: term x genes
+    scores = sparse.lil_matrix(ann_mat.shape, dtype=np.float)        # dim: term x genes
 
-    for term in tqdm(run_obj.terms_to_run):    
+    for term in run_obj.terms_to_run:
         idx = run_obj.termidx[term]
 
         if run_obj.net_obj.weight_gmw is True:
@@ -85,7 +96,7 @@ def run(run_obj):
 
         # compute the train gene indices of the annotations for the given label
         train_pos, train_neg = alg_utils.get_term_pos_neg(train_mat,idx)
-        train_set = sorted(list(set(train_pos)|set(train_neg)))
+        train_set = sorted(list(set(train_pos) | set(train_neg)))
 
         if len(train_pos)==0:
             print("Skipping term, 0 positive examples")
@@ -111,11 +122,17 @@ def run(run_obj):
         # get the column of training data for the given label 
         lab = y_train[:,idx].toarray().flatten()
 
-        # now train the model on the constructed training data and the column of labels
-        clf = logReg.training(X_train, lab, max_iters)
+        if alg == "logistic_regression":
+            # now train the model on the constructed training data and the column of labels
+            clf = logReg.training(X_train, lab, **params)
+            # make predictions on the constructed training set
+            predict = logReg.testing(clf, X_test)
+        elif alg == "svm":
+            # now train the model on the constructed training data and the column of labels
+            clf = svm.training(X_train, lab, **params)
+            # make predictions on the constructed training set
+            predict = svm.testing(clf, X_test)
 
-        # make predictions on the constructed training set
-        predict = logReg.testing(clf, X_test)
         predict = predict.tolist()
 
         # get the current scores for the given label l

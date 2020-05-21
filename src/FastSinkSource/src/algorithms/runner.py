@@ -23,7 +23,7 @@ LibMapper = {
     'localplus': fastsinksource,
     'genemania': genemania,
     'genemaniaplus': genemania,
-    'svm': svm,
+    'svm': logistic_regression,
     'logistic_regression': logistic_regression,
 }
 
