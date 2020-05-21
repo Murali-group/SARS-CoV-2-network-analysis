@@ -199,17 +199,17 @@ def run_clusterProfiler_GO(
         print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
         # add the gene names if specified
-        if kwargs.get('uniprot_to_gene'):
-            gene_map = kwargs['uniprot_to_gene']
-            df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
-            df.to_csv(out_file)
+        # if kwargs.get('uniprot_to_gene'):
+        gene_map = kwargs['uniprot_to_gene']
+        df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+        df.to_csv(out_file)
         #df.columns = ["%s-k%s-%s-%s" % (alg, 200, dataset_name, col) for col in df.columns]
         # print(df.head())
         ont_dfs.append(df)
     return ont_dfs
 
 def run_clusterProfiler_KEGG(
-        prots_to_test, out_dir, prot_universe=None, forced=False):
+        prots_to_test, out_dir, prot_universe=None, forced=False, **kwargs):
     """
     *returns*: a DataFrames of the enrichement of KEGG pathways
     """
@@ -241,11 +241,15 @@ def run_clusterProfiler_KEGG(
 
         # print("\treading %s" % (out_file))
     df = pd.read_csv(out_file, index_col=0)
+    # if kwargs.get('uniprot_to_gene'):
+    gene_map = kwargs['uniprot_to_gene']
+    df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+    df.to_csv(out_file)
     # print('KEGG from enrich.py\n', df.head())
     return df
 
 def run_ReactomePA_Reactome(
-        prots_to_test, out_dir, prot_universe=None, forced=False):
+        prots_to_test, out_dir, prot_universe=None, forced=False,**kwargs):
     """
     *returns*: a DataFrames of the enrichement of Reactome pathways
     """
@@ -279,8 +283,16 @@ def run_ReactomePA_Reactome(
         )
 
         utils_package.write_csv(e_reactome, out_file)
+        # if kwargs.get('gene_to_uniprot'):
 
     df = pd.read_csv(out_file, index_col=0)
+
+    uniprot_map = kwargs['gene_to_uniprot']
+    df['geneName'] = df['geneID']
+    df['geneID'] = df['geneName'].apply(lambda x: '/'.join([uniprot_map.get(p,p) for p in x.split('/')]))
+    df.to_csv(out_file)
+
+
     return df
 
 def get_k_to_test(dataset, **kwargs):
@@ -305,6 +317,12 @@ def load_gene_names(id_mapping_file):
         #node_desc = {n: {'Protein names': uniprot_to_prot_names[n]} for n in uniprot_to_prot_names}
     return uniprot_to_gene
 
+def load_uniprot(id_mapping_file):
+    df = pd.read_csv(id_mapping_file, sep='\t', header=0)
+    ## keep only the first gene for each UniProt ID
+    gene_to_uniprot = {genes.split(' ')[0]: p for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
+
+    return gene_to_uniprot
 
 if __name__ == "__main__":
     config_map, kwargs = parse_args()

@@ -132,9 +132,14 @@ def main(config_map, **kwargs):
 
     # load the namespace mappings
     uniprot_to_gene = None
-    if kwargs.get('id_mapping_file'):
-        uniprot_to_gene = enrichment.load_gene_names(kwargs.get('id_mapping_file'))
-        kwargs['uniprot_to_gene'] = uniprot_to_gene
+    gene_to_uniprot = None
+    # if kwargs.get('id_mapping_file'):
+    uniprot_to_gene = enrichment.load_gene_names(kwargs.get('id_mapping_file'))
+    kwargs['uniprot_to_gene'] = uniprot_to_gene
+
+    gene_to_uniprot = enrichment.load_uniprot(kwargs.get('id_mapping_file'))
+    kwargs['gene_to_uniprot'] = gene_to_uniprot
+
 
     # genesets_to_test = config_map.get('genesets_to_test')
     # if genesets_to_test is None or len(genesets_to_test) == 0:
@@ -230,14 +235,14 @@ def main(config_map, **kwargs):
                     df.columns = index
                     all_dfs[ont] = pd.concat([all_dfs[ont], df], axis=1)
 
-                KEGG_df = enrichment.run_clusterProfiler_KEGG(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'))
+                KEGG_df = enrichment.run_clusterProfiler_KEGG(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
                 tuples = [(dataset_name, alg, col) for col in KEGG_df.columns]
                 index = pd.MultiIndex.from_tuples(tuples)
                 KEGG_df.columns = index
                 all_dfs_KEGG = pd.concat([all_dfs_KEGG, KEGG_df], axis=1)
 
 
-                reactome_df = enrichment.run_ReactomePA_Reactome(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'))
+                reactome_df = enrichment.run_ReactomePA_Reactome(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
                 tuples = [(dataset_name, alg, col) for col in reactome_df.columns]
                 index = pd.MultiIndex.from_tuples(tuples)
                 reactome_df.columns = index
@@ -360,15 +365,15 @@ def write_combined_table(df, out_file, dataset_level=0):
         id_to_name.update(dict(zip(df_d.index, description)))
 
 
-        for geneset_id in df_d.index:
-            id_counts[geneset_id] += 1
-        #print(pd.Series(id_to_name).head())
+        # for geneset_id in df_d.index:
+        #     id_counts[geneset_id] += 1
+        # #print(pd.Series(id_to_name).head())
 
-    df.insert(0, 'Count', pd.Series(id_counts))
+    # df.insert(0, 'Count', pd.Series(id_counts))
     df.insert(0, 'Description', pd.Series(id_to_name))
     # Drop ID and Description since those will be common for all columns
     # also drop pvalue since having pvalue, pvalue adjust, and qvalue is kind of redundant
-    df.drop(['ID','Description', 'pvalue', 'p.adjust'], axis=1, level=2, inplace=True)
+    df.drop(['ID','Description','p.adjust', 'Count'], axis=1, level=2, inplace=True)
     print(df.head())
 
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
