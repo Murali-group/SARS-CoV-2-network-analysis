@@ -48,7 +48,7 @@ def setup_opts():
                        "Must have a 'genesets_to_test' section for this script. ")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-    group.add_argument('--compare-krogan-terms',
+    group.add_argument('--compare-krogan-terms',default = 'outputs/enrichment/krogan/p1_0/',
                        help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv) inside. Will be added to the combined table")
     # Should be specified in the config file
     #group.add_argument('--gmt-file', append=True,
@@ -78,6 +78,11 @@ def setup_opts():
     group.add_argument('--add-orig-pos-to-prot-universe', action='store_true',
                        help="Add the positives listed in the pos_neg_file (e.g., Krogan nodes) to the prot universe ")
 
+    group.add_argument('--pval-cutoff', type=float, default=0.01,
+                       help="Cutoff on the corrected p-value for enrichment.")
+    group.add_argument('--qval-cutoff', type=float, default=0.05,
+                       help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
+
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
                        help="Algorithms for which to get results. Must be in the config file. " +
@@ -102,14 +107,14 @@ def setup_opts():
     return parser
 
 def include_Krogan_enrichment_result(krogan_dir, analysis_spec,g_df ):
-    out_file = "%s/enrich-%s.csv" % (krogan_dir, analysis_spec)
+    out_file = "%s/enrich-%s-1_0.csv" % (krogan_dir, analysis_spec)
     if not os.path.isfile(out_file):
         print("ERROR: %s not found. Quitting" % (out_file))
         sys.exit()
     print("\treading %s" % (out_file))
     df = pd.read_csv(out_file, index_col=0)
     # drop the terms that don't have a pval < 0.01 and aren't in the FSS results
-    terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff',0.01)]['ID'].values))
+    terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff')]['ID'].values))
     print("\t%d krogan terms to keep" % (len(terms_to_keep)))
     df = df[df['ID'].isin(terms_to_keep)]
     # also apply the
@@ -127,6 +132,9 @@ def main(config_map, **kwargs):
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
     algs = config_utils.get_algs_to_run(alg_settings, **kwargs)
+    pval_cutoff = kwargs.get('pval_cutoff')
+    qval_cutoff = kwargs.get('qval_cutoff')
+
     print("algs: %s" % (str(algs)))
     del kwargs['algs']
 
@@ -140,29 +148,15 @@ def main(config_map, **kwargs):
     gene_to_uniprot = enrichment.load_uniprot(kwargs.get('id_mapping_file'))
     kwargs['gene_to_uniprot'] = gene_to_uniprot
 
-
-    # genesets_to_test = config_map.get('genesets_to_test')
-    # if genesets_to_test is None or len(genesets_to_test) == 0:
-    #     print("ERROR: no genesets specified to test for overlap. " +
-    #           "Please add them under 'genesets_to_test'. \nQuitting")
-    #     sys.exit()
-
-    # # first load the gene sets
-    # geneset_groups = {}
-    # for geneset_to_test in genesets_to_test:
-    #     name = geneset_to_test['name']
-    #     gmt_file = "%s/genesets/%s/%s" % (
-    #         input_dir, name, geneset_to_test['gmt_file'])
-    #     if not os.path.isfile(gmt_file):
-    #         print("WARNING: %s not found. skipping" % (gmt_file))
-    #         sys.exit()
-
-    #     geneset_groups[name] = utils.parse_gmt_file(gmt_file)
-
     # store all the enriched terms in a single dataframe
     all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
     all_dfs_KEGG = pd.DataFrame()
     all_dfs_reactome = pd.DataFrame()
+
+    pathways_to_keep_GO = []
+    pathways_to_keep_KEGG=[]
+    pathways_to_keep_Reactome = []
+
 
     num_algs_with_results = 0
     # for each dataset, extract the path(s) to the prediction files,
@@ -256,23 +250,6 @@ def main(config_map, **kwargs):
     if kwargs.get('compare_krogan_terms'):
         krogan_dir = kwargs['compare_krogan_terms']
         for geneset, g_df in all_dfs.items():
-            #if geneset == 'GO':
-            #    for ont in ['BP', 'MF', 'CC']:
-            # load the enriched terms for the krogan nodes
-            # out_file = "%s/enrich-%s.csv" % (krogan_dir, geneset)
-            # if not os.path.isfile(out_file):
-            #     print("ERROR: %s not found. Quitting" % (out_file))
-            #     sys.exit()
-            # print("\treading %s" % (out_file))
-            # df = pd.read_csv(out_file, index_col=0)
-            # # drop the terms that don't have a pval < 0.01 and aren't in the FSS results
-            # terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff',0.01)]['ID'].values))
-            # print("\t%d krogan terms to keep" % (len(terms_to_keep)))
-            # df = df[df['ID'].isin(terms_to_keep)]
-            # # also apply the
-            # tuples = [('Krogan', '-', col) for col in df.columns]
-            # index = pd.MultiIndex.from_tuples(tuples)
-            # df.columns = index
             df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
             all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
 
@@ -284,12 +261,55 @@ def main(config_map, **kwargs):
 
 
     # now write the combined df to a file
+
     out_pref = kwargs.get('out_pref')
     if out_pref is None:
-        pval_str = str(kwargs.get('pval_cutoff',0.01)).replace('.','_')
+        pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
         out_pref = "%s/enrichment/combined%s-%s/%s-" % (
             output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
             pval_str, os.path.basename(kwargs['config']).split('.')[0])
+
+    super_combined_file = "%s-k%s.xlsx" % (out_pref,k_to_test[0])
+    # super_combined_writer= pd.ExcelWriter(super_combined_file)
+    print('super_combined_file: ', super_combined_file)
+
+
+        #write combined KEGG Enrichment
+
+    if kwargs.get('file_per_alg'):
+        all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
+        for alg, df_alg in all_dfs_KEGG.groupby(level=0, axis=1):
+            df_alg.dropna(how='all', inplace=True)
+            print('KEGG FILE PER ALGO')
+            out_file = "%s%s-k%s-KEGG.csv" % (out_pref, alg, k_to_test[0])
+            write_combined_table(df_alg, out_file, dataset_level=1)
+
+
+    else:
+        out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
+        print('KEGG ALL')
+        processed_df = write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
+        with pd.ExcelWriter(super_combined_file) as writer:
+            print('processed_df: ', processed_df.shape)
+            processed_df.to_excel(writer, sheet_name = 'KEGG')
+
+    #write combined Reactome Enrichment
+    if kwargs.get('file_per_alg'):
+        all_dfs_reactome = all_dfs_reactome.swaplevel(0,1,axis=1)
+        for alg, df_alg in all_dfs_reactome.groupby(level=0, axis=1):
+            df_alg.dropna(how='all', inplace=True)
+            print('REACTOME FILE PER ALGO')
+            out_file = "%s%s-k%s-Reactome.csv" % (out_pref, alg, k_to_test[0])
+            write_combined_table(df_alg, out_file,dataset_level=1)
+
+    else:
+        out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
+        print('REACTOME ALL')
+        processed_df = write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
+        with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
+            print('processed_df: ', processed_df.shape)
+            processed_df.to_excel(writer, sheet_name = 'Reactome')
+
 
     for geneset, df in all_dfs.items():
         if kwargs.get('file_per_alg'):
@@ -303,57 +323,27 @@ def main(config_map, **kwargs):
                 write_combined_table(df_alg, out_file, dataset_level=1)
         else:
             out_file = "%sk%s-%s.csv" % (out_pref, k_to_test[0], geneset)
-            write_combined_table(df, out_file, dataset_level=0)
-
-    #write combined KEGG Enrichment
-
-    if kwargs.get('file_per_alg'):
-        all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
-        for alg, df_alg in all_dfs_KEGG.groupby(level=0, axis=1):
-            df_alg.dropna(how='all', inplace=True)
-            print('KEGG FILE PER ALGO')
-            out_file = "%s%s-k%s-KEGG.csv" % (out_pref, alg, k_to_test[0])
-            write_combined_table(df_alg, out_file, dataset_level=1)
-
-    else:
-        out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
-        print('KEGG ALL')
-        write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
-
-
-    #write combined Reactome Enrichment
-    if kwargs.get('file_per_alg'):
-        all_dfs_reactome = all_dfs_reactome.swaplevel(0,1,axis=1)
-        for alg, df_alg in all_dfs_reactome.groupby(level=0, axis=1):
-            df_alg.dropna(how='all', inplace=True)
-            print('REACTOME FILE PER ALGO')
-            out_file = "%s%s-k%s-Reactome.csv" % (out_pref, alg, k_to_test[0])
-            write_combined_table(df_alg, out_file, dataset_level=1)
-
-    else:
-        out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
-        print('REACTOME ALL')
-        write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
+            processed_df= write_combined_table(df, out_file,dataset_level=0)
+            with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
+                print('processed_df: ', processed_df.shape)
+                processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
 
 
 
+# Write each dataframe to a different worksheet.
+# df1.to_excel(writer, sheet_name='Sheet1')
+# df2.to_excel(writer, sheet_name='Sheet2')
 
 def write_combined_table(df, out_file, dataset_level=0):
     """
     """
     # for each term ID, store its name
     id_to_name = {}
-    # also add the number of datasets/networks for which each term is enriched
     id_counts = defaultdict(int)
+    keep_indices = []
     for dataset, df_d in df.groupby(level=dataset_level, axis=1):
-        #print(df_d.head())
-        # get just the last level of columns
-        #df_d.columns = df_d.columns.levels[-1]
         df_d.columns = df_d.columns.droplevel([0,1])
         df_d.dropna(how='all', inplace=True)
-        # print(df_d.head())
-        #print(df_d.index)
-        #print(df_d['Description'].head())
         if isinstance ((df_d['Description']), pd.core.frame.DataFrame):
             description = df_d['Description'].iloc[:, 0]
             for i in range (1, len(df_d['Description'].columns), 1):
@@ -361,6 +351,8 @@ def write_combined_table(df, out_file, dataset_level=0):
         else:
             description = df_d['Description']
 
+        # df_dd = df_d[df_d['pvalue'] <= kwargs.get('pval_cutoff')]
+        # keep_indices.apppend(df_dd.index)
 
         id_to_name.update(dict(zip(df_d.index, description)))
 
@@ -376,9 +368,13 @@ def write_combined_table(df, out_file, dataset_level=0):
     df.drop(['ID','Description','p.adjust', 'Count'], axis=1, level=2, inplace=True)
     print(df.head())
 
+
+
+
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     print("writing %s" % (out_file))
     df.to_csv(out_file, sep=',')
+    return df
 
 
 if __name__ == "__main__":

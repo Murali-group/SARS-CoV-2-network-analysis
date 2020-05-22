@@ -96,9 +96,14 @@ def main(config_map, **kwargs):
 
     # load the namespace mappings
     uniprot_to_gene = None
+    gene_to_uniprot = None
     if kwargs.get('id_mapping_file'):
+        # if kwargs.get('id_mapping_file'):
         uniprot_to_gene = load_gene_names(kwargs.get('id_mapping_file'))
         kwargs['uniprot_to_gene'] = uniprot_to_gene
+
+        gene_to_uniprot = load_uniprot(kwargs.get('id_mapping_file'))
+        kwargs['gene_to_uniprot'] = gene_to_uniprot
 
     genesets_to_test = config_map.get('genesets_to_test')
     if genesets_to_test is None or len(genesets_to_test) == 0:
@@ -141,9 +146,9 @@ def main(config_map, **kwargs):
     bp_df, mf_df, cc_df = run_clusterProfiler_GO(
         prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
 
-    KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'))
+    KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
-    reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'))
+    reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
     # TODO figure out which genesets to test
     #for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
     #    all_dfs[ont] = pd.concat([all_dfs[ont], df])
@@ -173,29 +178,31 @@ def run_clusterProfiler_GO(
         sys.exit()
 
     for ont in ['BP', 'MF', 'CC']:
-        out_file = "%s/enrich-%s.csv" % (out_dir, ont)
+
+        out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
         if forced is False and os.path.isfile(out_file):
             print("\t%s already exists. Use --force-run to overwrite" % (out_file))
             continue
-        ego_BP = clusterProfiler.enrichGO(
+        ego = clusterProfiler.enrichGO(
             gene          = StrVector(list(prots_to_test)),
             universe      = StrVector(list(prot_universe)),
             keyType       = 'UNIPROT',
             OrgDb         = base.get('org.Hs.eg.db'),
             ont           = ont,
             pAdjustMethod = "BH",
-            pvalueCutoff  = kwargs.get('pval_cutoff',0.01),
-            qvalueCutoff  = kwargs.get('qval_cutoff',0.05))
+            pvalueCutoff  = kwargs.get('pval_cutoff'),
+            qvalueCutoff  = kwargs.get('qval_cutoff')
+            )
         # converting doesn't seem to be working, so just write to file then read to file
         #ego_BP = ro.conversion.rpy2py(ego_BP)
         #with localconverter(ro.default_converter + pandas2ri.converter):
         #  df = ro.conversion.rpy2py(ego_BP)
         # print("\twriting %s" % (out_file))
-        utils_package.write_table(ego_BP,out_file, sep=",")
+        utils_package.write_table(ego,out_file, sep=",")
 
     ont_dfs = []
     for ont in ['BP', 'MF', 'CC']:
-        out_file = "%s/enrich-%s.csv" % (out_dir, ont)
+        out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
         print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
         # add the gene names if specified
@@ -222,7 +229,7 @@ def run_clusterProfiler_KEGG(
         print("ERROR: default prot universe not yet implemented. Quitting")
         sys.exit()
 
-    out_file = "%s/enrich-KEGG.csv" % (out_dir)
+    out_file = "%s/enrich-KEGG-%s.csv" % (out_dir,str(kwargs.get('pval_cutoff')).replace('.','_'))
     if forced is False and os.path.isfile(out_file):
         print("\t%s already exists. Use --force-run to overwrite" % (out_file))
     else:
@@ -232,20 +239,19 @@ def run_clusterProfiler_KEGG(
         keyType = 'uniprot',
         organism="hsa",
         pAdjustMethod="BH",
-        pvalueCutoff=0.01,
-        qvalueCutoff=0.05
+        pvalueCutoff  = kwargs.get('pval_cutoff'),
+        qvalueCutoff  = kwargs.get('qval_cutoff')
         )
 
         # print("\twriting %s" % (out_file))
         utils_package.write_csv(e_kegg,out_file)
+        df = pd.read_csv(out_file, index_col=0)
+        gene_map = kwargs['uniprot_to_gene']
+        df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+        df.to_csv(out_file)
 
-        # print("\treading %s" % (out_file))
     df = pd.read_csv(out_file, index_col=0)
-    # if kwargs.get('uniprot_to_gene'):
-    gene_map = kwargs['uniprot_to_gene']
-    df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
-    df.to_csv(out_file)
-    # print('KEGG from enrich.py\n', df.head())
+
     return df
 
 def run_ReactomePA_Reactome(
@@ -262,36 +268,36 @@ def run_ReactomePA_Reactome(
         print("ERROR: default prot universe not yet implemented. Quitting")
         sys.exit()
 
-    out_file = "%s/enrich-Reactome.csv" % (out_dir)
+    out_file = "%s/enrich-Reactome-%s.csv" % (out_dir,str(kwargs.get('pval_cutoff')).replace('.','_'))
+
     if forced is False and os.path.isfile(out_file):
         print("\t%s already exists. Use --force-run to overwrite" % (out_file))
     else:
         # mapping from uniprot to EntrezID
-        test_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prots_to_test)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = 'org.Hs.eg.db')
+        test_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prots_to_test)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = base.get('org.Hs.eg.db'))
         test_prot_entrez_ids =  test_prot_uniprot_to_entrez_id_mapping[1]
 
-        universe_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prot_universe)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = 'org.Hs.eg.db')
+        universe_prot_uniprot_to_entrez_id_mapping = clusterProfiler.bitr(StrVector(list(prot_universe)), fromType = 'UNIPROT', toType = "ENTREZID", OrgDb = base.get('org.Hs.eg.db'))
         universe_prot_entrez_ids =  universe_prot_uniprot_to_entrez_id_mapping[1]
 
         e_reactome = ReactomePA.enrichPathway(
         gene = test_prot_entrez_ids,
         universe = universe_prot_entrez_ids,
         pAdjustMethod="BH",
-        pvalueCutoff=0.01,
-        qvalueCutoff=0.05,
+        pvalueCutoff  = kwargs.get('pval_cutoff'),
+        qvalueCutoff  = kwargs.get('qval_cutoff'),
         readable = True
         )
 
         utils_package.write_csv(e_reactome, out_file)
-        # if kwargs.get('gene_to_uniprot'):
+
+        df = pd.read_csv(out_file, index_col=0)
+        uniprot_map = kwargs['gene_to_uniprot']
+        df['geneName'] = df['geneID']
+        df['geneID'] = df['geneName'].apply(lambda x: '/'.join([uniprot_map.get(p,p) for p in x.split('/')]))
+        df.to_csv(out_file)
 
     df = pd.read_csv(out_file, index_col=0)
-
-    uniprot_map = kwargs['gene_to_uniprot']
-    df['geneName'] = df['geneID']
-    df['geneID'] = df['geneName'].apply(lambda x: '/'.join([uniprot_map.get(p,p) for p in x.split('/')]))
-    df.to_csv(out_file)
-
 
     return df
 
