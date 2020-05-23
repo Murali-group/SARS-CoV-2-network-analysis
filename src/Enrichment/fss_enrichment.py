@@ -98,15 +98,6 @@ def setup_opts():
     group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the enrichment tests, and re-writing the output files")
 
-#    # additional parameters
-#    group = parser.add_argument_group('Additional options')
-#    group.add_argument('--forcealg', action="store_true", default=False,
-#            help="Force re-running algorithms if the output files already exist")
-#    group.add_argument('--forcenet', action="store_true", default=False,
-#            help="Force re-building network matrix from scratch")
-#    group.add_argument('--verbose', action="store_true", default=False,
-#            help="Print additional info about running times and such")
-
     return parser
 
 def include_Krogan_enrichment_result(krogan_dir, analysis_spec,g_df ):
@@ -151,12 +142,81 @@ def add_qval_ratio(df,analysis_spec, krogan_dir,alg):
 
     df = pd.concat([df,k_df], axis = 1)
 
-
     df['k_qvalue'] = df['k_qvalue'].fillna(1)
 
     df['-(log(qvalue '+alg+')- log(qvalue Krogan))'] = -(np.log10(df['qvalue']) - np.log10(df['k_qvalue']))
     df = df.drop('k_qvalue',axis=1)
     return df
+
+def simplify_enrichment_result(df):
+    description = df['Description']
+    df.drop('Description', level = 0, axis = 1, inplace = True )
+
+
+    parsed_df = pd.DataFrame({'Description':description})
+
+    for dataset, df_d in df.groupby(level = 0, axis = 1):
+
+        for alg, df_a in df_d.groupby(level=1, axis = 1):
+
+            df_a.columns = df_a.columns.droplevel([0,1])
+
+            df_a['pvalue']=df_a['pvalue'].fillna(1)
+            df_a['geneID'] = df_a['geneID'].fillna('/')
+
+            if 'geneID' not in parsed_df.columns:
+                parsed_df['geneID'] = df_a['geneID']
+            else:
+                parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
+
+            if 'weight' not in parsed_df.columns:
+                parsed_df['weight'] = df_a['pvalue']
+            else:
+                parsed_df['weight'] =parsed_df['weight']*df_a['pvalue']
+
+            if(alg !='-'):
+                pval_col = alg+'_'+'pvalue'
+            else:
+                pval_col = dataset+'_'+'pvalue'
+
+            parsed_df[pval_col] = df_a['pvalue']
+
+
+    parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(x.split('/'))))
+
+    # create protein universe
+    prot_universe = set()
+    for term, geneID_set in parsed_df['geneID'].items():
+        prot_universe = prot_universe.union(geneID_set)
+
+    uncovered_prot_universe = prot_universe
+
+    terms_to_keep=[]
+    simple_df = parsed_df.copy()
+
+    while len(uncovered_prot_universe)!= 0:
+
+        parsed_df['uncovered_protein_being_covered'] = parsed_df['geneID'].apply(lambda x: len(x.intersection(uncovered_prot_universe)))
+        parsed_df['ratio_weight_uncovered_protein_being_covered'] = parsed_df['weight']/parsed_df['uncovered_protein_being_covered']
+        min_idx = (parsed_df[['ratio_weight_uncovered_protein_being_covered']].idxmin()).iat[0]
+        terms_to_keep.append(min_idx)
+        uncovered_prot_universe = uncovered_prot_universe - parsed_df.at[min_idx,'geneID']
+        parsed_df.drop(min_idx, axis = 0, inplace=True)
+
+    simple_df = simple_df[simple_df.index.isin(terms_to_keep)]
+    #correctedness checking
+    # prot_universe_new=set()
+    # for term, geneID_set in simple_df['geneID'].items():
+    #     prot_universe_new = prot_universe_new.union(geneID_set)
+
+
+    # print('simple_df: ',simple_df)
+    # print('diff bewteen actual and calculated prot universe: ', len(prot_universe-prot_universe_new))
+    # print('terms to keep',terms_to_keep)
+    print('simple_df shape: ', simple_df.shape)
+    return simple_df
+
+
 
 
 
@@ -316,9 +376,6 @@ def main(config_map, **kwargs):
         reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
         all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
 
-    # for dataset, df_d in all_dfs_KEGG.groupby(level=1, axis=1):
-    #         df_d.columns = df_d.columns.droplevel([0,1])
-
 
     # now write the combined df to a file
 
@@ -330,47 +387,56 @@ def main(config_map, **kwargs):
             pval_str, os.path.basename(kwargs['config']).split('.')[0])
 
     super_combined_file = "%s-k%s.xlsx" % (out_pref,k_to_test[0])
-    # super_combined_writer= pd.ExcelWriter(super_combined_file)
-    print('super_combined_file: ', super_combined_file)
+    super_combined_df = pd.DataFrame()
+    combined_simplified_file = "%s-k%s-simplified.csv" % (out_pref,k_to_test[0])
+    super_combined_simplified_file = "%s-k%s-super_combined_simplified.csv" % (out_pref,k_to_test[0])
+    combined_simplified_df = pd.DataFrame()
 
-
-        #write combined KEGG Enrichment
+    #write combined KEGG Enrichment
 
     if kwargs.get('file_per_alg'):
         all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
         for alg, df_alg in all_dfs_KEGG.groupby(level=0, axis=1):
             df_alg.dropna(how='all', inplace=True)
-            print('KEGG FILE PER ALGO')
+            # print('KEGG FILE PER ALGO')
             out_file = "%s%s-k%s-KEGG.csv" % (out_pref, alg, k_to_test[0])
             write_combined_table(df_alg, out_file, dataset_level=1)
 
 
     else:
         out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
-        print('KEGG ALL')
+        # print('KEGG ALL')
+        super_combined_df = pd.concat([super_combined_df, all_dfs_KEGG],axis=0)
+        print('super_combined_df: ', super_combined_df.columns.values)
+
         processed_df = write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
         with pd.ExcelWriter(super_combined_file) as writer:
-            print('processed_df: ', processed_df.shape)
+            # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'KEGG')
+        combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
+
 
     #write combined Reactome Enrichment
     if kwargs.get('file_per_alg'):
         all_dfs_reactome = all_dfs_reactome.swaplevel(0,1,axis=1)
         for alg, df_alg in all_dfs_reactome.groupby(level=0, axis=1):
             df_alg.dropna(how='all', inplace=True)
-            print('REACTOME FILE PER ALGO')
+            # print('REACTOME FILE PER ALGO')
             out_file = "%s%s-k%s-Reactome.csv" % (out_pref, alg, k_to_test[0])
             write_combined_table(df_alg, out_file,dataset_level=1)
 
     else:
         out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
-        print('REACTOME ALL')
+        # print('REACTOME ALL')
+        super_combined_df = pd.concat([super_combined_df, all_dfs_reactome],axis=0)
         processed_df = write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
         with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
-            print('processed_df: ', processed_df.shape)
+            # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'Reactome')
+        combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
 
 
+    #write GO enrichment
     for geneset, df in all_dfs.items():
         if kwargs.get('file_per_alg'):
             df = df.swaplevel(0,1,axis=1)
@@ -378,30 +444,38 @@ def main(config_map, **kwargs):
                 df_alg.dropna(how='all', inplace=True)
                 # TODO add back the krogan terms
                 #if kwargs.get('compare_krogan_terms') and :
-                print(df_alg.head())
+                # print(df_alg.head())
                 out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
                 write_combined_table(df_alg, out_file, dataset_level=1)
         else:
             out_file = "%sk%s-%s.csv" % (out_pref, k_to_test[0], geneset)
+            super_combined_df = pd.concat([super_combined_df, df],axis=0)
             processed_df= write_combined_table(df, out_file,dataset_level=0)
             with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
                 print('processed_df: ', processed_df.shape)
                 processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
+            if geneset == 'MF':
+                continue
+            combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
 
 
+    super_combined_simplified_df = simplify_enrichment_result(process_df(super_combined_df))
+
+    combined_simplified_df.to_csv(combined_simplified_file)
+    super_combined_simplified_df.to_csv(super_combined_simplified_file)
+
+    print('super_combined_df: ',super_combined_df.columns)
 
 # Write each dataframe to a different worksheet.
 # df1.to_excel(writer, sheet_name='Sheet1')
 # df2.to_excel(writer, sheet_name='Sheet2')
-
-def write_combined_table(df, out_file, dataset_level=0):
-    """
-    """
-    # for each term ID, store its name
+def process_df(df, dataset_level=0):
     id_to_name = {}
     id_counts = defaultdict(int)
     keep_indices = []
     for dataset, df_d in df.groupby(level=dataset_level, axis=1):
+
+        # print('DATASET:', dataset)
         df_d.columns = df_d.columns.droplevel([0,1])
         df_d.dropna(how='all', inplace=True)
         if isinstance ((df_d['Description']), pd.core.frame.DataFrame):
@@ -411,25 +485,38 @@ def write_combined_table(df, out_file, dataset_level=0):
         else:
             description = df_d['Description']
 
-        # df_dd = df_d[df_d['pvalue'] <= kwargs.get('pval_cutoff')]
-        # keep_indices.apppend(df_dd.index)
-
         id_to_name.update(dict(zip(df_d.index, description)))
 
-
-        # for geneset_id in df_d.index:
-        #     id_counts[geneset_id] += 1
-        # #print(pd.Series(id_to_name).head())
-
-    # df.insert(0, 'Count', pd.Series(id_counts))
     df.insert(0, 'Description', pd.Series(id_to_name))
-    # Drop ID and Description since those will be common for all columns
-    # also drop pvalue since having pvalue, pvalue adjust, and qvalue is kind of redundant
     df.drop(['ID','Description','p.adjust', 'Count'], axis=1, level=2, inplace=True)
-    print(df.head())
+    return df
 
+def write_combined_table(df, out_file, dataset_level=0):
+    """
+    """
+    # for each term ID, store its name
+    # id_to_name = {}
+    # id_counts = defaultdict(int)
+    # keep_indices = []
+    # for dataset, df_d in df.groupby(level=dataset_level, axis=1):
+    #
+    #     # print('DATASET:', dataset)
+    #     df_d.columns = df_d.columns.droplevel([0,1])
+    #     df_d.dropna(how='all', inplace=True)
+    #     if isinstance ((df_d['Description']), pd.core.frame.DataFrame):
+    #         description = df_d['Description'].iloc[:, 0]
+    #         for i in range (1, len(df_d['Description'].columns), 1):
+    #             description = description.fillna(df_d['Description'].iloc[:, i])
+    #     else:
+    #         description = df_d['Description']
+    #
+    #     id_to_name.update(dict(zip(df_d.index, description)))
+    #
+    # df.insert(0, 'Description', pd.Series(id_to_name))
+    # df.drop(['ID','Description','p.adjust', 'Count'], axis=1, level=2, inplace=True)
+    # # print(df.head())
 
-
+    df = process_df(df,dataset_level)
 
     os.makedirs(os.path.dirname(out_file), exist_ok=True)
     print("writing %s" % (out_file))
