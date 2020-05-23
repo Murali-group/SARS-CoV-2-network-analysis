@@ -13,6 +13,7 @@ import time
 #import numpy as np
 #from scipy import sparse
 import pandas as pd
+import numpy as np
 #import subprocess
 
 # packages in this repo
@@ -82,6 +83,8 @@ def setup_opts():
                        help="Cutoff on the corrected p-value for enrichment.")
     group.add_argument('--qval-cutoff', type=float, default=0.05,
                        help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
+    group.add_argument('--fss-pval', type=float, default=0.01,
+                       help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
 
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
@@ -114,7 +117,11 @@ def include_Krogan_enrichment_result(krogan_dir, analysis_spec,g_df ):
     print("\treading %s" % (out_file))
     df = pd.read_csv(out_file, index_col=0)
     # drop the terms that don't have a pval < 0.01 and aren't in the FSS results
-    terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff')]['ID'].values))
+    # terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff')]['ID'].values))
+
+    # drop the terms those aren't in the FSS results
+    terms_to_keep = set(list(g_df.index.values))
+
     print("\t%d krogan terms to keep" % (len(terms_to_keep)))
     df = df[df['ID'].isin(terms_to_keep)]
     # also apply the
@@ -122,6 +129,36 @@ def include_Krogan_enrichment_result(krogan_dir, analysis_spec,g_df ):
     index = pd.MultiIndex.from_tuples(tuples)
     df.columns = index
     return df
+
+
+def add_qval_ratio(df,analysis_spec, krogan_dir,alg):
+    krogan_file = "%s/enrich-%s-1_0.csv" % (krogan_dir, analysis_spec)
+    if not os.path.isfile(krogan_file):
+        print("ERROR: %s not found. Quitting" % (krogan_file))
+        sys.exit()
+    print("\treading %s" % (krogan_file))
+    k_df = pd.read_csv(krogan_file, index_col=0)
+    # drop the terms that don't have a pval < 0.01 and aren't in the FSS results
+    # terms_to_keep = set(list(g_df.index.values)) | set(list(df[df['p.adjust'] < kwargs.get('pval_cutoff')]['ID'].values))
+
+    # drop the terms those aren't in the FSS results
+    terms_to_keep = set(list(df.index.values))
+
+    print("\t%d krogan terms to keep" % (len(terms_to_keep)))
+    k_df = k_df[k_df['ID'].isin(terms_to_keep)]
+    k_df['k_qvalue'] = k_df['qvalue']
+    k_df = k_df[['k_qvalue']]
+
+    df = pd.concat([df,k_df], axis = 1)
+
+
+    df['k_qvalue'] = df['k_qvalue'].fillna(1)
+
+    df['-(log(qvalue '+alg+')- log(qvalue Krogan))'] = -(np.log10(df['qvalue']) - np.log10(df['k_qvalue']))
+    df = df.drop('k_qvalue',axis=1)
+    return df
+
+
 
 def main(config_map, **kwargs):
     """
@@ -134,6 +171,10 @@ def main(config_map, **kwargs):
     algs = config_utils.get_algs_to_run(alg_settings, **kwargs)
     pval_cutoff = kwargs.get('pval_cutoff')
     qval_cutoff = kwargs.get('qval_cutoff')
+
+
+    if kwargs.get('compare_krogan_terms'):
+        krogan_dir = kwargs['compare_krogan_terms']
 
     print("algs: %s" % (str(algs)))
     del kwargs['algs']
@@ -148,12 +189,13 @@ def main(config_map, **kwargs):
     gene_to_uniprot = enrichment.load_uniprot(kwargs.get('id_mapping_file'))
     kwargs['gene_to_uniprot'] = gene_to_uniprot
 
+
     # store all the enriched terms in a single dataframe
     all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
     all_dfs_KEGG = pd.DataFrame()
     all_dfs_reactome = pd.DataFrame()
 
-    pathways_to_keep_GO = []
+    terms_to_keep_GO = {g: [] for g in ['BP', 'CC', 'MF']}
     pathways_to_keep_KEGG=[]
     pathways_to_keep_Reactome = []
 
@@ -224,23 +266,39 @@ def main(config_map, **kwargs):
                     topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
                 for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
                     # make it into a multi-column-level dataframe
+                    # print('fss_pval: ' , kwargs.get('fss_pval'))
+                    # print('fss_pval type : ', type(kwargs.get('fss_pval')))
+                    terms_to_keep_GO[ont] = terms_to_keep_GO[ont] + list(df[df['pvalue']<=kwargs.get('fss_pval')]['ID'])
+                    df = add_qval_ratio(df,ont, krogan_dir,alg)
                     tuples = [(dataset_name, alg, col) for col in df.columns]
                     index = pd.MultiIndex.from_tuples(tuples)
                     df.columns = index
                     all_dfs[ont] = pd.concat([all_dfs[ont], df], axis=1)
 
+
                 KEGG_df = enrichment.run_clusterProfiler_KEGG(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
+                KEGG_df = add_qval_ratio(KEGG_df,'KEGG',krogan_dir,alg)
+                pathways_to_keep_KEGG = pathways_to_keep_KEGG + list(KEGG_df[KEGG_df['pvalue']<=kwargs.get('fss_pval')]['ID'])
                 tuples = [(dataset_name, alg, col) for col in KEGG_df.columns]
                 index = pd.MultiIndex.from_tuples(tuples)
                 KEGG_df.columns = index
                 all_dfs_KEGG = pd.concat([all_dfs_KEGG, KEGG_df], axis=1)
 
 
+
                 reactome_df = enrichment.run_ReactomePA_Reactome(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
+                reactome_df = add_qval_ratio(reactome_df,'Reactome',krogan_dir,alg)
+                pathways_to_keep_Reactome = pathways_to_keep_Reactome + list(reactome_df[reactome_df['pvalue']<=kwargs.get('fss_pval')]['ID'])
                 tuples = [(dataset_name, alg, col) for col in reactome_df.columns]
                 index = pd.MultiIndex.from_tuples(tuples)
                 reactome_df.columns = index
                 all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
+
+
+    for geneset, g_df in all_dfs.items():
+        all_dfs[geneset] = g_df[g_df.index.isin(terms_to_keep_GO[geneset])]
+    all_dfs_KEGG = all_dfs_KEGG[all_dfs_KEGG.index.isin(pathways_to_keep_KEGG)]
+    all_dfs_reactome = all_dfs_reactome[all_dfs_reactome.index.isin(pathways_to_keep_Reactome)]
 
 
     if num_algs_with_results == 0:
@@ -248,7 +306,6 @@ def main(config_map, **kwargs):
         sys.exit()
 
     if kwargs.get('compare_krogan_terms'):
-        krogan_dir = kwargs['compare_krogan_terms']
         for geneset, g_df in all_dfs.items():
             df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
             all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
@@ -256,8 +313,11 @@ def main(config_map, **kwargs):
         kegg_df = include_Krogan_enrichment_result(krogan_dir,'KEGG',all_dfs_KEGG)
         all_dfs_KEGG = pd.concat([all_dfs_KEGG, kegg_df], axis=1)
 
-        reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',reactome_df)
+        reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
         all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
+
+    # for dataset, df_d in all_dfs_KEGG.groupby(level=1, axis=1):
+    #         df_d.columns = df_d.columns.droplevel([0,1])
 
 
     # now write the combined df to a file
