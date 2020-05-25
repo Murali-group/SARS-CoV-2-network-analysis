@@ -69,12 +69,13 @@ def simplify_enriched_terms(df, min_odds_ratio = 1):
         # Update GeneRatioNumerator. It is just the number of genes in GeneSet (since they have not been covered by any already selected term)
         df['GeneRatioNumerator'] = df['GeneSet'].apply(lambda x: len(x))
         # Update OddsRatio
+
         df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
+
         # remove this term. I have commented out this line because I want to store the max_index above rather than the value in the Description column. If I store the Description column, then I have to map back to the index later, which I am not sure exactly how to do. Now if I store the max_index and also drop this row, then the rest of the indices are out of whack with the indices of df in the calling context, so I will access the wrong terms. I am safe in not dropping the row since this term's OddsRatio should be zero.
 #        df.drop(max_index, axis = 0, inplace=True)
 
     return(selected_terms)
-
 
 def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
     """
@@ -119,14 +120,15 @@ def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
             # Update GeneRatioNumerator. It is just the number of genes in GeneSet (since they have not been covered by any already selected term)
             df['GeneRatioNumerator'] = df['GeneSet'].apply(lambda x: len(x))
             # Update OddsRatio
+
             df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
+
 
         # now update OddsRatio in combined_df. since the indices do not match in dfs and combined_df, the safest thing to do is to repeat the concat and groupby.
         combined_df = pd.concat(dfs)
         combined_df = combined_df[['Description', 'OddsRatio']].groupby('Description', as_index=False).prod()
 
     return(selected_terms)
-
 
 def compare_selected_terms(df, terms):
     """
@@ -158,6 +160,7 @@ def main():
     # define files.
     go_bp_files = {
         'krogan': 'outputs/enrichment/combined-krogan-1_0/string---k332-CC.csv',
+
         'genemaniaplus': 'outputs/enrichment/combined-krogan-1_0/string-GM+-k332-BP.csv',
         'svm': 'outputs/enrichment/combined-krogan-1_0/string-SVM-rep100-nf5-k332-BP.csv'
     }
@@ -175,11 +178,13 @@ def main():
         go_bp_enrichment[alg] = pd.read_csv(go_bp_files[alg], header=2, index_col = 2)
         print(go_bp_enrichment[alg].columns.values)
 
+
     # reformat data frames.
     for alg in go_bp_enrichment:
         reformat_enrichment_data(go_bp_enrichment[alg])
 
     # simplify.
+
     for alg in go_bp_enrichment:
         # trial run. simplify for each algorithm separately.
         print("Algorithm %s has %d terms before selection." %(alg, len(go_bp_enrichment[alg]['Description'])))
