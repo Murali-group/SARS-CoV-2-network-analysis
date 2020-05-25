@@ -14,6 +14,8 @@ import time
 #from scipy import sparse
 import pandas as pd
 import numpy as np
+import seaborn as sns
+from matplotlib import pyplot as plt
 #import subprocess
 
 # packages in this repo
@@ -151,9 +153,8 @@ def add_qval_ratio(df,analysis_spec, krogan_dir,alg):
 def simplify_enrichment_result(df):
     description = df['Description']
     df.drop('Description', level = 0, axis = 1, inplace = True )
-
-
     parsed_df = pd.DataFrame({'Description':description})
+    filtered_simplified_df = pd.DataFrame({'Description':description})
 
     for dataset, df_d in df.groupby(level = 0, axis = 1):
 
@@ -162,24 +163,40 @@ def simplify_enrichment_result(df):
             df_a.columns = df_a.columns.droplevel([0,1])
 
             df_a['pvalue']=df_a['pvalue'].fillna(1)
-            df_a['geneID'] = df_a['geneID'].fillna('/')
+            df_a['geneID'] = df_a['geneID'].fillna('/') #fix it later
 
             if 'geneID' not in parsed_df.columns:
                 parsed_df['geneID'] = df_a['geneID']
+                parsed_df['geneName'] = df_a['geneName']
             else:
                 parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
+                parsed_df['geneName'] =parsed_df['geneName'].astype(str) +'/'+ df_a['geneName']
 
             if 'weight' not in parsed_df.columns:
                 parsed_df['weight'] = df_a['pvalue']
+
             else:
                 parsed_df['weight'] =parsed_df['weight']*df_a['pvalue']
 
+
             if(alg !='-'):
                 pval_col = alg+'_'+'pvalue'
+                BgRatio_col = alg+'_'+'BgRatio'
+                GeneRatio_col = alg+'_'+'GeneRatio'
+                qvalRatio_col = alg+'_'+'-(log(qvalue '+alg+')- log(qvalue Krogan))'
+                parsed_df[qvalRatio_col] = df_a['-(log(qvalue '+alg+')- log(qvalue Krogan))']
+
             else:
                 pval_col = dataset+'_'+'pvalue'
+                BgRatio_col = dataset+'_'+'BgRatio'
+                GeneRatio_col = dataset+'_'+'GeneRatio'
 
             parsed_df[pval_col] = df_a['pvalue']
+            parsed_df[BgRatio_col] = df_a['BgRatio']
+            parsed_df[GeneRatio_col] = df_a['GeneRatio']
+
+            filtered_simplified_df[pval_col] = df_a['pvalue']
+
 
 
     parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(x.split('/'))))
@@ -189,8 +206,8 @@ def simplify_enrichment_result(df):
     for term, geneID_set in parsed_df['geneID'].items():
         prot_universe = prot_universe.union(geneID_set)
 
-    uncovered_prot_universe = prot_universe
 
+    uncovered_prot_universe = prot_universe
     terms_to_keep=[]
     simple_df = parsed_df.copy()
 
@@ -202,8 +219,15 @@ def simplify_enrichment_result(df):
         terms_to_keep.append(min_idx)
         uncovered_prot_universe = uncovered_prot_universe - parsed_df.at[min_idx,'geneID']
         parsed_df.drop(min_idx, axis = 0, inplace=True)
+        # print('length: ', len(uncovered_prot_universe))
 
     simple_df = simple_df[simple_df.index.isin(terms_to_keep)]
+    filtered_simplified_df = filtered_simplified_df[filtered_simplified_df.index.isin(terms_to_keep)]
+
+    # order accrding to selection
+    simple_df = simple_df.reindex(terms_to_keep)
+    filtered_simplified_df = filtered_simplified_df.reindex(terms_to_keep)
+
     #correctedness checking
     # prot_universe_new=set()
     # for term, geneID_set in simple_df['geneID'].items():
@@ -213,11 +237,19 @@ def simplify_enrichment_result(df):
     # print('simple_df: ',simple_df)
     # print('diff bewteen actual and calculated prot universe: ', len(prot_universe-prot_universe_new))
     # print('terms to keep',terms_to_keep)
-    print('simple_df shape: ', simple_df.shape)
-    return simple_df
+    # print('simple_df index: ', simple_df.index)
+    # print('terms to keep: ', terms_to_keep)
+    # print('simple_df shape: ', simple_df.shape)
+    return filtered_simplified_df, simple_df
 
-
-
+def plot_heatmap(df,file_path):
+    df.reset_index(inplace = True)
+    df.set_index(['index','Description'],inplace=True)
+    print(df)
+    sns_plot = sns.heatmap(df)
+    fig_num = plt.gcf().number
+    figure = plt.figure(fig_num,figsize = (10,20))
+    figure.savefig(file_path)
 
 
 def main(config_map, **kwargs):
@@ -390,6 +422,7 @@ def main(config_map, **kwargs):
     super_combined_df = pd.DataFrame()
     combined_simplified_file = "%s-k%s-simplified.csv" % (out_pref,k_to_test[0])
     super_combined_simplified_file = "%s-k%s-super_combined_simplified.csv" % (out_pref,k_to_test[0])
+    heatmap_file = "%s-k%s-super_combined_simplified.png" % (out_pref,k_to_test[0])
     combined_simplified_df = pd.DataFrame()
 
     #write combined KEGG Enrichment
@@ -405,7 +438,7 @@ def main(config_map, **kwargs):
 
     else:
         out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
-        # print('KEGG ALL')
+        print('KEGG ALL')
         super_combined_df = pd.concat([super_combined_df, all_dfs_KEGG],axis=0)
         print('super_combined_df: ', super_combined_df.columns.values)
 
@@ -413,7 +446,8 @@ def main(config_map, **kwargs):
         with pd.ExcelWriter(super_combined_file) as writer:
             # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'KEGG')
-        combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
+        filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
+        combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
 
 
     #write combined Reactome Enrichment
@@ -433,8 +467,8 @@ def main(config_map, **kwargs):
         with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
             # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'Reactome')
-        combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
-
+        filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
+        combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
 
     #write GO enrichment
     for geneset, df in all_dfs.items():
@@ -456,15 +490,14 @@ def main(config_map, **kwargs):
                 processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
             if geneset == 'MF':
                 continue
-            combined_simplified_df = pd.concat([combined_simplified_df, simplify_enrichment_result(processed_df)], axis=0)
-
-
-    super_combined_simplified_df = simplify_enrichment_result(process_df(super_combined_df))
-
+            filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
+            combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
     combined_simplified_df.to_csv(combined_simplified_file)
+
+    filtered_super_combined_simplified_df, super_combined_simplified_df = simplify_enrichment_result(process_df(super_combined_df))
+    # plot_heatmap(filtered_super_combined_simplified_df,heatmap_file)
     super_combined_simplified_df.to_csv(super_combined_simplified_file)
 
-    print('super_combined_df: ',super_combined_df.columns)
 
 # Write each dataframe to a different worksheet.
 # df1.to_excel(writer, sheet_name='Sheet1')
