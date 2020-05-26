@@ -8,7 +8,6 @@ from scipy import sparse as sp
 from . import fastsinksource_runner as fastsinksource
 from . import sinksource_bounds_runner as ss_bounds
 from . import genemania_runner as genemania
-from . import svm_runner as svm
 from . import logistic_regression_runner as logistic_regression
 
 
@@ -23,7 +22,7 @@ LibMapper = {
     'localplus': fastsinksource,
     'genemania': genemania,
     'genemaniaplus': genemania,
-    'svm': svm,
+    'svm': logistic_regression,
     'logistic_regression': logistic_regression,
 }
 

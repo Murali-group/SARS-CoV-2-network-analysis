@@ -22,8 +22,10 @@ from src.FastSinkSource.src import main as run_eval_algs
 from src.FastSinkSource.src.utils import config_utils
 from src.FastSinkSource.src.algorithms import alg_utils
 from src.graphspace import post_to_graphspace_base as gs
+from src.graphspace import gs_utils
 
 
+red = "#e32727"
 orange = "#eb9007"
 #orange = "#d88c00"
     #'color': "#f2630a",  # orange
@@ -33,6 +35,23 @@ green2 = "#21c442"
 light_blue = "#9ecbf7"
 light_blue2 = "#479aed"  # a bit darker blue than the node
 gray = "#6b6b6b"
+
+# I manually put these colors together
+GO_term_colors = [
+    #"#FFDC00",  # yellow
+    "#ffca37",  # yellow2
+    "#009933",  # green
+    "#00cc99",  # turquoise
+    "#0099cc",  # blue-green
+    "#7FDBFF",  # bright blue
+    "#9966ff",  # bright purple
+    "#ff5050",  # light red
+    "#e67300",  # burnt orange
+    "#86b300",  # lime green
+    "#0074D9",  # blue
+    "#6699ff",  # light blue
+    "#85144b",  # maroon
+    ]
 
 # names of group nodes
 virus_group = 'SARS-CoV-2 Proteins'
@@ -65,7 +84,7 @@ drug_edge_styles = {
     'line-style': 'dashed',
     }
 virus_node_styles = {
-    'color': "red",
+    'color': red,
     'shape': 'diamond',
     'width': 60,
     'height': 60,
@@ -126,19 +145,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, required=True,
-                       help="Configuration file used when running FSS. " +
-                       "Must have a 'genesets_to_test' section for this script. ")
-    group.add_argument('--sarscov2-human-ppis', required=True,
-                       help="Table of virus and human ppis")
-    group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
-                       help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-    group.add_argument('--drug-id-mapping-file', type=str, 
-                       help="Table parsed from DrugBank xml with drug names and other info. " + \
-                       "Will post the subnetwork of the shortest path from the top k drugs to the virus nodes")
-    group.add_argument('--drug-targets-file', type=str, 
-                       help="This option can be specified to add the drug-target edges to the predictions")
-    group.add_argument('--drug-list-file', type=str, 
-                      help="File containing a list of drugs for which to filter the drug targets")
+                       help="Configuration file used when running FSS. ")
     group.add_argument('--k-to-test', '-k', type=int, action="append",
                        help="k-value(s) for which to get the top-k predictions to test. " +
                        "If not specified, will check the config file. Default=100")
@@ -150,6 +157,33 @@ def setup_opts():
     group.add_argument('--node-to-post', type=str, action="append",
                       help="UniProt ID of a taxon node for which to get neighbors. Can specify multiple")
 
+    group = parser.add_argument_group('Data sources options')
+    group.add_argument('--sarscov2-human-ppis', default='datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv',
+                       help="Table of virus and human ppis. Default: datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv")
+    group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
+                       help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
+    group.add_argument('--drug-id-mapping-file', type=str, 
+                       help="Table parsed from DrugBank xml with drug names and other info. " + \
+                       "Will post the subnetwork of the shortest path from the top k drugs to the virus nodes")
+    group.add_argument('--drug-targets-file', type=str, 
+                       help="This option can be specified to add the drug-target edges to the predictions")
+    group.add_argument('--drug-list-file', type=str, 
+                      help="File containing a list of drugs for which to filter the drug targets")
+    group.add_argument('--drug-targets-only', action="store_true",
+                      help="Only include nodes that are targets of a drug")
+    group.add_argument('--term-to-highlight', '-T', type=str, action="append",
+                       help="One or more terms for which to highlight (i.e., make a parent node) in the graph")
+    group.add_argument('--enriched-terms-file', '-E', type=str, 
+                       help="File containing the enriched terms, and the genes that are annotated to each. " + \
+                       "Should be output by src/Enrichment/fss_enrichment.py Can also include the Krogan comparison")
+    group.add_argument('--edge-weight-cutoff', type=float, 
+                       help="Cutoff to apply to the edges to view (e.g., 900 for STRING)")
+    group.add_argument('--edge-evidence-file', type=str,
+                       help="File containing evidence for each edge. See XXX for the file format")
+    #/home/jeffl/src/python/graphspace/trunk/graphspace-human/post_to_new_graphspace_evidence.py
+    #evidence, edge_types, edge_dir = getev.getEvidence(prededges.keys(), evidence_file=evidence_file, add_ev_to_family_edges=add_ev_to_family_edges)
+    # edge_popup = getEdgeAnnotation(u,v, evidence, k=k_value
+
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
                        help="Algorithms for which to get results. Must be in the config file. " +
@@ -159,8 +193,6 @@ def setup_opts():
     group.add_argument('--sample-neg-examples-factor', type=float, 
                        help="Factor/ratio of negatives to positives used when making predictions. " +
                        "Not used for methods which use only positive examples.")
-    group.add_argument('--force-run', action='store_true', default=False,
-                       help="Force re-running the enrichment tests, and re-writing the output files")
 
     # posting options
     group = parser.add_argument_group('GraphSpace Options')
@@ -193,6 +225,8 @@ def setup_opts():
     group.add_argument('--graph-attr-file',
                        help='File used to specify graph attributes. Tab-delimited with columns: 1: style, 2: style attribute, ' + \
                        '3: nodes/edges to which styles will be applied separated by \'|\' (edges \'-\' separated), 4th: Description of style to add to node popup.')
+    #group.add_argument('--force-post', action='store_true', default=False,
+    #                   help="Update graph if it already exists.")
 
 #    # additional parameters
 #    group = parser.add_argument_group('Additional options')
@@ -216,6 +250,17 @@ def main(config_map, **kwargs):
         = config_utils.setup_config_variables(config_map, **kwargs)
     algs = config_utils.get_algs_to_run(alg_settings, **kwargs)
     del kwargs['algs']
+
+    node_list = [] 
+    if kwargs.get('node_list_file'):
+        print("Reading %s" % (kwargs['node_list_file']))
+        node_list = set(pd.read_csv(kwargs['node_list_file'], sep='\t', header=None, squeeze=True).tolist())
+    if kwargs.get('drug_list_file'):
+        print("Reading %s" % (kwargs['drug_list_file']))
+        drug_list = set(pd.read_csv(kwargs['drug_list_file'], sep='\t', header=None, usecols=[0], squeeze=True).tolist())
+        #node_list |= drug_list
+    if kwargs.get('node_to_post'):
+        node_list |= set(kwargs['node_to_post'])
 
     # this dictionary will hold all the styles 
     graph_attr = defaultdict(dict)
@@ -252,17 +297,48 @@ def main(config_map, **kwargs):
         print("Reading %s" % (kwargs['drug_targets_file']))
         df = pd.read_csv(kwargs['drug_targets_file'], sep='\t', header=None) 
         drugG = nx.from_pandas_edgelist(df, source=0, target=1)
-
-    node_list = [] 
-    if kwargs.get('node_list_file'):
-        print("Reading %s" % (kwargs['node_list_file']))
-        node_list = set(pd.read_csv(kwargs['node_list_file'], sep='\t', header=None, squeeze=True).tolist())
-    if kwargs.get('drug_list_file'):
-        print("Reading %s" % (kwargs['drug_list_file']))
-        drug_list = set(pd.read_csv(kwargs['drug_list_file'], sep='\t', header=None, usecols=[0], squeeze=True).tolist())
-        #node_list |= drug_list
-    if kwargs.get('node_to_post'):
-        node_list |= set(kwargs['node_to_post'])
+    if kwargs.get('enriched_terms_file'):
+        print("Reading %s" % (kwargs['enriched_terms_file']))
+        df = pd.read_csv(kwargs['enriched_terms_file'], header=[0,1,2], index_col=0) 
+        df2 = df.copy()
+        print(df.head())
+        # get the prots per term
+        df2.columns = df2.columns.droplevel([0,1])
+        df2 = df2['geneID']
+        df2.columns = list(range(len(df2.columns)))
+        for i in range(1,len(df2.columns)):
+            df2[0] = df2[0] + '/' + df2[i]
+        print(df2.head())
+        #print(df2['geneID'].head())
+        term_ann = dict(zip(df2.index, df2[0].values))
+        term_ann = {t: str(ann).split('/') for t,ann in term_ann.items()}
+        print("\t%d terms, %s" % (
+            len(term_ann),
+            ", ".join("%s: %d ann" % (t, len(term_ann[t])) for t in kwargs['term_to_highlight']))) 
+        # also get the term name, and the enrichment p-value(?)
+        term_names = dict(zip(df.index, df[('Description', 'Unnamed: 1_level_1', 'Unnamed: 1_level_2')]))
+        nodes = set()
+        # setup their graph_attributes for posting
+        # reverse so that if a gene is annotated to multiple terms, then the first term gets priority of parent
+        for i, t in enumerate(kwargs['term_to_highlight'][::-1]):
+            name = term_names[t]
+            color = GO_term_colors[i]
+            graph_attr[name]['color'] = color
+            # add this node as the parent to the other nodes
+            for n in term_ann[t]:
+                graph_attr[n]['parent'] = name
+                graph_attr[n]['color'] = color
+                nodes.add(n)
+            # TODO add the link
+            # this is used to make the popup
+            attr_desc[('parent', name)] = t
+        # if the node list file is not specified, then set the annotated nodes as the node list
+        if not kwargs.get('node_list_file'):
+            node_list = nodes
+    if kwargs.get('drug_targets_only'):
+        new_node_list = set([n for n in node_list if drugG.has_node(n)])
+        if len(new_node_list) > 2:
+            node_list = new_node_list
 
     # load human-virus ppis
     df = pd.read_csv(kwargs['sarscov2_human_ppis'], sep='\t')
@@ -298,6 +374,15 @@ def main(config_map, **kwargs):
         # load the network and the positive examples for each term
         net_obj, ann_obj, eval_ann_obj = run_eval_algs.setup_dataset(
             dataset, input_dir, **kwargs) 
+        # find the shortest path(s) from each drug node to any virus node
+        if kwargs.get('edge_weight_cutoff'):
+            print("\tapplying edge weight cutoff %s" % (kwargs['edge_weight_cutoff']))
+            W = net_obj.W
+            W = W.multiply((W > kwargs['edge_weight_cutoff']).astype(int))
+            net_obj.W = W
+            num_nodes = np.count_nonzero(W.sum(axis=0))  # count the nodes with at least one edge
+            num_edges = (len(W.data) / 2)  # since the network is symmetric, the number of undirected edges is the number of entries divided by 2
+        print("\t%d nodes and %d edges" % (num_nodes, num_edges))
         prots = net_obj.nodes
         print("\t%d total prots" % (len(prots)))
         # TODO using this for the SARS-CoV-2 project,
@@ -336,18 +421,19 @@ def main(config_map, **kwargs):
             curr_scores = dict(zip(df['prot'], df['score']))
             df.sort_values(by='score', ascending=False, inplace=True)
             #print(df.head())
-            if len(node_list) > 0:
-                pred_nodes = get_paths_to_virus_nodes(node_list, net_obj, virhost_edges)
-            else:
-                pred_nodes = set(list(df[:k_to_test[0]]['prot']))
+            if len(node_list) == 0:
+                node_list = set(list(df[:k_to_test[0]]['prot']))
+            pred_nodes = node_list
+            if kwargs.get('paths_to_virus'):
+                pred_nodes = get_paths_to_virus_nodes(node_list, net_obj, virhost_edges, **kwargs)
             node_types = {} 
             # if the drug nodes were part of the network, then get the top predicted drugs from the prediction scores
             if drug_nodes is not None and drugG is None:
                 if len(node_list) > 0:
                     top_k_drug_nodes = node_list
-                else:
+                elif kwargs.get('paths_to_virus'):
                     top_k_drug_nodes = list(df[df['prot'].isin(drug_nodes)][:k_to_test[0]]['prot'])
-                pred_nodes = get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges)
+                pred_nodes = get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges, **kwargs)
                 node_types = {d: 'drug' for d in drug_nodes}
 
             pred_nodes -= (set(virus_nodes) | set(krogan_nodes))
@@ -356,7 +442,10 @@ def main(config_map, **kwargs):
             # build the network to post
             pred_edges, graph_attr, attr_desc2, node_type_rank = build_subgraph(
                 alg, pred_nodes, curr_scores, all_nodes,
-                net_obj, graph_attr, node_types, max_edge_width=8, **kwargs)
+                net_obj, graph_attr, node_types,
+                min_edge_width=2 if not kwargs.get('edge_weight_cutoff') else 3,
+                max_edge_width=8 if not kwargs.get('edge_weight_cutoff') else 6,
+                **kwargs)
             attr_desc.update(attr_desc2)
 
             # add the node rank to the name of the node
@@ -406,8 +495,12 @@ def main(config_map, **kwargs):
                 #    graph_attr[n]['group'] = "DrugBank Drugs"
                 #else: 
                 #    graph_attr[n]['group'] = "Human Proteins"
-            for e in edges:
+            for e in virhost_edges:
                 graph_attr[e] = virhost_edge_styles
+
+            evidence=None
+            if kwargs.get('edge_evidence_file'):
+                evidence, _,_ = gs_utils.getEvidence(pred_edges, evidence_file=kwargs['edge_evidence_file'])
 
             # Now post to graphspace!
             print("Building GraphSpace graph")
@@ -420,7 +513,7 @@ def main(config_map, **kwargs):
                 node_type = 'drugbank' if drug_nodes and n in drug_nodes else 'uniprot'
                 popups[n] = gs.buildNodePopup(n, node_type=node_type, attr_val=attr_desc)
             for u,v in pred_edges:
-                popups[(u,v)] = gs.buildEdgePopup(u,v, node_labels=uniprot_to_gene, attr_val=attr_desc)
+                popups[(u,v)] = gs.buildEdgePopup(u,v, node_labels=uniprot_to_gene, attr_val=attr_desc, evidence=evidence)
             G = gs.constructGraph(pred_edges, node_labels=uniprot_to_gene, graph_attr=graph_attr, popups=popups)
             
             # set of group nodes to add to the graph
@@ -446,6 +539,8 @@ def main(config_map, **kwargs):
                 alg, graph_exp_name, k_to_test[0], kwargs.get('name_postfix',''))
                 #"test","", "")
 
+            if kwargs.get('term_to_highlight'):
+                graph_name += "-%s-%s" % (kwargs['term_to_highlight'][0], term_names[kwargs['term_to_highlight'][0]].replace(' ','-')[:25])
             if kwargs.get('node_to_post') is not None:
                 graph_name += '-'.join(kwargs['node_to_post'])
             G.set_name(graph_name)
@@ -468,15 +563,14 @@ def main(config_map, **kwargs):
                     group=kwargs['group'], make_public=kwargs['make_public'])
 
 
-
-def get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges):
-    # find the shortest path(s) from each drug node to any virus node
+def get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges, **kwargs):
+    W = net_obj.W
     print("converting network to networkx graph")
-    G = nx.from_scipy_sparse_matrix(net_obj.W)
+    G = nx.from_scipy_sparse_matrix(W)
     # now convert the edges back to prots
     G = nx.relabel_nodes(G, {i: p for i, p in enumerate(net_obj.nodes)})
-    print("\tadding %d virus edges" % (len(virhost_edges)))
     G.add_edges_from(virhost_edges)
+    print("\t%d nodes and %d edges after adding %d virus edges" % (G.number_of_nodes(), G.number_of_edges(), len(virhost_edges)))
     krogan_nodes = set(h for v,h in virhost_edges)
     # remove the edges from drugs to krogan nodes if they are there
     # since those weren't used during network propagation
@@ -486,6 +580,7 @@ def get_paths_to_virus_nodes(top_k_drug_nodes, net_obj, virhost_edges):
     #        if G.has_edge(d,n):
     #            G.remove_edge(d,n)
     print("\tfinding the shortest paths from %d nodes to the virus nodes" % (len(top_k_drug_nodes)))
+    #print(top_k_drug_nodes)
     no_path = set()
     nodes_on_paths = set()
     for d in tqdm(top_k_drug_nodes):

@@ -51,8 +51,9 @@ def setup_opts():
                        "Must have a 'genesets_to_test' section for this script. ")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
+
     group.add_argument('--compare-krogan-terms',default = 'outputs/enrichment/krogan/p1_0/',
-                       help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv) inside. Will be added to the combined table")
+
     # Should be specified in the config file
     #group.add_argument('--gmt-file', append=True,
     #                   help="Test for enrichment using the genesets present in a GMT file.")
@@ -292,7 +293,9 @@ def main(config_map, **kwargs):
     pathways_to_keep_Reactome = []
 
 
+
     num_algs_with_results = 0
+
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap
     for dataset in input_settings['datasets']:
@@ -330,7 +333,9 @@ def main(config_map, **kwargs):
             if not os.path.isfile(pred_file):
                 print("Warning: %s not found. skipping" % (pred_file))
                 continue
+
             num_algs_with_results += 1
+
             print("reading: %s" % (pred_file))
             df = pd.read_csv(pred_file, sep='\t')
             # remove the original positives
@@ -398,6 +403,7 @@ def main(config_map, **kwargs):
         sys.exit()
 
     if kwargs.get('compare_krogan_terms'):
+
         for geneset, g_df in all_dfs.items():
             df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
             all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
@@ -408,11 +414,11 @@ def main(config_map, **kwargs):
         reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
         all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
 
-
     # now write the combined df to a file
 
     out_pref = kwargs.get('out_pref')
     if out_pref is None:
+
         pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
         out_pref = "%s/enrichment/combined%s-%s/%s-" % (
             output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
@@ -471,6 +477,7 @@ def main(config_map, **kwargs):
         combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
 
     #write GO enrichment
+
     for geneset, df in all_dfs.items():
         if kwargs.get('file_per_alg'):
             df = df.swaplevel(0,1,axis=1)
@@ -478,7 +485,7 @@ def main(config_map, **kwargs):
                 df_alg.dropna(how='all', inplace=True)
                 # TODO add back the krogan terms
                 #if kwargs.get('compare_krogan_terms') and :
-                # print(df_alg.head())
+                
                 out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
                 write_combined_table(df_alg, out_file, dataset_level=1)
         else:

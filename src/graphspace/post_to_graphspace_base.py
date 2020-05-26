@@ -17,6 +17,8 @@ from graphspace_python.graphs.classes.gsgraph import GSGraph
 import sys
 import pandas as pd
 
+from src.graphspace import gs_utils
+
 
 def main(args):
     #global PARENTNODES
@@ -213,7 +215,7 @@ def post_graph_to_graphspace(G, username, password, graph_name, apply_layout=Non
         print("sharing graph with group '%s'" % (group))
         group = gs.get_group(group_name=group)
         #print(group.url)
-        gs.share_graph(graph=gs_graph, group=group)
+        gs.share_graph(graph=gs_graph, graph_name=graph_name, group=group)
 
 
 def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}):
@@ -365,7 +367,7 @@ def buildNodePopup(n, node_type='uniprot', attr_val=None):
     return htmlstring
 
 
-def buildEdgePopup(u, v, node_labels={}, attr_val=None):
+def buildEdgePopup(u, v, node_labels={}, attr_val=None, evidence=None, **kwargs):
     """
     Builds the edge html for the edge popup.
 
@@ -387,6 +389,11 @@ def buildEdgePopup(u, v, node_labels={}, attr_val=None):
         # now add all of the specified edge annotations
         for attr, val in attr_val[(u,v)].items():
             htmlstring += "<b>%s</b>: %s</br>" % (attr, val)
+
+    # if the evidence file was passed in, then also add the evidence for this edge
+    if evidence is not None:
+        htmlstring += '<hr /><h><b>Sources of Evidence</b></h>'
+        htmlstring += gs_utils.evidenceToHTML(u,v,evidence[(u,v)])
 
     return htmlstring
 
@@ -422,6 +429,8 @@ def parseArgs(args):
             '3: nodes/edges to which styles will be applied separated by \'|\' (edges \'-\' separated), 4th: Description of style to add to graph legend (not yet implemented).')
     parser.add_option('', '--set-edge-width', action="store_true", default=False,
                       help='Set edge widths according to the weight in the network file.')
+    parser.add_optoin('', '--edge-evidence-file', type='string',
+                       help="File containing evidence for each edge. See XXX for the file format")
 
     # posting options
     parser.add_option('-U', '--username', type='string', metavar='STR', 
