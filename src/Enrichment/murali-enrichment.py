@@ -18,6 +18,7 @@ import numpy as np
 # for median
 import statistics
 
+sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
 import enrichment
 
 
@@ -158,11 +159,12 @@ def main():
 
     # should be a command-line option.
     # define files.
+    out_dir = 'outputs/enrichment/murali'
     go_bp_files = {
-        'krogan': 'outputs/enrichment/combined-krogan-1_0/string---k332-CC.csv',
+        'krogan': 'outputs/enrichment/krogan/p1_0/enrich-BP-1_0.csv',
 
-        'genemaniaplus': 'outputs/enrichment/combined-krogan-1_0/string-GM+-k332-BP.csv',
-        'svm': 'outputs/enrichment/combined-krogan-1_0/string-SVM-rep100-nf5-k332-BP.csv'
+        'genemaniaplus': 'outputs/enrichment/networks/stringv11/400/2020-03-sarscov2-human-ppi-ace2/GM+/pred-scores-a0_01-tol1e-05-filtered-p0_05/enrich-BP-1_0.csv',
+        'svm': 'outputs/enrichment/networks/stringv11/400/2020-03-sarscov2-human-ppi-ace2/SVM-rep100-nf5/pred-scores-rep100-nf5-svm-maxi1000-filtered-p0_05/enrich-BP-1_0.csv'
     }
     # should be a command-line option.
     #min_odds_ratio = 1
@@ -175,7 +177,7 @@ def main():
     for alg in go_bp_files:
         # the first two lines seem useless so header = 2
         # the first two columns do not have a header. the third column specifies the term/pathway id, so using it as the column for indexing.
-        go_bp_enrichment[alg] = pd.read_csv(go_bp_files[alg], header=2, index_col = 2)
+        go_bp_enrichment[alg] = pd.read_csv(go_bp_files[alg])
         print(go_bp_enrichment[alg].columns.values)
 
 
@@ -193,6 +195,8 @@ def main():
 
     # now try all algorithms together
     combined_selected_terms = simplify_enriched_terms_multiple(copy.deepcopy(list(go_bp_enrichment.values())), min_odds_ratio)
+    combined_selected_terms.to_csv(out_dir+'/combined_simplified_file.csv')
+    
     # compare similarity of selected terms as a gut check. I need to combine the dfs into one with a GeneSet that is the union of the individual gene sets.
     combined_df = pd.concat(go_bp_enrichment.values())
     print("Combined data frame includes %d frames" % (len(go_bp_enrichment.values())))

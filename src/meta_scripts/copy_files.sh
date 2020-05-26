@@ -13,7 +13,7 @@ echo "cp $jeff_dir/$config_dir/*.yaml  $config_dir/"
 cp $jeff_dir/$config_dir/*.yaml  $config_dir/
 
 # now copy the prediction and statistical significance files
-for alg in genemaniaplus svm; do
+for alg in genemaniaplus svm logistic_regression; do
     mkdir -p $out_dir/$alg
     echo "cp  $jeff_dir/$out_dir/$alg/pred-scores*.txt $out_dir/$alg"
     cp  $jeff_dir/$out_dir/$alg/pred-scores*.txt $out_dir/$alg
