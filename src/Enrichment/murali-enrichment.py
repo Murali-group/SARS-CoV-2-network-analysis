@@ -83,11 +83,14 @@ def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
     dfs: a list of DataFrames containing the enrichment information for different sets of proteins.
     min_odds_ratio: Stop selecting additional terms once the maximum odds ratio falls below this threshold.
 
-    Use a greedy-set-cover-like algorithm to compute a small set of terms that cover all the proteins annotated by the terms across the dfs. Here, we are considering only the proteins that also belong to the sets for which we ran enrichment, e.g., top-k GeneManiaPlus predictions and top-k SVM predictions.
+    Use a greedy-set-cover-like algorithm to compute a small set of terms that cover all the proteins annotated by the terms across the dfs.
+    Here, we are considering only the proteins that also belong to the sets for which we ran enrichment, e.g., top-k GeneManiaPlus predictions and top-k SVM predictions.
 
-    In each iteration, the idea is to pick the term that maximises a composite odds ratio. After picking the term, we update the GeneSet for each term in each df by deleting all the genes annotated to the selected term. We also update GeneRatioNumerator, OddsRatio, and CompositeOddsRatio.
+    In each iteration, the idea is to pick the term that maximises a composite odds ratio. After picking the term,
+    we update the GeneSet for each term in each df by deleting all the genes annotated to the selected term. We also update GeneRatioNumerator, OddsRatio, and CompositeOddsRatio.
 
-    The odds ratio for a term in one df is (GeneRatioNumerator/GeneRatioDenominator)/(BgRatioNumerator/BgRatioDenominator). We define the composite odds ratio of a term to be the product across dfs of the odds ratios for the term.
+    The odds ratio for a term in one df is (GeneRatioNumerator/GeneRatioDenominator)/(BgRatioNumerator/BgRatioDenominator).
+    We define the composite odds ratio of a term to be the product across dfs of the odds ratios for the term.
     """
 
     selected_terms = []
@@ -195,8 +198,8 @@ def main():
 
     # now try all algorithms together
     combined_selected_terms = simplify_enriched_terms_multiple(copy.deepcopy(list(go_bp_enrichment.values())), min_odds_ratio)
-    combined_selected_terms.to_csv(out_dir+'/combined_simplified_file.csv')
-    
+    # combined_selected_terms.to_csv(out_dir+'/combined_simplified_file.csv')
+
     # compare similarity of selected terms as a gut check. I need to combine the dfs into one with a GeneSet that is the union of the individual gene sets.
     combined_df = pd.concat(go_bp_enrichment.values())
     print("Combined data frame includes %d frames" % (len(go_bp_enrichment.values())))

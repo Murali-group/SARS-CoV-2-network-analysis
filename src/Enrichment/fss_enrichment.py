@@ -16,6 +16,11 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
+from scipy.stats import hypergeom
+import itertools
+import statistics
+import scipy.stats as stats
+
 #import subprocess
 
 # packages in this repo
@@ -51,9 +56,8 @@ def setup_opts():
                        "Must have a 'genesets_to_test' section for this script. ")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-
     group.add_argument('--compare-krogan-terms',default = 'outputs/enrichment/krogan/p1_0/',
-
+                       help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv) inside. Will be added to the combined table")
     # Should be specified in the config file
     #group.add_argument('--gmt-file', append=True,
     #                   help="Test for enrichment using the genesets present in a GMT file.")
@@ -151,11 +155,33 @@ def add_qval_ratio(df,analysis_spec, krogan_dir,alg):
     df = df.drop('k_qvalue',axis=1)
     return df
 
+
+def compare_selected_terms(df, terms):
+    """
+    For all pairs of terms, compare the overlap of their gene sets. The goal of this Python function is to verify that the terms are not too similar.
+    """
+    all_pairs = itertools.combinations(terms, 2)
+    all_pairs_jaccard_coeffs = []
+    for (fn1, fn2) in all_pairs:
+        # compare gene_set with
+        # gs1 = df['GeneSet'][[df['Description'] == fn1].index]
+        # gs2 = df['GeneSet'][[df['Description'] == fn2].index]
+        gs1 = df['GeneSet'][fn1]
+        gs2 = df['GeneSet'][fn2]
+        # print("Function %s has size %d" % (fn1, len(gs1)) )
+        # print("Function %s has size %d" % (fn2, len(gs2)) )
+        jc = len(gs1.intersection(gs2))*1.0/len(gs1.union(gs2))
+        all_pairs_jaccard_coeffs.append(jc)
+
+    print("Maximum Jaccard coefficient is %f" % (max(all_pairs_jaccard_coeffs)))
+    print("Median Jaccard coefficient is %f" % (statistics.median(all_pairs_jaccard_coeffs)))
+    print("Mean Jaccard coefficient is %f" % (statistics.mean(all_pairs_jaccard_coeffs)))
+
 def simplify_enrichment_result(df):
     description = df['Description']
-    df.drop('Description', level = 0, axis = 1, inplace = True )
+    df.drop('Description', level = 0, axis = 1, inplace = True)
     parsed_df = pd.DataFrame({'Description':description})
-    filtered_simplified_df = pd.DataFrame({'Description':description})
+    # filtered_simplified_df = pd.DataFrame({'Description':description})
 
     for dataset, df_d in df.groupby(level = 0, axis = 1):
 
@@ -196,11 +222,11 @@ def simplify_enrichment_result(df):
             parsed_df[BgRatio_col] = df_a['BgRatio']
             parsed_df[GeneRatio_col] = df_a['GeneRatio']
 
-            filtered_simplified_df[pval_col] = df_a['pvalue']
+            # filtered_simplified_df[pval_col] = df_a['pvalue']
 
 
 
-    parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(x.split('/'))))
+    parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
 
     # create protein universe
     prot_universe = set()
@@ -220,37 +246,422 @@ def simplify_enrichment_result(df):
         terms_to_keep.append(min_idx)
         uncovered_prot_universe = uncovered_prot_universe - parsed_df.at[min_idx,'geneID']
         parsed_df.drop(min_idx, axis = 0, inplace=True)
-        # print('length: ', len(uncovered_prot_universe))
 
     simple_df = simple_df[simple_df.index.isin(terms_to_keep)]
-    filtered_simplified_df = filtered_simplified_df[filtered_simplified_df.index.isin(terms_to_keep)]
+
 
     # order accrding to selection
     simple_df = simple_df.reindex(terms_to_keep)
-    filtered_simplified_df = filtered_simplified_df.reindex(terms_to_keep)
 
-    #correctedness checking
-    # prot_universe_new=set()
-    # for term, geneID_set in simple_df['geneID'].items():
-    #     prot_universe_new = prot_universe_new.union(geneID_set)
+    return  simple_df
 
 
-    # print('simple_df: ',simple_df)
-    # print('diff bewteen actual and calculated prot universe: ', len(prot_universe-prot_universe_new))
-    # print('terms to keep',terms_to_keep)
-    # print('simple_df index: ', simple_df.index)
-    # print('terms to keep: ', terms_to_keep)
-    # print('simple_df shape: ', simple_df.shape)
-    return filtered_simplified_df, simple_df
+#
+#
+#
+#
+# def reformat_enrichment_data(df):
+#     """
+#     Reformat the data frame containing enrichment results: for each term, get the gene set and the four numbers that are input to Fisher's exact test.
+#     """
+#
+#
+#     # convert gene ids into set of genes.
+#     df['GeneSet'] = df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
+#     # get numbers that go into the odds ratio. first make them a list.
+#     df['GeneRatioNumbers'] = df['GeneRatio'].astype(str).apply(lambda x: (x.split('/')))
+#     # Then get the first and second elements of the list.
+#     df['GeneRatioNumerator'] = df['GeneRatioNumbers'].apply(lambda x: int(x[0]))
+#     #    print(df['GeneRatioNumerator'])
+#     df['GeneRatioDenominator'] = df['GeneRatioNumbers'].apply(lambda x: int(x[1]))
+#     # repeat for BgRatio
+#     df['BgRatioNumbers'] = df['BgRatio'].astype(str).apply(lambda x: (x.split('/')))
+#     # Then get the first and second elements of the list.
+#     df['BgRatioNumerator'] = df['BgRatioNumbers'].apply(lambda x: int(x[0]))
+#     df['BgRatioDenominator'] = df['BgRatioNumbers'].apply(lambda x: int(x[1]))
+#     df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
+# #    print(df['BgRatioDenominator'])
+#     return  df
+#
+# def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
+#     """
+#     dfs: a list of DataFrames containing the enrichment information for different sets of proteins.
+#     min_odds_ratio: Stop selecting additional terms once the maximum odds ratio falls below this threshold.
+#
+#     Use a greedy-set-cover-like algorithm to compute a small set of terms that cover all the proteins annotated by the terms across the dfs.
+#     Here, we are considering only the proteins that also belong to the sets for which we ran enrichment, e.g., top-k GeneManiaPlus predictions and top-k SVM predictions.
+#
+#     In each iteration, the idea is to pick the term that maximises a composite odds ratio. After picking the term,
+#     we update the GeneSet for each term in each df by deleting all the genes annotated to the selected term. We also update GeneRatioNumerator, OddsRatio, and CompositeOddsRatio.
+#
+#     The odds ratio for a term in one df is (GeneRatioNumerator/GeneRatioDenominator)/(BgRatioNumerator/BgRatioDenominator).
+#     We define the composite odds ratio of a term to be the product across dfs of the odds ratios for the term.
+#     """
+#
+#     selected_terms = []
+#     # compute product of OddsRatio values in dfs. Use concat followed by groupby.
+#     combined_df = pd.concat(dfs)
+#     combined_df = combined_df[['Description', 'OddsRatio']].groupby('Description', as_index=False).prod()
+#     # print(combined_df.shape)
+#     # print(combined_df.columns)
+#     # print(combined_df.head())
+#
+#     while (True):
+#         # pick the term with the largest odds ratio.
+#         max_index = combined_df['OddsRatio'].idxmax()
+#         # return if OddsRatio is < min_odds_ratio.
+#         if (combined_df['OddsRatio'][max_index] < min_odds_ratio):
+#             return(selected_terms)
+#         selected_term = combined_df['Description'][max_index]
+#         selected_terms.append(selected_term)
+#         print("Selected %s with odds ratio %f " % (selected_term, combined_df['OddsRatio'][max_index]))
+#         for df in dfs:
+#             # now update each term in each df. We have to find where seleced_term is located.
+#             term_row = df[df['Description'] == selected_term]
+#             if (term_row.shape[0] == 0):
+#                 # a df may not contain a row for selected_term
+#                 continue
+#             # print(term_row)
+#             gene_set_covered = term_row['GeneSet'].values[0]
+#             # print(gene_set_covered)
+#             # Update GeneSet for every term by removing all the genes covered by the selected term.
+#             df['GeneSet'] = df['GeneSet'].apply(lambda x: x.difference(gene_set_covered))
+#             # Update GeneRatioNumerator. It is just the number of genes in GeneSet (since they have not been covered by any already selected term)
+#             df['GeneRatioNumerator'] = df['GeneSet'].apply(lambda x: len(x))
+#             # Update OddsRatio
+#
+#             df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
+#
+#
+#         # now update OddsRatio in combined_df. since the indices do not match in dfs and combined_df, the safest thing to do is to repeat the concat and groupby.
+#         combined_df = pd.concat(dfs)
+#         combined_df = combined_df[['Description', 'OddsRatio']].groupby('Description', as_index=False).prod()
+#
+#     return(selected_terms)
+#
+# def simplify_enrichment_greedy_algo(df,min_odds_ratio):
+#
+#     description = df['Description']
+#     df.drop('Description', level = 0, axis = 1, inplace = True )
+#
+#     parsed_df = pd.DataFrame({'Description':description})
+#
+#
+#     df_a_dict={}
+#
+#     for dataset, df_d in df.groupby(level = 0, axis = 1):
+#
+#         for alg, df_a in df_d.groupby(level=1, axis = 1):
+#
+#             df_a.columns = df_a.columns.droplevel([0,1])
+#
+#             # add description column
+#             df_a['Description'] = description
+#
+#             # fill nan values
+#             df_a['pvalue']=df_a['pvalue'].fillna(1)
+#             df_a['geneID'] = df_a['geneID'].fillna('/')
+#
+#             # fill the nan values in GeneRatio and BgRatio columns
+#             df_temp = df_a[df_a['GeneRatio']!=np.nan]
+#             generatio_denominator = df_temp.iloc[0].at['GeneRatio'].split('/')[1]
+#             filler_generatio = '0'+'/'+ generatio_denominator
+#
+#             df_temp = df_a[df_a['BgRatio']!=np.nan]
+#             bgratio_denominator = df_temp.iloc[0].at['BgRatio'].split('/')[1]
+#             filler_bgratio = '0'+'/'+bgratio_denominator
+#
+#             df_a['GeneRatio'] = df_a['GeneRatio'].fillna(filler_generatio)
+#             df_a['BgRatio'] = df_a['BgRatio'].fillna(filler_bgratio)
+#
+#             if 'geneID' not in parsed_df.columns:
+#                 parsed_df['geneID'] = df_a['geneID']
+#                 parsed_df['geneName'] = df_a['geneName']
+#             else:
+#                 parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
+#                 parsed_df['geneName'] =parsed_df['geneName'].astype(str) +'/'+ df_a['geneName']
+#
+#
+#             if(alg !='-'):
+#                 pval_col = alg+'_'+'pvalue'
+#                 BgRatio_col = alg+'_'+'BgRatio'
+#                 GeneRatio_col = alg+'_'+'GeneRatio'
+#                 qvalRatio_col = alg+'_'+'-(log(qvalue '+alg+')- log(qvalue Krogan))'
+#                 parsed_df[qvalRatio_col] = df_a['-(log(qvalue '+alg+')- log(qvalue Krogan))']
+#
+#             else:
+#                 pval_col = dataset+'_'+'pvalue'
+#                 BgRatio_col = dataset+'_'+'BgRatio'
+#                 GeneRatio_col = dataset+'_'+'GeneRatio'
+#
+#             parsed_df[pval_col] = df_a['pvalue']
+#             parsed_df[BgRatio_col] = df_a['BgRatio']
+#             parsed_df[GeneRatio_col] = df_a['GeneRatio']
+#
+#             if(alg != '-'):
+#                 df_a_dict[alg] = reformat_enrichment_data(df_a)
+#             else:
+#                 df_a_dict[dataset] = reformat_enrichment_data(df_a)
+#
+#         # return description of terms or pathways
+#
+#     combined_selected_terms = simplify_enriched_terms_multiple(copy.deepcopy(list(df_a_dict.values())), min_odds_ratio)
+#     print('Length of combined_selected_terms', len(combined_selected_terms))
+#
+#     simple_df = parsed_df.copy()
+#
+#
+#     description_id_map = simple_df[['Description']].reset_index()
+#     description_id_map = description_id_map.set_index('Description')
+#
+#
+#     filtered_orederd_description_id_map = description_id_map[description_id_map.index.isin(combined_selected_terms)].reindex(combined_selected_terms)
+#
+#     simple_df = simple_df[simple_df['Description'].isin (combined_selected_terms)].reindex(list(filtered_orederd_description_id_map['index']))
+#
+#     print('greedy simplified terms: ', simple_df.shape)
+#
+#     # compare_selected_terms(pd.concat(df_a_dict.values()),combined_selected_terms)
+#
+#     return simple_df
+#
 
-def plot_heatmap(df,file_path):
-    df.reset_index(inplace = True)
-    df.set_index(['index','Description'],inplace=True)
-    print(df)
-    sns_plot = sns.heatmap(df)
-    fig_num = plt.gcf().number
-    figure = plt.figure(fig_num,figsize = (10,20))
-    figure.savefig(file_path)
+def find_prot_universe(df):
+    description = df['Description']
+    df.drop('Description', level = 0, axis = 1, inplace = True)
+    parsed_df = pd.DataFrame({'Description':description})
+    # filtered_simplified_df = pd.DataFrame({'Description':description})
+
+    for dataset, df_d in df.groupby(level = 0, axis = 1):
+
+        for alg, df_a in df_d.groupby(level=1, axis = 1):
+
+            df_a.columns = df_a.columns.droplevel([0,1])
+
+            df_a['geneID'] = df_a['geneID'].fillna('/')
+            if 'geneID' not in parsed_df.columns:
+                parsed_df['geneID'] = df_a['geneID']
+                parsed_df['geneName'] = df_a['geneName']
+            else:
+                parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
+                parsed_df['geneName'] =parsed_df['geneName'].astype(str) +'/'+ df_a['geneName']
+
+
+    parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
+
+    # create protein universe
+    prot_universe = set()
+    for term, geneID_set in parsed_df['geneID'].items():
+        prot_universe = prot_universe.union(geneID_set)
+
+    return  prot_universe
+
+def reformat_enrichment_data_v3(df):
+    """
+    Reformat the data frame containing enrichment results: for each term, get the gene set and the four numbers that are input to Fisher's exact test.
+    """
+
+
+    # convert gene ids into set of genes.
+    print(df["geneID"])
+
+    df['GeneSet'] = df['geneID'].astype(str).apply(lambda x: (set(filter(None, x.split('/')))))
+    # df['GeneSet'] = df['GeneSet'].apply(lambda x: x.discard('nan'))
+    # get numbers that go into the odds ratio. first make them a list.
+    df['GeneRatioNumbers'] = df['GeneRatio'].astype(str).apply(lambda x: (x.split('/')))
+    # Then get the first and second elements of the list.
+    df['GeneRatioNumerator'] = df['GeneRatioNumbers'].apply(lambda x: int(x[0]))
+    #    print(df['GeneRatioNumerator'])
+    df['GeneRatioDenominator'] = df['GeneRatioNumbers'].apply(lambda x: int(x[1]))
+    # repeat for BgRatio
+    df['BgRatioNumbers'] = df['BgRatio'].astype(str).apply(lambda x: (x.split('/')))
+    # Then get the first and second elements of the list.
+    df['BgRatioNumerator'] = df['BgRatioNumbers'].apply(lambda x: int(x[0]))
+    df['BgRatioDenominator'] = df['BgRatioNumbers'].apply(lambda x: int(x[1]))
+
+    df['hypergeom_pval'] = pd.Series()
+
+
+    for idx in df.index.values:
+        # input to Fisher's exact test
+        a = df.at[idx, 'GeneRatioNumerator']
+        b = df.at[idx, 'GeneRatioDenominator'] - a
+        c = df.at[idx, 'BgRatioNumerator'] - a
+        d=  df.at[idx, 'BgRatioDenominator']-(a+b+c)
+
+        if(a == 0):
+             df.at[idx, 'hypergeom_pval'] = 1
+        else:
+            odd_ratio, df.at[idx, 'hypergeom_pval'] = oddsratio, pvalue = stats.fisher_exact([[a, b], [c, d]],'greater')
+
+        print(df.at[idx,'GeneSet'], len(df.at[idx,'GeneSet']))
+
+    print(df['Description'],df['GeneRatioNumerator'], df['GeneRatioDenominator'] , df['BgRatioNumerator'] , df['BgRatioDenominator'] )
+
+
+    return df
+
+
+def simplify_enriched_terms_multiple_v3(dfs, prot_universe):
+    """
+    dfs: a list of DataFrames containing the enrichment information for different sets of proteins.
+    min_odds_ratio: Stop selecting additional terms once the maximum odds ratio falls below this threshold.
+
+    Use a greedy-set-cover-like algorithm to compute a small set of terms that cover all the proteins annotated by the terms across the dfs.
+    Here, we are considering only the proteins that also belong to the sets for which we ran enrichment, e.g., top-k GeneManiaPlus predictions and top-k SVM predictions.
+
+    In each iteration, the idea is to pick the term that maximises a composite odds ratio. After picking the term,
+    we update the GeneSet for each term in each df by deleting all the genes annotated to the selected term. We also update GeneRatioNumerator, OddsRatio, and CompositeOddsRatio.
+
+    The odds ratio for a term in one df is (GeneRatioNumerator/GeneRatioDenominator)/(BgRatioNumerator/BgRatioDenominator).
+    We define the composite odds ratio of a term to be the product across dfs of the odds ratios for the term.
+    """
+
+    selected_terms = []
+    total_covered_prots = set()
+    # compute product of OddsRatio values in dfs. Use concat followed by groupby.
+    combined_df = pd.concat(dfs)
+    combined_df = combined_df[['Description', 'hypergeom_pval']].groupby('Description', as_index=False).prod()
+
+    while (True):
+        # pick the term with the largest odds ratio.
+        min_index = combined_df['hypergeom_pval'].idxmin()
+        # set another condition here
+        print('prot_universe, covered_prot', len(prot_universe),len(total_covered_prots))
+        if len(prot_universe.difference(total_covered_prots))==0:
+            return(selected_terms)
+
+        selected_term = combined_df['Description'][min_index]
+        selected_terms.append(selected_term)
+
+        print("Selected %s with pvalue%f " % (selected_term, combined_df['hypergeom_pval'][min_index]))
+
+        for df in dfs:
+            # now update each term in each df. We have to find where seleced_term is located.
+            term_row = df[df['Description'] == selected_term]
+            if (term_row.shape[0] == 0):
+                # a df may not contain a row for selected_term
+                continue
+            # print(term_row)
+            gene_set_covered = term_row['GeneSet'].values[0]
+            print('covered gene set: ', gene_set_covered)
+
+            total_covered_prots = total_covered_prots.union(gene_set_covered)
+            # Update GeneSet for every term by removing all the genes covered by the selected term.
+            df['GeneSet'] = df['GeneSet'].apply(lambda x: x.difference(gene_set_covered))
+            # Update GeneRatioNumerator. It is just the number of genes in GeneSet (since they have not been covered by any already selected term)
+            df['GeneRatioNumerator'] = df['GeneSet'].apply(lambda x: len(x))
+            # Update OddsRatio
+
+
+            for idx in df.index.values:
+                # input to Fisher's exact test
+                a = df.at[idx, 'GeneRatioNumerator']
+                b = df.at[idx, 'GeneRatioDenominator'] - a
+                c = df.at[idx, 'BgRatioNumerator'] - a
+                d=  df.at[idx, 'BgRatioDenominator']-(a+b+c)
+
+                if(a == 0):
+                     df.at[idx, 'hypergeom_pval'] = 1
+                else:
+                    odd_ratio, df.at[idx, 'hypergeom_pval'] = stats.fisher_exact([[a, b], [c, d]],'greater')
+
+        # now update OddsRatio in combined_df. since the indices do not match in dfs and combined_df, the safest thing to do is to repeat the concat and groupby.
+        combined_df = pd.concat(dfs)
+        combined_df = combined_df[['Description', 'hypergeom_pval']].groupby('Description', as_index=False).prod()
+
+    return(selected_terms)
+
+def simplify_enrichment_greedy_algo_v3(df):
+
+
+
+    prot_universe = find_prot_universe(df.copy())
+
+    description = df['Description']
+    df.drop('Description', level = 0, axis = 1, inplace = True )
+
+    parsed_df = pd.DataFrame({'Description':description})
+
+
+    df_a_dict={}
+
+    for dataset, df_d in df.groupby(level = 0, axis = 1):
+
+        for alg, df_a in df_d.groupby(level=1, axis = 1):
+
+            df_a.columns = df_a.columns.droplevel([0,1])
+
+            # add description column
+            df_a['Description'] = description
+
+            # fill nan values
+            df_a['pvalue']=df_a['pvalue'].fillna(1)
+            df_a['geneID'] = df_a['geneID'].fillna('/')
+
+            # fill the nan values in GeneRatio and BgRatio columns
+            df_temp = df_a[df_a['GeneRatio']!=np.nan]
+            generatio_denominator = df_temp.iloc[0].at['GeneRatio'].split('/')[1]
+            filler_generatio = '0'+'/'+ generatio_denominator
+
+            df_temp = df_a[df_a['BgRatio']!=np.nan]
+            bgratio_denominator = df_temp.iloc[0].at['BgRatio'].split('/')[1]
+            filler_bgratio = '0'+'/'+bgratio_denominator
+
+            df_a['GeneRatio'] = df_a['GeneRatio'].fillna(filler_generatio)
+            df_a['BgRatio'] = df_a['BgRatio'].fillna(filler_bgratio)
+
+            if 'geneID' not in parsed_df.columns:
+                parsed_df['geneID'] = df_a['geneID']
+                parsed_df['geneName'] = df_a['geneName']
+            else:
+                parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
+                parsed_df['geneName'] =parsed_df['geneName'].astype(str) +'/'+ df_a['geneName']
+
+
+            if(alg !='-'):
+                pval_col = alg+'_'+'pvalue'
+                BgRatio_col = alg+'_'+'BgRatio'
+                GeneRatio_col = alg+'_'+'GeneRatio'
+                qvalRatio_col = alg+'_'+'-(log(qvalue '+alg+')- log(qvalue Krogan))'
+                parsed_df[qvalRatio_col] = df_a['-(log(qvalue '+alg+')- log(qvalue Krogan))']
+
+            else:
+                pval_col = dataset+'_'+'pvalue'
+                BgRatio_col = dataset+'_'+'BgRatio'
+                GeneRatio_col = dataset+'_'+'GeneRatio'
+
+            parsed_df[pval_col] = df_a['pvalue']
+            parsed_df[BgRatio_col] = df_a['BgRatio']
+            parsed_df[GeneRatio_col] = df_a['GeneRatio']
+
+            if(alg != '-'):
+                df_a_dict[alg] = reformat_enrichment_data_v3(df_a)
+            else:
+                df_a_dict[dataset] = reformat_enrichment_data_v3(df_a)
+
+
+    simple_df = parsed_df.copy()
+
+    combined_selected_terms = simplify_enriched_terms_multiple_v3(copy.deepcopy(list(df_a_dict.values())), prot_universe)
+    # print('Length of combined_selected_terms', len(combined_selected_terms))
+
+
+
+
+    description_id_map = simple_df[['Description']].reset_index()
+    description_id_map = description_id_map.set_index('Description')
+
+
+    filtered_orederd_description_id_map = description_id_map[description_id_map.index.isin(combined_selected_terms)].reindex(combined_selected_terms)
+
+    simple_df = simple_df[simple_df['Description'].isin (combined_selected_terms)].reindex(list(filtered_orederd_description_id_map['index']))
+
+    print('greedy simplified terms: ', simple_df.shape)
+
+    return simple_df
+
+
 
 
 def main(config_map, **kwargs):
@@ -293,9 +704,7 @@ def main(config_map, **kwargs):
     pathways_to_keep_Reactome = []
 
 
-
     num_algs_with_results = 0
-
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap
     for dataset in input_settings['datasets']:
@@ -333,9 +742,7 @@ def main(config_map, **kwargs):
             if not os.path.isfile(pred_file):
                 print("Warning: %s not found. skipping" % (pred_file))
                 continue
-
             num_algs_with_results += 1
-
             print("reading: %s" % (pred_file))
             df = pd.read_csv(pred_file, sep='\t')
             # remove the original positives
@@ -394,7 +801,9 @@ def main(config_map, **kwargs):
 
     for geneset, g_df in all_dfs.items():
         all_dfs[geneset] = g_df[g_df.index.isin(terms_to_keep_GO[geneset])]
+
     all_dfs_KEGG = all_dfs_KEGG[all_dfs_KEGG.index.isin(pathways_to_keep_KEGG)]
+
     all_dfs_reactome = all_dfs_reactome[all_dfs_reactome.index.isin(pathways_to_keep_Reactome)]
 
 
@@ -403,7 +812,6 @@ def main(config_map, **kwargs):
         sys.exit()
 
     if kwargs.get('compare_krogan_terms'):
-
         for geneset, g_df in all_dfs.items():
             df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
             all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
@@ -414,24 +822,38 @@ def main(config_map, **kwargs):
         reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
         all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
 
+
     # now write the combined df to a file
 
     out_pref = kwargs.get('out_pref')
     if out_pref is None:
-
         pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
+        out_pref_dir = "%s/enrichment/combined%s-%s/" % (
+            output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
+            pval_str)
+
+        network = os.path.basename(kwargs['config']).split('.')[0]
+
         out_pref = "%s/enrichment/combined%s-%s/%s-" % (
             output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
             pval_str, os.path.basename(kwargs['config']).split('.')[0])
 
     super_combined_file = "%s-k%s.xlsx" % (out_pref,k_to_test[0])
     super_combined_df = pd.DataFrame()
-    combined_simplified_file = "%s-k%s-simplified.csv" % (out_pref,k_to_test[0])
-    super_combined_simplified_file = "%s-k%s-super_combined_simplified.csv" % (out_pref,k_to_test[0])
-    heatmap_file = "%s-k%s-super_combined_simplified.png" % (out_pref,k_to_test[0])
-    combined_simplified_df = pd.DataFrame()
+    # # combined_simplified_file = "%s-k%s-simplified.csv" % (out_pref,k_to_test[0])
+    # super_combined_simplified_file = "%s-k%s-super_combined_simplified.csv" % (out_pref,k_to_test[0])
+    # heatmap_file = "%s-k%s-super_combined_simplified.png" % (out_pref,k_to_test[0])
+    # combined_simplified_df = pd.DataFrame()
 
     #write combined KEGG Enrichment
+
+    simplified_files_dir = out_pref_dir+'simplified/'
+    greedy_simplified_files_dir = out_pref_dir+'greedy_simplified/'
+
+    os.makedirs(os.path.dirname(simplified_files_dir), exist_ok=True)
+    os.makedirs(os.path.dirname(greedy_simplified_files_dir), exist_ok=True)
+
+
 
     if kwargs.get('file_per_alg'):
         all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
@@ -445,15 +867,24 @@ def main(config_map, **kwargs):
     else:
         out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
         print('KEGG ALL')
-        super_combined_df = pd.concat([super_combined_df, all_dfs_KEGG],axis=0)
-        print('super_combined_df: ', super_combined_df.columns.values)
+        # super_combined_df = pd.concat([super_combined_df, all_dfs_KEGG],axis=0)
+        # print('super_combined_df: ', super_combined_df.columns.values)
 
         processed_df = write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
+
+        # write all the results from KEGG, GO, Reactome in one xlsx file.
         with pd.ExcelWriter(super_combined_file) as writer:
             # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'KEGG')
-        filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
-        combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
+
+        out_file = "%s_k%s_KEGG_simplified.csv" % (simplified_files_dir+network,k_to_test[0])
+        simplified_df = simplify_enrichment_result(processed_df.copy())
+        simplified_df.to_csv(out_file)
+        # combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
+
+        out_file = "%s_k%s_KEGG_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
+        greedy_simplified_df = simplify_enrichment_greedy_algo_v3(processed_df.copy())
+        greedy_simplified_df.to_csv(out_file)
 
 
     #write combined Reactome Enrichment
@@ -468,16 +899,23 @@ def main(config_map, **kwargs):
     else:
         out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
         # print('REACTOME ALL')
-        super_combined_df = pd.concat([super_combined_df, all_dfs_reactome],axis=0)
+        # super_combined_df = pd.concat([super_combined_df, all_dfs_reactome],axis=0)
         processed_df = write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
         with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
             # print('processed_df: ', processed_df.shape)
             processed_df.to_excel(writer, sheet_name = 'Reactome')
-        filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
-        combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
+
+
+        out_file = "%s_k%s_Reactome_simplified.csv" % (simplified_files_dir+network,k_to_test[0])
+        simplified_df = simplify_enrichment_result(processed_df.copy())
+        simplified_df.to_csv(out_file)
+        # combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
+        #
+        out_file = "%s_k%s_Reactome_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
+        greedy_simplified_df = simplify_enrichment_greedy_algo_v3(processed_df.copy())
+        greedy_simplified_df.to_csv(out_file)
 
     #write GO enrichment
-
     for geneset, df in all_dfs.items():
         if kwargs.get('file_per_alg'):
             df = df.swaplevel(0,1,axis=1)
@@ -485,30 +923,35 @@ def main(config_map, **kwargs):
                 df_alg.dropna(how='all', inplace=True)
                 # TODO add back the krogan terms
                 #if kwargs.get('compare_krogan_terms') and :
-                
+                # print(df_alg.head())
                 out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
                 write_combined_table(df_alg, out_file, dataset_level=1)
         else:
             out_file = "%sk%s-%s.csv" % (out_pref, k_to_test[0], geneset)
-            super_combined_df = pd.concat([super_combined_df, df],axis=0)
+            # super_combined_df = pd.concat([super_combined_df, df],axis=0)
             processed_df= write_combined_table(df, out_file,dataset_level=0)
             with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
                 print('processed_df: ', processed_df.shape)
                 processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
             if geneset == 'MF':
                 continue
-            filtered_simplified_df,simplified_df = simplify_enrichment_result(processed_df)
-            combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
-    combined_simplified_df.to_csv(combined_simplified_file)
 
-    filtered_super_combined_simplified_df, super_combined_simplified_df = simplify_enrichment_result(process_df(super_combined_df))
+            out_file = "%s_k%s_GO-%s_simplified.csv" % (simplified_files_dir+network,k_to_test[0],geneset)
+            simplified_df = simplify_enrichment_result(processed_df.copy())
+            simplified_df.to_csv(out_file)
+            # combined_simplified_df = pd.concat([combined_simplified_df,simplified_df ], axis=0)
+
+            out_file = "%s_k%s_GO-%s_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
+            greedy_simplified_df = simplify_enrichment_greedy_algo_v3(processed_df.copy())
+            greedy_simplified_df.to_csv(out_file)
+
+    # combined_simplified_df.to_csv(combined_simplified_file)
+
+    # super_combined_simplified_df = simplify_enrichment_result(process_df(super_combined_df))
     # plot_heatmap(filtered_super_combined_simplified_df,heatmap_file)
-    super_combined_simplified_df.to_csv(super_combined_simplified_file)
+    # super_combined_simplified_df.to_csv(super_combined_simplified_file)
 
 
-# Write each dataframe to a different worksheet.
-# df1.to_excel(writer, sheet_name='Sheet1')
-# df2.to_excel(writer, sheet_name='Sheet2')
 def process_df(df, dataset_level=0):
     id_to_name = {}
     id_counts = defaultdict(int)
@@ -538,23 +981,6 @@ def write_combined_table(df, out_file, dataset_level=0):
     # id_to_name = {}
     # id_counts = defaultdict(int)
     # keep_indices = []
-    # for dataset, df_d in df.groupby(level=dataset_level, axis=1):
-    #
-    #     # print('DATASET:', dataset)
-    #     df_d.columns = df_d.columns.droplevel([0,1])
-    #     df_d.dropna(how='all', inplace=True)
-    #     if isinstance ((df_d['Description']), pd.core.frame.DataFrame):
-    #         description = df_d['Description'].iloc[:, 0]
-    #         for i in range (1, len(df_d['Description'].columns), 1):
-    #             description = description.fillna(df_d['Description'].iloc[:, i])
-    #     else:
-    #         description = df_d['Description']
-    #
-    #     id_to_name.update(dict(zip(df_d.index, description)))
-    #
-    # df.insert(0, 'Description', pd.Series(id_to_name))
-    # df.drop(['ID','Description','p.adjust', 'Count'], axis=1, level=2, inplace=True)
-    # # print(df.head())
 
     df = process_df(df,dataset_level)
 
