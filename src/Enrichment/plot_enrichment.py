@@ -40,21 +40,15 @@ def setup_opts():
 
     group.add_argument('--enrichmentdir',default = 'outputs/enrichment/combined-krogan-1_0/simplified')
 
-    group.add_argument('--order',type = list, default = ['GM+', 'SVM', 'Krogan'])
+    group.add_argument('--order',type = list, default = ['GM+', 'SVM', 'Kr'])
 
     return parser
 
 
 
 def plot_heatmap(df,algo_order, out_file_path):
-    # df.reset_index(inplace = True)
-    # df.set_index(['index','Description'],inplace=True)
-    # df.drop('Description')
-    # df.rename(columns={'Unnamed: 0': 'Term/pathway ID'})
-    # df.set_index('Term/pathway ID', inplace =True)
 
-    # set 'Description' column to be index
-    # df.set_index('Description', inplace=True)
+    pval_cutoff  =0.01
 
     print(df.columns)
 
@@ -66,12 +60,17 @@ def plot_heatmap(df,algo_order, out_file_path):
     print(df)
 
     for pval_col in pval_cols:
+        df[pval_col] = df[pval_col].astype(float).apply(lambda x: x if x<pval_cutoff else np.nan )
         df[pval_col] = -np.log10(df[pval_col])
+    # print(df)
 
     # change column names into GM+, SVM, Krogan from GM+_pvalue, SVM-rep100-nf5_pvalue,Krogan_pvalue
     changed_col_name = []
+
     for pval_col in pval_cols:
         changed_name = pval_col.replace('_pvalue','').split('-')[0]
+        if(changed_name == 'Krogan'):
+            changed_name = 'Kr'
         changed_col_name.append(changed_name)
 
     dict_for_rename = dict(zip(pval_cols, changed_col_name))
@@ -79,9 +78,10 @@ def plot_heatmap(df,algo_order, out_file_path):
 
     df = df[algo_order]
 
-
-    print(df)
-    sns_plot = sns.heatmap(df, cmap="Blues",cbar_kws={'label': '-log(pval)'})
+    fig_height = len(df.index)*(10/35)
+    plt.figure(figsize=(5,fig_height))
+    sns_plot = sns.heatmap(df, cmap='Blues',vmin =-np.log10(pval_cutoff),vmax = 20, cbar_kws={'label': '-log(pval)'}, square=True)
+    sns_plot.set_facecolor('xkcd:grey')
     plt.savefig(out_file_path, bbox_inches='tight')
     plt.close()
 
@@ -94,10 +94,10 @@ def main(**kwargs):
 
     for file in os.listdir(enrichment_dir):
 
-        if '.csv' in file:
+        if '_simplified.csv' in file:
+
             file_path  = enrichment_dir+'/'+file
             # extract GO,KEGG,Reactome from filename
-            # enrichment_type = file.split('.|_')[-3]
             file_name_without_extension = os.path.splitext(file)[0]
             # enrichment_type = file.split('.|_')[-3]
 

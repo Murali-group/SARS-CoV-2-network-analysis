@@ -257,11 +257,10 @@ def reformat_enrichment_data(df):
     df['BgRatioNumerator'] = df['BgRatioNumbers'].apply(lambda x: int(x[0]))
     df['BgRatioDenominator'] = df['BgRatioNumbers'].apply(lambda x: int(x[1]))
     df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
-    # df['OddsRatio'] = df['OddsRatio'].fillna(1)
-#    print(df['BgRatioDenominator'])
+
     return  df
 
-def simplify_enriched_terms_multiple(dfs, prot_universe):
+def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
     """
     dfs: a list of DataFrames containing the enrichment information for different sets of proteins.
     min_odds_ratio: Stop selecting additional terms once the maximum odds ratio falls below this threshold.
@@ -277,63 +276,42 @@ def simplify_enriched_terms_multiple(dfs, prot_universe):
     """
 
     selected_terms = []
-    selected_index=[]
-    selected_odd_ratio = []
-    selected_gene_covering = []
     # compute product of OddsRatio values in dfs. Use concat followed by groupby.
     combined_df = pd.concat(dfs)
     combined_df = combined_df[['Description', 'OddsRatio']].groupby('Description', as_index=False).prod()
 
-    combined_df_1 = pd.concat(dfs)
-    combined_df_1 = combined_df_1[['Description', 'GeneRatioNumerator']].groupby('Description', as_index=False).sum()
-
+    prod_pvalue_for_selected_terms = []
     total_covered_prots = set()
 
     while (True):
         # pick the term with the largest odds ratio.
-
-        if len(prot_universe.difference(total_covered_prots))==0:
-            print(dict(zip(selected_terms,selected_odd_ratio)))
-            print(dict(zip(selected_terms,selected_gene_covering)))
+        max_index = combined_df['OddsRatio'].idxmax()
+        # return if OddsRatio is < min_odds_ratio.
+        if (combined_df['OddsRatio'][max_index] < min_odds_ratio):
+            print('total_covered_prots:',len(total_covered_prots))
+            print(dict(zip(selected_terms,prod_pvalue_for_selected_terms)))
             return(selected_terms)
 
-        max_index = combined_df['OddsRatio'].idxmax()
-
-        if combined_df['OddsRatio'][max_index]>0:
-            selected_term = combined_df['Description'][max_index]
-
-
-
-        else:
-            max_index = combined_df_1['GeneRatioNumerator'].idxmax()
-            selected_term = combined_df_1['Description'][max_index]
-
-
-        print('prot_universe, covered_prot', len(prot_universe),len(total_covered_prots))
-
-
-
+        selected_term = combined_df['Description'][max_index]
         selected_terms.append(selected_term)
-        selected_index.append(max_index)
-        selected_odd_ratio.append(combined_df['OddsRatio'][max_index])
-        selected_gene_covering.append(combined_df_1['GeneRatioNumerator'][max_index])
-
-
-
         print("Selected %s with odds ratio %f " % (selected_term, combined_df['OddsRatio'][max_index]))
 
-
-
+        pval = 1
         for df in dfs:
             # now update each term in each df. We have to find where seleced_term is located.
             term_row = df[df['Description'] == selected_term]
+
+            if(term_row.shape[0]>1):
+                print('shape of term row:',term_row.shape,  term_row)
+
             if (term_row.shape[0] == 0):
                 # a df may not contain a row for selected_term
                 continue
             # print(term_row)
             gene_set_covered = term_row['GeneSet'].values[0]
             total_covered_prots = total_covered_prots.union(gene_set_covered)
-            print('gene set covered:',term_row.index.values[0], gene_set_covered)
+            pval = pval*term_row['pvalue'].values[0]
+            # print(gene_set_covered)
             # Update GeneSet for every term by removing all the genes covered by the selected term.
             df['GeneSet'] = df['GeneSet'].apply(lambda x: x.difference(gene_set_covered))
             # Update GeneRatioNumerator. It is just the number of genes in GeneSet (since they have not been covered by any already selected term)
@@ -341,19 +319,15 @@ def simplify_enriched_terms_multiple(dfs, prot_universe):
             # Update OddsRatio
 
             df['OddsRatio'] = (df['GeneRatioNumerator']/df['GeneRatioDenominator'])/(df['BgRatioNumerator']/df['BgRatioDenominator'])
-
+            # print(df['OddsRatio'])
 
         # now update OddsRatio in combined_df. since the indices do not match in dfs and combined_df, the safest thing to do is to repeat the concat and groupby.
         combined_df = pd.concat(dfs)
         combined_df = combined_df[['Description', 'OddsRatio']].groupby('Description', as_index=False).prod()
-        combined_df = combined_df.drop(selected_index, axis = 0)
 
-        combined_df_1 = pd.concat(dfs)
-        combined_df_1 = combined_df_1[['Description', 'GeneRatioNumerator']].groupby('Description', as_index=False).sum()
-        combined_df_1 = combined_df_1.drop(selected_index, axis = 0)
+        prod_pvalue_for_selected_terms.append(pval)
 
-
-def simplify_enrichment_greedy_algo(df):
+def simplify_enrichment_greedy_algo(df,min_odds_ratio):
 
     prot_universe = find_prot_universe(df.copy())
 
@@ -383,12 +357,13 @@ def simplify_enrichment_greedy_algo(df):
             generatio_denominator = df_temp.iloc[0].at['GeneRatio'].split('/')[1]
             filler_generatio = '0'+'/'+ generatio_denominator
 
-            # df_temp = df_a[df_a['BgRatio']!=np.nan]
-            # bgratio_denominator = df_temp.iloc[0].at['BgRatio'].split('/')[1]
-            # filler_bgratio = '0'+'/'+bgratio_denominator
+            df_temp = df_a[df_a['BgRatio']!=np.nan]
+            bgratio_denominator = df_temp.iloc[0].at['BgRatio'].split('/')[1]
+            # putting a dummy numerator=1 so that the odd ratio does not become nan. It will be 0.
+            filler_bgratio = '1'+'/'+bgratio_denominator
 
             df_a['GeneRatio'] = df_a['GeneRatio'].fillna(filler_generatio)
-            # df_a['BgRatio'] = df_a['BgRatio'].fillna(filler_bgratio)
+            df_a['BgRatio'] = df_a['BgRatio'].fillna(filler_bgratio)
 
             if 'geneID' not in parsed_df.columns:
                 parsed_df['geneID'] = df_a['geneID']
@@ -415,24 +390,17 @@ def simplify_enrichment_greedy_algo(df):
             parsed_df[GeneRatio_col] = df_a['GeneRatio']
 
             if(alg != '-'):
-                df_a_dict[alg] = df_a
+                df_a_dict[alg] = reformat_enrichment_data(df_a)
             else:
-                df_a_dict[dataset] = df_a
+                df_a_dict[dataset] = reformat_enrichment_data(df_a)
 
         # return description of terms or pathways
     parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
-
-    for alg in df_a_dict:
-        for a in df_a_dict:
-            df_a_dict[alg]['BgRatio'] = df_a_dict[alg]['BgRatio'].fillna(df_a_dict[a]['BgRatio'])
-
-    for alg in df_a_dict:
-        df_a_dict[alg] = reformat_enrichment_data(df_a_dict[alg])
-
-    combined_selected_terms = simplify_enriched_terms_multiple(copy.deepcopy(list(df_a_dict.values())), prot_universe)
-    print('Length of combined_selected_terms', len(combined_selected_terms))
-
     simple_df = parsed_df.copy()
+
+    print('size of protein universe:' ,len(prot_universe))
+    combined_selected_terms = simplify_enriched_terms_multiple(copy.deepcopy(list(df_a_dict.values())), min_odds_ratio)
+    print('Length of combined_selected_terms', len(combined_selected_terms))
 
 
     description_id_map = simple_df[['Description']].reset_index()
@@ -445,7 +413,7 @@ def simplify_enrichment_greedy_algo(df):
 
     print('greedy simplified terms: ', simple_df.shape)
 
-    print('simple_df:' , simple_df)
+    # print('simple_df:' , simple_df)
     all_pairs_jaccard_coeffs_df = compare_selected_terms(simple_df.copy(),list(filtered_orederd_description_id_map['index']))
 
     return all_pairs_jaccard_coeffs_df, simple_df
@@ -470,8 +438,6 @@ def compare_selected_terms(df, terms):
 
 
     for (fn1, fn2) in all_pairs:
-
-        # print(terms.index(fn1) - terms.index(fn2))
         # compare gene_set with
         # gs1 = df['GeneSet'][[df['Description'] == fn1].index]
         # gs2 = df['GeneSet'][[df['Description'] == fn2].index]
@@ -979,7 +945,7 @@ def main(config_map, **kwargs):
 
         out_file_1 = "%s_k%s_KEGG_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
         out_file_2 = "%s_k%s_KEGG_simplified_Jaccard.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
-        all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy())
+        all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy(),1)
         greedy_simplified_df.to_csv(out_file_1)
         all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
 
@@ -1010,7 +976,7 @@ def main(config_map, **kwargs):
         #
         out_file_1 = "%s_k%s_Reactome_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
         out_file_2 = "%s_k%s_Reactome_simplified_Jaccard.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
-        all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy())
+        all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy(),1)
         greedy_simplified_df.to_csv(out_file_1)
         all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
 
@@ -1042,7 +1008,7 @@ def main(config_map, **kwargs):
 
             out_file_1 = "%s_k%s_GO-%s_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
             out_file_2 = "%s_k%s_GO-%s_simplified_Jaccard.csv" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
-            all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy())
+            all_pairs_jaccard_coeffs_df, greedy_simplified_df = simplify_enrichment_greedy_algo(processed_df.copy(),1)
             greedy_simplified_df.to_csv(out_file_1)
             all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
     # combined_simplified_df.to_csv(combined_simplified_file)
