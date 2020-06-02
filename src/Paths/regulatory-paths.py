@@ -7,13 +7,14 @@ import argparse
 import json
 
 class Node:
-    def __init__(self, id, type):
+    def __init__(self, name, id, type):
+        self.name = name
         self.id = id
         self.type = type
         self.edges = set()
 
 class Edge:
-    def __init__(self, node, weight, description):
+    def __init__(self, node, weight, description, evidence):
         self.node = node
         self.description = description
         if (True):
@@ -21,13 +22,14 @@ class Edge:
 #TODO config based condition
         else:
           self.weight = weight
+        self.evidence = evidence
 
     def __hash__(self):
-        return hash(self.node.id) + hash(self.weight)
+        return hash(self.node.name) + hash(self.weight)
 
     def __eq__(self, other):
         if isinstance(other, Edge):
-            return self.node.id == other.node.id and self.weight == other.weight
+            return self.node.name == other.node.name and self.weight == other.weight
         else:
             return False
 
@@ -69,7 +71,7 @@ def setup_opts():
 
     group.add_argument('--human-regulatory-network', type=str, default="datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.json",
                        help="Regulatory network of human protein-protein interactions, as in the network obtained from EMMAA: https://emmaa.s3.amazonaws.com/assembled/covid19/statements_2020-05-11-18-12-05.json" +
-                       "Default=datasets/regulatory-networks/2020-04-02-bachman-emmaa-covid19.json")
+                       "Default=datasets/regulatory-networks/2020-05-21-bachman-emmaa-covid19.json")
     
     group.add_argument('--output', type=str, default="output",
                        help="Directory in which output should be written" +
@@ -104,25 +106,41 @@ def main(config_map, **kwargs):
             elif interaction['type'] in emmaa_inhibits:
                 weight = -float(interaction['belief'])
             else:
-                continue
+                #TODO: unknown option
+                #continue
+                weight = 0
         
             if 'subj' in interaction and 'obj' in interaction:
                 subject_name = interaction['subj']['name'].replace("\n", "")
                 object_name = interaction['obj']['name'].replace("\n", "")
-                if subject_name in human_ppi_nodes:
-                    subject_node = human_ppi_nodes[subject_name]
-                else:
-                    subject_node = Node(subject_name, 'human')
-                    human_ppi_nodes[subject_name] = subject_node
+            elif 'sub' in interaction and 'enz' in interaction:
+                subject_name = interaction['sub']['name'].replace("\n", "")
+                object_name = interaction['enz']['name'].replace("\n", "")
+            elif 'members' in interaction:
+                subject_name = interaction['members'][0]['name'].replace("\n", "")
+                object_name = interaction['members'][1]['name'].replace("\n", "")
+            else:
+                continue
+           
+            if subject_name in human_ppi_nodes:
+                subject_node = human_ppi_nodes[subject_name]
+            else:
+                subject_node = Node(subject_name, subject_name, 'human')
+                human_ppi_nodes[subject_name] = subject_node
                 
-                if object_name in human_ppi_nodes:
-                    object_node = human_ppi_nodes[object_name]
-                else:
-                    object_node = Node(object_name, 'human')
-                    human_ppi_nodes[object_name] = object_node
+            if object_name in human_ppi_nodes:
+                object_node = human_ppi_nodes[object_name]
+            else:
+                object_node = Node(object_name, subject_name, 'human')
+                human_ppi_nodes[object_name] = object_node
 
-                edge = Edge(object_node, weight, interaction['type'])
-                subject_node.edges.add(edge)
+            evidence = []
+            for e in interaction['evidence']:
+                if 'pmid' in e and 'text' in e:
+                    evidence.append({'source': 'EMMAA', 'pmid': e['pmid'], 'text': e['text']})
+
+            edge = Edge(object_node, weight, interaction['type'], evidence)
+            subject_node.edges.add(edge)
 
     # read file of sources (e.g., predictions with scores/ranks)
     
@@ -146,14 +164,17 @@ def main(config_map, **kwargs):
         for drug in drugs.getroot():
 
             drug_name = drug.find('{http://www.drugbank.ca}name').text
+            drug_id = drug.find('{http://www.drugbank.ca}drugbank-id').text
+
             if drug_name in drug_target_nodes:
                 drug_node = drug_target_nodes[drug_name]
             else:
-                drug_node = Node(drug_name, 'drug')
+                drug_node = Node(drug_name, drug_id, 'drug')
                 drug_target_nodes[drug_name] = drug_node
 
             for target in drug.find('{http://www.drugbank.ca}targets'):
                 weight = 0
+                interaction = "unknown"
                 for action in target.find('{http://www.drugbank.ca}actions'):
                     if action.text in drugbank_activates:
                         weight = 1
@@ -161,17 +182,26 @@ def main(config_map, **kwargs):
                     elif action.text in drugbank_inhibits:
                         weight = -1
                         interaction = action.text
-                
+
+                evidence = []
+                references = target.find('{http://www.drugbank.ca}references')
+                for article in references.find('{http://www.drugbank.ca}articles'):
+                    pmid = article.find('{http://www.drugbank.ca}pubmed-id').text
+                    text = article.find('{http://www.drugbank.ca}citation').text
+                    evidence.append({'source': 'DrugBank', 'pmid': pmid, 'text': text})
+
                 protein = target.find('{http://www.drugbank.ca}polypeptide')
-                if protein and weight != 0:
+                if protein:
+                #TODO: unknown option
+                #if protein and not interaction == 'unknown':
                     protein_id = protein.find('{http://www.drugbank.ca}gene-name').text
                     if protein_id in drug_target_nodes:
                         protein_node = drug_target_nodes[protein_id]
                     else:
-                        protein_node = Node(protein_id, 'human')
+                        protein_node = Node(protein_id, protein_id, 'human')
                         drug_target_nodes[protein_id] = protein_node
-
-                    edge = Edge(protein_node, weight, interaction)
+                    
+                    edge = Edge(protein_node, weight, interaction, evidence)
                     drug_node.edges.add(edge)
 
     # read file of targets (e.g., human proteins that interact with SARS-CoV-2 proteins)
@@ -186,57 +216,144 @@ def main(config_map, **kwargs):
         if human_protein in virus_human_ppi_nodes:
             human_node = virus_human_ppi_nodes[human_protein]
         else:
-            human_node = Node(human_protein, 'human')
+            human_node = Node(human_protein, human_protein, 'human')
             virus_human_ppi_nodes[human_protein] = human_node
 
         if virus_protein in virus_human_ppi_nodes:
             virus_node = virus_human_ppi_nodes[virus_protein]
         else:
-            virus_node = Node(virus_protein, 'virus')
+            virus_node = Node(virus_protein, virus_protein, 'virus')
             virus_human_ppi_nodes[virus_protein] = virus_node
 
-        edge = Edge(virus_node, 1, 'Human-Virus PPI')
+        evidence = [{'source': 'Krogan', 'pmid': '32353859', 'text': 'Gordon, D.E., Jang, G.M., Bouhaddou, M. et al. A SARS-CoV-2 protein interaction map reveals targets for drug repurposing. Nature (2020). https://doi.org/10.1038/s41586-020-2286-9'}]
+
+        edge = Edge(virus_node, 1, 'Human-Virus PPI', evidence)
         human_node.edges.add(edge)
 
+    if 'ACE2' in virus_human_ppi_nodes:
+        ace2_node = virus_human_ppi_nodes['ACE2']
+    else:
+        ace2_node = Node('ACE2', 'ACE2', 'human')
+        virus_human_ppi_nodes['ACE2'] = ace2_node
+
+    if 'SARS-CoV2 Spike' in virus_human_ppi_nodes:
+        spike_node = virus_human_ppi_nodes['SARS-CoV2 Spike']
+    else:
+        spike_node = Node('SARS-CoV2 Spike', 'SARS-CoV2 Spike', 'virus')
+        virus_human_ppi_nodes['SARS-CoV2 Spike'] = spike_node
+
+    edge = Edge(spike_node, 1, 'Human-Virus PPI', [])
+    ace2_node.edges.add(edge)
+
     if (kwargs['pathlinker_output']) :
+        summary = {'file': [], 'activating': [], 'inhibiting': [], 'unknown': [], 'score': []} 
         for input in os.listdir(kwargs['pathlinker_output']):
             if '_k-100-paths' in input:
-                shortest_paths = pd.read_csv(kwargs['pathlinker_output'] + input, sep='\t')
-
+                shortest_paths = pd.read_csv(kwargs['pathlinker_output'] + '/' + input, sep='\t', quoting=3)
+                activating = {}
+                inhibiting = {}
+                unknowns = {}
                 for index, row in shortest_paths.iterrows():
                     path = row['path'].split('|')
                     sign = 1
                     annotated = None
-                    drug = drug_target_nodes[path[0]]
+                    evidence = []
+                    unknown = False
+                    drug = drug_target_nodes[path[0].split('"')[1]]
+                    
                     for edge in drug.edges:
-                        if edge.node.id == path[1].split('"')[1]:
+                        if edge.node.name == path[1].split('"')[1]:
                             annotated = path[0] + "--(" + edge.description + ")-->" + path[1] 
+                            if not (edge.description in drugbank_inhibits or edge.description in drugbank_activates):
+                                unknown = True
                             if edge.description in drugbank_inhibits:
                                 sign = -sign
+                            evidence.append(json.dumps(edge.evidence))
+                    
                     if not annotated:
-                        print(drug.id)
-                     
-                    for i in range(1, len(path) - 2):
-                        protein = human_ppi_nodes[path[i].split('"')[1]]
+                        protein = human_ppi_nodes[path[0].split('"')[1]]
                         for edge in protein.edges:
-                            if edge.node.id == path[i + 1].split('"')[1]:
-                                annotated += "--(" + edge.description + ")-->" + path[i + 1]
+                            if edge.node.name == path[1].split('"')[1]:
+                                annotated = path[0] + "--(" + edge.description + ")-->" + path[1]
+                                if not (edge.description in emmaa_inhibits or edge.description in emmaa_activates):
+                                    unknown = True
                                 if edge.description in emmaa_inhibits:
                                     sign = -sign
+                                evidence.append(json.dumps(edge.evidence))
+ 
+                    for i in range(1, len(path) - 2):
+                        protein = human_ppi_nodes[path[i].split('"')[1]]
+                        protein_target = False
+                        for edge in protein.edges:
+                            if edge.node.name == path[i + 1].split('"')[1]:
+                                protein_target = True
+                                annotated += "--(" + edge.description + ")-->" + path[i + 1]
+                                if not (edge.description in emmaa_inhibits or edge.description in emmaa_activates):
+                                    unknown = True
+                                if edge.description in emmaa_inhibits:
+                                    sign = -sign
+                                evidence.append(json.dumps(edge.evidence))
+
+                        if not protein_target:
+                            drug = drug_target_nodes[path[i].split('"')[1]]
+                            for edge in drug.edges:
+                                if edge.node.name == path[i + 1].split('"')[1]:
+                                    annotated += "--(" + edge.description + ")-->" + path[i + 1]
+                                    if not (edge.description in drugbank_inhibits or edge.description in drugbank_activates):
+                                        unknown = True
+                                    if edge.description in drugbank_inhibits:
+                                        sign = -sign
+                                    evidence.append(json.dumps(edge.evidence))
 
                     virus = virus_human_ppi_nodes[path[-2].split('"')[1]]
                     for edge in virus.edges:
-                            if edge.node.id == path[-1].split('"')[1]:
-                                annotated += "--(" + edge.description + ")-->" + path[-1]
+                        if edge.node.name == path[-1].split('"')[1]:
+                            annotated += "--(" + edge.description + ")-->" + path[-1]
+                        evidence.append(json.dumps(edge.evidence))
                     
                     shortest_paths.at[index, 'annotated'] = annotated
-                    if sign >= 0:
+                    length = str(len(path) -1)
+
+                    if unknown:
+                        shortest_paths.at[index, 'result'] = 'Unknown'
+
+                        if length in unknowns:
+                            unknowns[length] += 1
+                        else:
+                            unknowns[length] = 1
+                    elif sign >= 0:
                         shortest_paths.at[index, 'result'] = 'Activation'
+                        
+                        if length in activating:
+                            activating[length] += 1
+                        else:
+                            activating[length] = 1
                     else:
                         shortest_paths.at[index, 'result'] = 'Inhibition'
+                    
+                        if length in inhibiting:
+                            inhibiting[length] += 1
+                        else:
+                            inhibiting[length] = 1
+                     
+                    shortest_paths.at[index, 'evidence'] = "|".join(evidence) 
+                    shortest_paths.at[index, 'drug_id'] = drug.id
                 
-                shortest_paths.to_csv(kwargs['output'] + input.replace('_k-100-paths', '_k-100-annotated-paths'), sep = '\t')
-
+                shortest_paths.to_csv(kwargs['output'] + input.replace('_k-100-paths', '_k-100-annotated-paths'), sep = '\t', index=False, quoting=3)
+                summary['file'].append(input)
+                summary['activating'].append(activating)
+                summary['inhibiting'].append(inhibiting)
+                summary['unknown'].append(unknowns)
+                score = 0
+                alpha = 2 
+                for length in inhibiting:
+                    score += inhibiting[length] / (alpha**(int(length)-2))
+                for length in activating:
+                    score -= activating[length] / (alpha**(int(length)-2))
+                summary['score'].append(score)
+                
+        pd.DataFrame(summary, columns = ['file', 'activating', 'inhibiting', 'unknown', 'score']).sort_values('score', ascending = False).to_csv(kwargs['output'] + 'pathlinker-summary.tsv', sep = '\t', index=False)
+    #TODO nicer condition / separate script?
     if (kwargs['pathlinker_output']) :
         exit();
 
@@ -248,7 +365,7 @@ def main(config_map, **kwargs):
         num_edges += len(node.edges)
     print("Number of edges in EMMAA Human PPI: " + str(num_edges) + "\n")
 
-    print("Number of nodes in DrubBank drug targets: " + str(len(drug_target_nodes.keys())))
+    print("Number of nodes in DrugBank drug targets: " + str(len(drug_target_nodes.keys())))
     num_edges = 0
     for node in drug_target_nodes.values():
         num_edges += len(node.edges)
@@ -273,15 +390,15 @@ def main(config_map, **kwargs):
     with open(kwargs['output'] + '/network.tsv', 'w') as network:
         for node in human_ppi_nodes:
             for edge in human_ppi_nodes[node].edges:
-                network.write("\t".join(['"' + human_ppi_nodes[node].id + '"', '"' + edge.node.id + '"', str(edge.weight)]) + '\n')
+                network.write("\t".join(['"' + human_ppi_nodes[node].name + '"', '"' + edge.node.name + '"', str(edge.weight)]) + '\n')
 
     drug_sources = []
     with open(kwargs['output'] + '/network.tsv', 'a') as network:
         for node in drug_target_nodes:
             drug_source = False
             for target in drug_target_nodes[node].edges:
-                 if target.node.id in relevant_drug_targets:
-                     network.write("\t".join(['"' + drug_target_nodes[node].id + '"', '"' + target.node.id + '"', str(edge.weight)]) + '\n')
+                 if target.node.name in relevant_drug_targets:
+                     network.write("\t".join(['"' + drug_target_nodes[node].name + '"', '"' + target.node.name + '"', str(edge.weight)]) + '\n')
                      drug_source = True
             
             if drug_source:
@@ -293,7 +410,7 @@ def main(config_map, **kwargs):
             if virus_human_ppi_nodes[node].type == 'virus':
                 virus_targets.append(node)
             for edge in virus_human_ppi_nodes[node].edges:
-                network.write("\t".join(['"' + virus_human_ppi_nodes[node].id + '"', '"' + edge.node.id + '"', str(edge.weight)]) + '\n') # '1']) + '\n')
+                network.write("\t".join(['"' + virus_human_ppi_nodes[node].name + '"', '"' + edge.node.name + '"', str(edge.weight)]) + '\n') # '1']) + '\n')
 
 #TODO break up into methods: parseDrug, parseKrogan, generatePathLinker input, etc.
 #TODO drug filter config
