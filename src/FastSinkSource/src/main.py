@@ -14,6 +14,7 @@ from scipy import sparse as sp
 from . import setup_sparse_networks as setup
 from .algorithms import alg_utils as alg_utils
 from .algorithms import runner as runner
+# TODO importing R in these scripts is messing up other scripts once in a while
 from .evaluate import eval_utils as eval_utils
 from .evaluate import cross_validation as cross_validation
 from .evaluate import eval_leave_one_species_out as eval_loso
@@ -174,7 +175,7 @@ def run(config_map, **kwargs):
 
         if kwargs.get('eval_stat_sig_nodes'):
             eval_stat_sig.eval_stat_sig_nodes_runners(
-                alg_runners, net_obj, ann_obj, num_random_sets=kwargs['eval_stat_sig_nodes'], **kwargs) 
+                alg_runners, net_obj, ann_obj, num_random_sets=kwargs['eval_stat_sig_nodes'], k=None, **kwargs) 
     print("Finished")
 
 
