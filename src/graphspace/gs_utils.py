@@ -1,6 +1,7 @@
 import os, sys
 import pandas as pd
 import networkx as nx
+from collections import defaultdict
 
 METHODS_TO_IGNORE = set()
 
@@ -9,57 +10,70 @@ METHODS_TO_IGNORE = set()
 def evidenceToHTML(t,h,evidencelist):
     annotation = '<dl>'
     sources = sorted(evidencelist)
+    pubmedurl = 'http://www.ncbi.nlm.nih.gov/pubmed/%s'
+    stringurl = f"https://string-db.org/cgi/network.pl?identifiers={t}%0d{h}"
 
     for source in sources:
         if source == 'STRING':
             # Make it a link: https://string-db.org/cgi/network.pl?identifiers=P05412%0dP01100
-            url = f"https://string-db.org/cgi/network.pl?identifiers={t}%0d{h}"
-            desc = f'<a style="color:blue" href="{url}" target="STRING">{source}</a>'
+            desc = f'<a style="color:blue" href="{stringurl}" target="STRING">{source}</a>'
             annotation += '<dt>%s</dt>' % (desc)
             for string_channel in sorted(evidencelist[source]):
                 score = list(evidencelist[source][string_channel].keys())[0]
                 annotation += '&bull;&nbsp&nbsp%s:&nbsp%s<br>' % (string_channel, score)
             continue
+
         annotation += '<dt>%s</dt>' % (source)
-        # TODO add interaction type color
-        for interactiontype in evidencelist[source]:
-            if interactiontype != '' and interactiontype != "None":
-                # use bull instead of li to save on white space
-                annotation += '&bull;&nbsp&nbsp%s <br>' % interactiontype
-            for detectionmethod in evidencelist[source][interactiontype]:
-                annotation += '&nbsp&nbsp&nbsp&nbsp&bull;&nbsp&nbsp'
-                if detectionmethod != '':
-                    filtered = False
-                    for m in METHODS_TO_IGNORE:  # CSBDB
-                        if m in detectionmethod:
-                            filtered = True
-                            break
-                    # add detection method filter (i.e. gray out detection methods that we're ignoring)
-                    if filtered:
-                        annotation += '<FONT COLOR="gray">%s</FONT>  ' % (detectionmethod)
-                    else:
-                        annotation += '%s  ' % detectionmethod
+        if source == "DrugBank":
+            for reference in evidencelist[source]:
+                pmid = reference['pmid']
+                annotation += '<dd><b>PubMed ID</b>: '
+                annotation += '<a style="color:blue" href="%s" target="PubMed">%s</a></dd>' % (pubmedurl%pmid, pmid)
 
-                # now add the pubmed IDs. &nbsp is the html for a non-breaking space
-                pub_ids = evidencelist[source][interactiontype][detectionmethod]
-                #KEGG doesn't have pub ids. It has a pathway map and entry (evidence)
-                try:
-                    # How do we want to sort the pmid, imex, doi and MINT and such? pmid first?
-                    pubmed_ids = [pubmed_id for pubmed_id in pub_ids if pubmed_id.split(':')[0] == 'pubmed' and 'None' not in pubmed_id]
-                    # just sort the pubmed_ids and put them first
-                    #pubmed_ids = sortPubs(pubmed_ids)
-                    # add the rest of the ids
-                    pub_ids = pubmed_ids + [other_id for other_id in pub_ids if other_id.split(':')[0] != 'pubmed']
-                    # now get the html for each of the links
-                    pub_ids = [parseCSBDBpubs(pub_id) for pub_id in pub_ids if parseCSBDBpubs(pub_id) != '']
-                except ValueError:
-                    print("ERROR when parsing pub_ids from:")
-                    print(t,h, source, interactiontype, detectionmethod, pub_ids)
-                    raise
+                text = reference['text']
+                annotation += '<dd><b>Reference</b>: %s </dd>' % text
+            annotation += '</dl><br>'
+            continue
 
-                # use a non-breaking space with a comma so they all stay on the same line
-                annotation += ',&nbsp'.join(pub_ids)
-                annotation += "<br>"
+        # This is leftover from the CSBDB evidence file
+        # for interactiontype in evidencelist[source]:
+        #     if interactiontype != '' and interactiontype != "None":
+        #         # use bull instead of li to save on white space
+        #         annotation += '&bull;&nbsp&nbsp%s <br>' % interactiontype
+        #     for detectionmethod in evidencelist[source][interactiontype]:
+        #         annotation += '&nbsp&nbsp&nbsp&nbsp&bull;&nbsp&nbsp'
+        #         if detectionmethod != '':
+        #             filtered = False
+        #             for m in METHODS_TO_IGNORE:  # CSBDB
+        #                 if m in detectionmethod:
+        #                     filtered = True
+        #                     break
+        #             # add detection method filter (i.e. gray out detection methods that we're ignoring)
+        #             if filtered:
+        #                 annotation += '<FONT COLOR="gray">%s</FONT>  ' % (detectionmethod)
+        #             else:
+        #                 annotation += '%s  ' % detectionmethod
+
+        #         # now add the pubmed IDs. &nbsp is the html for a non-breaking space
+        #         pub_ids = evidencelist[source][interactiontype][detectionmethod]
+        #         #KEGG doesn't have pub ids. It has a pathway map and entry (evidence)
+        #         try:
+        #             # How do we want to sort the pmid, imex, doi and MINT and such? pmid first?
+        #             pubmed_ids = [pubmed_id for pubmed_id in pub_ids if pubmed_id.split(':')[0] == 'pubmed' and 'None' not in pubmed_id]
+        #             # just sort the pubmed_ids and put them first
+        #             #pubmed_ids = sortPubs(pubmed_ids)
+        #             # add the rest of the ids
+        #             pub_ids = pubmed_ids + [other_id for other_id in pub_ids if other_id.split(':')[0] != 'pubmed']
+        #             # now get the html for each of the links
+        #             pub_ids = [parseCSBDBpubs(pub_id) for pub_id in pub_ids if parseCSBDBpubs(pub_id) != '']
+        #         except ValueError:
+        #             print("ERROR when parsing pub_ids from:")
+        #             print(t,h, source, interactiontype, detectionmethod, pub_ids)
+        #             raise
+
+        #         # use a non-breaking space with a comma so they all stay on the same line
+        #         annotation += ',&nbsp'.join(pub_ids)
+        #         annotation += "<br>"
         annotation += '</li></ul><br>'
 
     return annotation
@@ -80,7 +94,7 @@ def getEvidence(edges, evidence_file=None):
     For STRING, the sub-channel is in the interaction_type col and the score is in the detection method
     """
     # dictionary of an edge mapped to the evidence for it
-    evidence = {} 
+    evidence = defaultdict(dict)
     edge_types = {}
     edge_dir = {}
 

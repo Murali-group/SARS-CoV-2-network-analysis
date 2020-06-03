@@ -61,8 +61,8 @@ human_group = 'Human Proteins'
 default_node_styles = {
     'color': green, 
     'shape': 'ellipse',
-    'width': 25,
-    'height': 25,
+    'width': 35,
+    'height': 35,
     #'group': human_group,
     }
 default_edge_styles = {
@@ -88,6 +88,7 @@ virus_node_styles = {
     'shape': 'diamond',
     'width': 60,
     'height': 60,
+    'background-opacity': 0.9,
     'group': virus_group,
     }
 krogan_node_styles = {
@@ -95,6 +96,7 @@ krogan_node_styles = {
     'shape': 'rectangle',
     'width': 30,
     'height': 30,
+    'background-opacity': 0.9,
     #'group': krogan_group,
     }
 virhost_edge_styles = {
@@ -167,6 +169,8 @@ def setup_opts():
                        "Will post the subnetwork of the shortest path from the top k drugs to the virus nodes")
     group.add_argument('--drug-targets-file', type=str, 
                        help="This option can be specified to add the drug-target edges to the predictions")
+    group.add_argument('--drug-target-info-file', type=str, 
+                       help="Table of drug target info to add to popups")
     group.add_argument('--drug-list-file', type=str, 
                       help="File containing a list of drugs for which to filter the drug targets")
     group.add_argument('--drug-targets-only', action="store_true",
@@ -254,10 +258,10 @@ def main(config_map, **kwargs):
     node_list = [] 
     if kwargs.get('node_list_file'):
         print("Reading %s" % (kwargs['node_list_file']))
-        node_list = set(pd.read_csv(kwargs['node_list_file'], sep='\t', header=None, squeeze=True).tolist())
+        node_list = set(pd.read_csv(kwargs['node_list_file'], sep='\t', comment='#', header=None, squeeze=True).tolist())
     if kwargs.get('drug_list_file'):
         print("Reading %s" % (kwargs['drug_list_file']))
-        drug_list = set(pd.read_csv(kwargs['drug_list_file'], sep='\t', header=None, usecols=[0], squeeze=True).tolist())
+        drug_list = set(pd.read_csv(kwargs['drug_list_file'], sep='\t', comment='#', header=None, usecols=[0], squeeze=True).tolist())
         #node_list |= drug_list
     if kwargs.get('node_to_post'):
         node_list |= set(kwargs['node_to_post'])
@@ -297,6 +301,19 @@ def main(config_map, **kwargs):
         print("Reading %s" % (kwargs['drug_targets_file']))
         df = pd.read_csv(kwargs['drug_targets_file'], sep='\t', header=None) 
         drugG = nx.from_pandas_edgelist(df, source=0, target=1)
+    if kwargs.get('drug_target_info_file'):
+        print("Reading %s" % (kwargs['drug_target_info_file']))
+        df = pd.read_csv(kwargs['drug_target_info_file'], sep='\t') 
+        # also get the pmid and references from the table to add as popup info
+        drug_target_pmids = {}
+        drug_target_action = {}
+        pmid_citations = {}
+        for d, p, action, pmids, citations in df[['drugbank_id', 'uniprot_id', 'actions', 'pubmed_ids', 'citations']].values:
+            drug_target_action[(d,p)] = action
+            if pd.isnull(pmids):
+                continue
+            drug_target_pmids[(d,p)] = str(pmids).split('|')
+            pmid_citations.update(dict(zip(str(pmids).split('|'), str(citations).split('|'))))
     if kwargs.get('enriched_terms_file'):
         print("Reading %s" % (kwargs['enriched_terms_file']))
         df = pd.read_csv(kwargs['enriched_terms_file'], header=[0,1,2], index_col=0) 
@@ -456,7 +473,7 @@ def main(config_map, **kwargs):
             net_nodes = set([n for e in pred_edges for n in e])
             # add the drugs that target the predicted nodes, if specified
             if drugG is not None:
-                drugs_skipped = 0
+                drugs_skipped = set()
                 before = len(pred_edges)
                 if len(node_list) > 0:
                     drugs_with_target = [n for n in node_list if drugG.has_node(n)]
@@ -464,8 +481,8 @@ def main(config_map, **kwargs):
                     drugs_with_target = [n for n in net_nodes if drugG.has_node(n)]
                 for n in drugs_with_target:
                     for d in drugG.neighbors(n):
-                        if drugG.degree[d] >= kwargs.get('degree_cutoff',100):
-                            drugs_skipped += 1
+                        if drugG.degree[d] >= kwargs.get('degree_cutoff',1000):
+                            drugs_skipped.add(d)
                         elif kwargs.get('drug_list_file') and d not in drug_list:
                             continue
                         else:
@@ -475,8 +492,8 @@ def main(config_map, **kwargs):
                             # also add a popup with the # targets
                             attr_desc[d]['# targets'] = drugG.degree[d]
                 print("\tadded %d drug-target edges" % (len(pred_edges) - before))
-                if drugs_skipped > 0:
-                    print("\t%d drug-target edges skipped from drug with > %s targets" % (drugs_skipped, kwargs.get('degree_cutoff',100)))
+                if len(drugs_skipped) > 0:
+                    print("\t%d drug-target edges skipped from drug with > %s targets: %s" % (len(drugs_skipped), kwargs.get('degree_cutoff',100), ', '.join(drugs_skipped)))
             pred_edges.update(set([(v,h) for v,h in virhost_edges if h in net_nodes]))
             net_nodes = set([n for e in pred_edges for n in e])
             print("\t%d edges, %d nodes" % (len(pred_edges), len(net_nodes)))
@@ -501,6 +518,11 @@ def main(config_map, **kwargs):
             evidence=None
             if kwargs.get('edge_evidence_file'):
                 evidence, _,_ = gs_utils.getEvidence(pred_edges, evidence_file=kwargs['edge_evidence_file'])
+            if kwargs.get('drug_target_info_file'):
+                evidence = defaultdict(dict) if evidence is None else evidence
+                for (drug, target), pmids in drug_target_pmids.items():
+                    references = [{'pmid': pmid, 'text': pmid_citations[pmid]} for pmid in pmids]
+                    evidence[(drug, target)]['DrugBank'] = references
 
             # Now post to graphspace!
             print("Building GraphSpace graph")
@@ -546,7 +568,6 @@ def main(config_map, **kwargs):
             G.set_name(graph_name)
             # also set the legend
             G = set_legend(G)
-            # example command: python src/post_to_graphspace.py --edges toxic-sub-bind-edges.txt --net inputs/2017_10-seq-sim/2017_10-seq-sim-net.txt --username jeffl@vt.edu --password f1fan --graph-name toxic-substance-binding-cc-test5 --graph-attr graph_attr.txt --tag test1 --tag test2 --set-edge-width
             # write the posted network to a file if specified
             if kwargs.get('out_pref'):
                 out_file = "%s%s.txt" % (kwargs['out_pref'], graph_name)
@@ -554,6 +575,7 @@ def main(config_map, **kwargs):
                 print("writing network to %s" % (out_file))
                 # remove any newlines from the node name if they're there
                 node_labels = {n: n.replace('\n','-') for n in G.nodes(data=False)}
+                # TODO write the node data as well
                 G2 = nx.relabel_nodes(G, node_labels, copy=True)
                 nx.write_edgelist(G2, out_file)
 

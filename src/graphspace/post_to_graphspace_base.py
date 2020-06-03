@@ -108,7 +108,7 @@ def readGraphAttr(graph_attr_file):
     # TODO the last column (here always '-') can be given as a description
     #lines = utils.readColumns(graph_attr_file, 1,2,3,4)
     #lines = utils.readColumns(graph_attr_file, 1,2,3)
-    df = pd.read_csv(graph_attr_file, sep='\t', header=None)
+    df = pd.read_csv(graph_attr_file, sep='\t', header=None, comment='#')
     print("\tread %d lines" % (len(df)))
     # reverse the lines so the pathways at the top of the file will overwrite the pathways at the bottom
     #for style, style_attr, items, desc in lines[::-1]:
@@ -123,7 +123,7 @@ def readGraphAttr(graph_attr_file):
 
             if item not in graph_attr:
                 graph_attr[item] = {}
-                graph_attr[item][style] = style_attr
+            graph_attr[item][style] = style_attr
         attr_desc[(style, style_attr)] = desc
         #graph_attributes[group_number] = {"style": style, "style_attr": style_attr, "prots": prots.split(','), "desc":desc}
 
@@ -267,15 +267,17 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
 
         G.add_node(node_label, attr_dict=attr_dict, popup=node_popup, label=node_label)
 
-        attr_dict = {}
         # these are the default values I like. Any styles set in the graph_attr dictionary will overwrite these defaults
+        attr_dict = {
+            #"border-color": "#7f8184"
+        }
+        #border_color = "#7f8184"  # slightly darker grey
         shape = 'ellipse'
         color = '#D8D8D8'  # grey - background-color
-        border_style = 'solid'
+        #border_style = 'solid'
         width = 45
         height = 45
         border_width = 2
-        border_color = "#7f8184"  # slightly darker grey
         bubble = None  # default is the node color
         if n in graph_attr:
             # any attribute can be set in the graph_attr dict and the defaults will be overwritten
@@ -288,16 +290,24 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
             # color is actually used for the background color
             if 'color' in graph_attr[n]:
                 color = graph_attr[n]['color']
-            if 'border_color' in graph_attr[n]:
-                border_color= graph_attr[n]['border_color']
-            if 'bubble' in graph_attr[n]:
-                border_color= graph_attr[n]['bubble']
-        border_color = color if border_color is None else border_color
+            #if 'border_color' in graph_attr[n]:
+            #    border_color= graph_attr[n]['border_color']
+            #if 'bubble' in graph_attr[n]:
+            #    border_color= graph_attr[n]['bubble']
+        if 'border-color' not in attr_dict:
+            attr_dict['border-color'] = color 
+        #border_color = color if border_color is None else border_color
         # I updated the bubble function in graphspace_python gsgraph.py so it wouldn't overwrite the border color.
         bubble = color if bubble is None else bubble
+        #if n == "P11021":
+        #    print(attr_dict) 
+        #    sys.exit()
 
         G.add_node_style(node_label, shape=shape, attr_dict=attr_dict, color=color, width=width, height=height,
-                         style=border_style, border_color=border_color, border_width=border_width, bubble=bubble)
+                         #style=border_style,
+                         #border_color=border_color,
+                         #border_width=border_width,
+                         bubble=bubble)
 
     # Add all of the edges and their Graphspace/Cytoscape.js attributes
     for (u,v) in edges:
