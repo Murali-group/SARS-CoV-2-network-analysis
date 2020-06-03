@@ -198,13 +198,16 @@ def remove_drug_target_pos_edges(pos_vec, net_obj, drug_nodes):
     return curr_W
 
 
-def split_nodes_to_degree_bins(G, nbins=10, method="kmeans", **kwargs):
+def split_nodes_to_degree_bins(G, nbins=10, method="kmeans", unweighted=False, **kwargs):
     """
     *method*: the method used to create the bins. 
         Options are: 'uniform', 'kmeans'
+    *unweighted*: whether or not to use edge weights when computing the bins. Default is to use weights
     """
     # only keep the nodes that have at least 1 edge
-    degrees = {n: G.degree[n] for n in G.nodes() if G.degree[n] != 0}
+    degrees = {n: G.degree(n, weight='weight') for n in G.nodes() if G.degree[n] != 0}
+    if unweighted:
+        degrees = {n: G.degree[n] for n in G.nodes() if G.degree[n] != 0}
     # also remove the drug nodes from consideration if specified
     if kwargs.get('drug_nodes'):
         print("removing %d drug nodes" % (len(kwargs['drug_nodes'])))
@@ -309,10 +312,10 @@ def compute_and_plot_pvals(df, out_file, k=1000, title=""):
     print("writing %s" % (out_file))
     df_pval.to_csv(out_file, sep='\t')
     out_file = out_file.replace('.tsv','.pdf')
-    plot_pvals(df_pval, out_file, k=k, title=title)
+    plot_pvals(df_pval, out_file=out_file, k=k, title=title)
 
 
-def plot_pvals(df, out_file, k=500, title="", ax=None):
+def plot_pvals(df, out_file=None, k=500, title="", ax=None):
     #k=100
     labels = [str(i) if not i%int(k/10) else "" for i in range(k)]
     # make a bar plot, and make the bars full width so they will be visible
@@ -321,9 +324,9 @@ def plot_pvals(df, out_file, k=500, title="", ax=None):
     if k is not None:
         curr_df = curr_df.iloc[:k]
     data = curr_df['pval']
-    # for some reason, not all the values are being shown with the bar plot
     # make the figure bigger to see all the values
-    fig, ax = plt.subplots(figsize=(12,6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12,6))
     ax = data.plot.bar(width=1, linewidth=0, rot=0, color="#2a419c", ax=ax)
     #ax.bar(data.index, data.values, width=1, linewidth=0)
     #ax = sns.barplot(y='pval', x='level_0', data=curr_df, ax=ax)
@@ -334,9 +337,14 @@ def plot_pvals(df, out_file, k=500, title="", ax=None):
     ax.set_title(title)
     ax.set_ylabel("p-value (fraction of rand scores >= predicted score)")
     ax.set_xlabel("Top %s nodes (sorted by prediction score)" % (k))
-    print("writing %s" % (out_file))
-    plt.savefig(out_file, bbox_inches='tight')
-    print("writing %s" % (out_file.replace('.pdf','.png')))
-    plt.savefig(out_file.replace('.pdf','.png'), dpi=300, bbox_inches='tight')
+
+    if out_file is not None:
+        print("writing %s" % (out_file))
+        plt.savefig(out_file, bbox_inches='tight')
+        #print("writing %s" % (out_file.replace('.pdf','.svg')))
+        #plt.savefig(out_file.replace('.pdf','.svg'), bbox_inches='tight')
+        #print("writing %s" % (out_file.replace('.pdf','.png')))
+        #plt.savefig(out_file.replace('.pdf','.png'), dpi=300, bbox_inches='tight')
+    return ax
 
 
