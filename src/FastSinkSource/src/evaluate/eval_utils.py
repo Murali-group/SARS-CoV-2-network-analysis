@@ -335,7 +335,9 @@ def sample_neg_examples(ann_obj, sample_neg_examples_factor=10):
 
 def sample_term_neg_examples(pos_examples, prot_universe, sample_neg_examples_factor):
     """
-    *pos_examples*: indices of prots
+    *pos_examples*: set of positive examples
+    *prot_universe*: set of universe of nodes to sample from (e.g., nodes in the network
+    *sample_neg_examples_factor*: this determines the ratio of positive:negative nodes
     """
     neg_factor = sample_neg_examples_factor * len(pos_examples) 
     non_pos_universe = prot_universe - pos_examples
