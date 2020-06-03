@@ -22,6 +22,11 @@ import seaborn as sns
 # make this the default for now
 sns.set_style('darkgrid')
 sns.set_context('paper')
+# Extra settings for the matplotlib text to be editable in inkscape
+new_rc_params = {'text.usetex': False,
+"svg.fonttype": 'none'
+}
+matplotlib.rcParams.update(new_rc_params)
 
 # my local imports
 from ..algorithms import runner as runner
@@ -31,17 +36,21 @@ from ..evaluate import cross_validation as cv
 
 
 ALG_NAMES = {
-    'localplus': 'Local+', 'local': 'Local',
-    'sinksource': 'SS', 'sinksourceplus': 'SS+',
+    #'localplus': 'Local+', 'local': 'Local',
+    'localplus': 'Local', 'local': 'Local-',
+    'sinksource': 'SS-', 'sinksourceplus': 'SS',
     'sinksource_bounds': 'SinkSource_Bounds',
     'fastsinksource': 'FSS', 'fastsinksourceplus': 'FSS+',
-    'genemania': 'GM', 'genemaniaplus': 'GM+',
+    'genemania': 'GM', 'genemaniaplus': 'RL',
     'logistic_regression': 'LogReg',
     'svm': 'SVM',
     }
 
 measure_map = {'fmax': r'F$_{\mathrm{max}}$'}
-param_map = {'alpha': r'$\rm \alpha$'}
+param_map = {
+    'alpha': r'$\rm \alpha$',
+    'lambda': r'$\rm \lambda$',
+}
 #param_map = {'alpha': r'$\mathbf{\mathrm{\alpha}}$'}
 
 # tried to be fancy :P
@@ -144,6 +153,8 @@ def setup_opts():
                      help="Exclude extra information from the title and make the labels big and bold")
     group.add_argument('--horiz','-H', dest="horizontal", action='store_true', default=False,
                      help="Flip the plot so the measure is on the y-axis (horizontal). Default is x-axis (vertical)")
+    group.add_argument('--hue', 
+                     help="DataFrame column to use for the hue.")
     group.add_argument('--ylim', type=float, nargs=2,
                      help="Set the y axis min and max to these two values")
     group.add_argument('--png', action='store_true', default=False,
@@ -231,14 +242,6 @@ def main(config_map, ax=None, out_pref='', **kwargs):
             #num_terms = df_all.groupby(['#taxon', '#term']).size()
         algs = df_all['Algorithm'].unique()
 
-        # if specified, use the ratio over a random predictor 
-        if kwargs.get('ratio_over_random'):
-            df_all = get_ratios_over_random(df_all, **kwargs)
-            # and rename the columns to include 'ratio'
-            measure_ratio_map = {m: m+'-ratio' for m in kwargs['measures']}
-            kwargs['measures'] = [m+'-ratio' for m in kwargs['measures']]
-            df_all.rename(columns=measure_ratio_map, inplace=True)
-
         print("\t%d algorithms, %d plot_exp_name values\n" % (len(algs), len(df_all['plot_exp_name'].unique())))
         #print(df_all.head())
         results_overview(df_all, measures=kwargs['measures'])
@@ -253,20 +256,21 @@ def main(config_map, ax=None, out_pref='', **kwargs):
 
 
         # now attempt to figure out what labels/titles to put in the plot based on the net version, exp_name, and plot_exp_name
+        measure_axes = {}
         for measure in kwargs['measures']:
             # also check the statistical significance options
             if kwargs['compare_param'] and kwargs['max_val']:
                 compute_param_stat_sig(df_all, measure=measure, **kwargs)
             if kwargs['scatter']:
-                ax = plot_scatter(df_all, measure=measure, ax=ax, **kwargs) 
+                measure_axes[measure] = plot_scatter(df_all, measure=measure, ax=ax, **kwargs) 
             if kwargs['line']:
-                ax = plot_line(df_all, measure=measure, ax=ax, **kwargs)
+                measure_axes[measure] = plot_line(df_all, measure=measure, ax=ax, **kwargs)
             if kwargs['boxplot']:
-                if df_all['plot_exp_name'].nunique() > 1:
-                    ax = plot_multi_boxplot(df_all, measure=measure, ax=ax, **kwargs)
+                if df_all['plot_exp_name'].nunique() > 1 and kwargs.get('hue') is None:
+                    measure_axes[measure] = plot_multi_boxplot(df_all, measure=measure, ax=ax, **kwargs)
                 else:
-                    ax = plot_boxplot(df_all, measure=measure, ax=ax, **kwargs)
-    return ax
+                    measure_axes[measure] = plot_boxplot(df_all, measure=measure, ax=ax, **kwargs)
+    return measure_axes
 
 
 def get_ratios_over_random(df_all, sample_neg_examples_factor=None, **kwargs):
@@ -362,6 +366,8 @@ def setup_variables(config_map, out_pref='', **kwargs):
 def savefig(out_file, **kwargs):
     print("Writing %s" % (out_file))
     plt.savefig(out_file, bbox_inches='tight')
+    if kwargs.get('svg'):
+        plt.savefig(out_file.replace('.pdf','.svg'), bbox_inches='tight')
     if kwargs.get('png'):
         plt.savefig(out_file.replace('.pdf','.png'), bbox_inches='tight')
     plt.close()
@@ -545,15 +551,28 @@ def plot_multi_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, *
             #'axes.edgecolor': '.3',
             'axes.spines.bottom': True, 'axes.spines.left': True,
             'axes.spines.right': True, 'axes.spines.top': True,})
+    #df['Algorithm'] = df['Algorithm'].astype(str)
     df['Algorithm'] = df['Algorithm'].astype(str)
     df = df[['Algorithm', measure, 'plot_exp_name']]
-    g = sns.catplot(x=measure, y='Algorithm', data=df,  # hue='Algorithm',
+    x = "Algorithm"
+    y = measure
+    orient = 'v'
+    if kwargs.get('horizontal'):
+        y = "Algorithm"
+        x = measure
+        orient = 'h'
+    g = sns.catplot(x=x, y=y, data=df,  # hue='Algorithm',
                     col='plot_exp_name', col_wrap=5, #row='plot_exp_name',  
-                    height=2, aspect=4, palette=curr_palette, 
-                    #orient='v' if not kwargs.get('horizontal') else 'h',
+                    height=4, aspect=1, palette=curr_palette, 
+                    orient=orient,
                     fliersize=1,  
                     kind='box',)
                     #kind="violin", cut=0, inner='quartile',)
+    # Fix the ax subtitle
+    for ax in g.fig.axes:
+        ax.set_title(ax.get_title().replace('plot_exp_name = ',''))
+        ax.set_xticks(list(range(len(algs))))
+        ax.set_xticklabels(algs)
     # put less space between the plots
     g.fig.subplots_adjust(hspace=.05)
     g.set(xticks=np.arange(0,11)*0.1)
@@ -569,14 +588,7 @@ def plot_multi_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, *
         savefig(out_file, **kwargs)
 
 
-def plot_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, **kwargs):
-    df['Algorithm'] = df['Algorithm'].astype(str)
-    df = df[['Algorithm', measure]]
-    #print(df.head())
-    df.reset_index(inplace=True)
-    df = df.pivot(columns='Algorithm', values=measure)
-    #print(df.head())
-    #ax = sns.boxplot(x=measure, y='Algorithm', data=df, ax=ax,
+def get_alg_order(**kwargs):
     if kwargs.get('compare_param'):
         # we're not ordering the algorithms, but the parameters
         # and the param is in the 'algs' column
@@ -585,12 +597,30 @@ def plot_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, **kwarg
             order += [str(p) for p in kwargs['alg_params'][alg][kwargs['compare_param']]]
     else:
         order = [kwargs['alg_names'][a] for a in kwargs['algs']]
-    print("horizontal: %s" % (kwargs.get('horizontal')))
-    print("orient: %s" % ('v' if not kwargs.get('horizontal') else 'h'))
+    return order
 
-    ax = sns.boxplot(data=df, ax=ax,
+
+def plot_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, hue=None, **kwargs):
+    df['Algorithm'] = df['Algorithm'].astype(str)
+    #df = df[['Algorithm', measure]]
+    x,y = 'Algorithm', measure
+    x,y = (y,x) if kwargs.get('horizontal') else (x,y)
+    #print(df.columns)
+    df = df[[x,y, 'plot_exp_name']]
+    #print(df.head())
+    df.reset_index(inplace=True)
+    #df = df.pivot(columns='Algorithm', values=measure)
+    #print(df.head())
+    #ax = sns.boxplot(x=measure, y='Algorithm', data=df, ax=ax,
+    order = get_alg_order(**kwargs)
+    print("horizontal: %s" % (kwargs.get('horizontal')))
+    #print("orient: %s" % ('v' if not kwargs.get('horizontal') else 'h'))
+
+    print(df.head())
+    print("x=%s, y=%s, hue=%s, order=%s" % (x, y, hue, order))
+    ax = sns.boxplot(x=x, y=y, data=df, ax=ax, hue=hue,
                      fliersize=1.5, order=order,
-                     orient='v' if not kwargs.get('horizontal') else 'h',
+                     #orient='v' if not kwargs.get('horizontal') else 'h',
                      palette=my_palette if 'palette' not in kwargs else kwargs['palette'],
                 )
 
@@ -883,6 +913,15 @@ def load_all_results(input_settings, alg_settings, output_settings, prec_rec_str
                 )
                 add_dataset_settings(dataset, df) 
                 df_all = pd.concat([df_all, df])
+
+    # if specified, use the ratio over a random predictor 
+    if kwargs.get('ratio_over_random') and len(df_all) > 0:
+        df_all = get_ratios_over_random(df_all, **kwargs)
+        # and rename the columns to include 'ratio'
+        measure_ratio_map = {m: m+'-ratio' for m in kwargs['measures']}
+        kwargs['measures'] = [m+'-ratio' for m in kwargs['measures']]
+        df_all.rename(columns=measure_ratio_map, inplace=True)
+
     return df_all
 
 
