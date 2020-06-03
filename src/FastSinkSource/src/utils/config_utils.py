@@ -9,6 +9,14 @@ from ..plot import plot_utils
 import itertools
 import pandas as pd
 import numpy as np
+import yaml
+
+
+def load_config_file(config_file):
+    with open(config_file, 'r') as conf:
+        #config_map = yaml.load(conf, Loader=yaml.FullLoader)
+        config_map = yaml.load(conf)
+    return config_map
 
 
 def setup_config_variables(config_map, **kwargs):
@@ -116,7 +124,9 @@ def get_alg_results_files(
         results_file = "%s%s%s.txt" % (file_type, params_str, postfix)
         if use_alg_plot_name is True:
             alg_name = plot_utils.ALG_NAMES.get(alg,alg)
-        alg_name += eval_str
+            alg_name += eval_str
+        else:
+            alg_name = alg
         if len(combos) > 1: 
             alg_name = alg_name + params_str
         alg_results_files[alg_name] = results_file
