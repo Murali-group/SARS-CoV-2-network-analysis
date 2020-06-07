@@ -7,13 +7,10 @@ import yaml
 from collections import defaultdict
 import os
 import sys
-#from tqdm import tqdm
 import copy
 import time
-#import numpy as np
-#from scipy import sparse
 import pandas as pd
-#import subprocess
+
 
 print("importing R packages")
 from rpy2.robjects.packages import importr
@@ -21,30 +18,24 @@ from rpy2.robjects.vectors import StrVector
 utils_package = importr("utils")
 clusterProfiler = importr('clusterProfiler')
 ReactomePA = importr('ReactomePA')
-# this package is needed by clusterProfiler, but importing it directly gives an error, so just import it into R
-#print("importing orgDB")
-#orgDB = importr('org.Hs.eg.db')
 base = importr('base')
 base.require('org.Hs.eg.db')
 
-# packages in this repo
-sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
-from src.utils import parse_utils as utils
-from src.FastSinkSource.src import main as run_eval_algs
-from src.FastSinkSource.src.utils import config_utils
-from src.FastSinkSource.src.algorithms import alg_utils
+# # packages in this repo
+# sys.path.insert(1, '/home/tasnina/SARS-CoV-2-network-analysis')
+# # from src.utils import parse_utils as utils
+# # from src.FastSinkSource.src import main as run_eval_algs
+# # from src.FastSinkSource.src.utils import config_utils
+# # from src.FastSinkSource.src.algorithms import alg_utils
+# import david_client
 
 
 def parse_args():
     parser = setup_opts()
     args = parser.parse_args()
     kwargs = vars(args)
-    with open(args.config, 'r') as conf:
-        #config_map = yaml.load(conf, Loader=yaml.FullLoader)
-        config_map = yaml.load(conf)
-    # TODO check to make sure the inputs are correct in config_map
 
-    return config_map, kwargs
+    return kwargs
 
 
 def setup_opts():
@@ -59,13 +50,6 @@ def setup_opts():
                        "Must have a 'genesets_to_test' section for this script. ")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-    #group.add_argument('--out-dir', type=str,
-    #                   help="path/to/output directory for enrichemnt files")
-    #group.add_argument('--compare-krogan-nodes',
-    #                   help="Also test for enrichment of terms when using the Krogan nodes.")
-    # Should be specified in the config file
-    #group.add_argument('--gmt-file', append=True,
-    #                   help="Test for enrichment using the genesets present in a GMT file.")
     group.add_argument('--prot-list-file',
                        help="Test for enrichment of a list of proteins (UniProt IDs) (e.g., Krogan nodes).")
     group.add_argument('--prot-universe-file',
@@ -85,14 +69,11 @@ def setup_opts():
     return parser
 
 
-def main(config_map, **kwargs):
+def main( **kwargs):
     """
-    *config_map*: everything in the config file
+
     *kwargs*: all of the options passed into the script
     """
-    # extract the general variables from the config map
-    input_settings, input_dir, output_dir, alg_settings, kwargs \
-        = config_utils.setup_config_variables(config_map, **kwargs)
 
     # load the namespace mappings
     uniprot_to_gene = None
@@ -104,24 +85,6 @@ def main(config_map, **kwargs):
 
         gene_to_uniprot = load_uniprot(kwargs.get('id_mapping_file'))
         kwargs['gene_to_uniprot'] = gene_to_uniprot
-
-    genesets_to_test = config_map.get('genesets_to_test')
-    if genesets_to_test is None or len(genesets_to_test) == 0:
-        print("ERROR: no genesets specified to test for overlap. " +
-              "Please add them under 'genesets_to_test'. \nQuitting")
-        sys.exit()
-
-    # first load the gene sets
-    geneset_groups = {}
-    for geneset_to_test in genesets_to_test:
-        name = geneset_to_test['name']
-        gmt_file = "%s/genesets/%s/%s" % (
-            input_dir, name, geneset_to_test['gmt_file'])
-        if not os.path.isfile(gmt_file):
-            print("WARNING: %s not found. skipping" % (gmt_file))
-            sys.exit()
-
-        geneset_groups[name] = utils.parse_gmt_file(gmt_file)
 
     df = pd.read_csv(kwargs['prot_list_file'], sep='\t', header=None)
     prots_to_test = list(df[df.columns[0]])
@@ -149,27 +112,25 @@ def main(config_map, **kwargs):
     KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
     reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
-    # TODO figure out which genesets to test
-    #for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
-    #    all_dfs[ont] = pd.concat([all_dfs[ont], df])
+
+    # annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UP_TISSUE']
+    #
+    # run_clusterProfiler_DAVID(prots_to_test, out_pref, annotation_list, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
+
 
 
 def run_clusterProfiler_GO(
         prots_to_test, out_dir, prot_universe=None, forced=False, **kwargs):
     """
-
+    parameters: prots_to_test: the list of predicted proteins(UniprotID)
+                out_dir: Directory to write the output i.e. enrichment results
+                prot_universe: List of background proteins or protein universe(UniprotID)
+                forced: True means overwrite already existing results, False means use the existing results
+                **kwargs: The clusterProfiler result only includes geneID, so for geneNames we are passing the 'uniprot_to_gene map' via kwargs.
+                          This uniprotID to geneName mapping has to created outside this function.
     *returns*: a list of DataFrames of the enrichement of BP, MF, and CC
     """
     os.makedirs(out_dir, exist_ok=True)
-    #out_file = "%s/enrichGO_BP.csv" % (out_dir)
-    #if not kwargs.get('force_run') and os.path.isfile(out_file):
-    #    print("%s already exists. Use --force-run to overwrite" % (out_file))
-    #else:
-    #    clusterProfiler_command = "Rscript src/Enrichment/prediction_GO_enrichment.R %s %s" % (
-    #        pred_filtered_file, out_dir)
-    #    utils.run_command(clusterProfiler_command)
-    #    print("enriched GO terms files: %s" % (out_dir))
-    #
     # now load those results and make a table
     # TODO make this a seting
     print("Running enrichGO from clusterProfiler")
@@ -177,12 +138,14 @@ def run_clusterProfiler_GO(
         print("ERROR: default prot universe not yet implemented. Quitting")
         sys.exit()
 
+
     for ont in ['BP', 'MF', 'CC']:
 
         out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
         if forced is False and os.path.isfile(out_file):
             print("\t%s already exists. Use --force-run to overwrite" % (out_file))
             continue
+
         ego = clusterProfiler.enrichGO(
             gene          = StrVector(list(prots_to_test)),
             universe      = StrVector(list(prot_universe)),
@@ -193,11 +156,6 @@ def run_clusterProfiler_GO(
             pvalueCutoff  = kwargs.get('pval_cutoff'),
             qvalueCutoff  = kwargs.get('qval_cutoff')
             )
-        # converting doesn't seem to be working, so just write to file then read to file
-        #ego_BP = ro.conversion.rpy2py(ego_BP)
-        #with localconverter(ro.default_converter + pandas2ri.converter):
-        #  df = ro.conversion.rpy2py(ego_BP)
-        # print("\twriting %s" % (out_file))
         utils_package.write_table(ego,out_file, sep=",")
 
     ont_dfs = []
@@ -205,19 +163,25 @@ def run_clusterProfiler_GO(
         out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
         print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
-        # add the gene names if specified
-        # if kwargs.get('uniprot_to_gene'):
+
+        # get geneNames from geneIDs
         gene_map = kwargs['uniprot_to_gene']
         df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+
+
         df.to_csv(out_file)
-        #df.columns = ["%s-k%s-%s-%s" % (alg, 200, dataset_name, col) for col in df.columns]
-        # print(df.head())
         ont_dfs.append(df)
     return ont_dfs
 
 def run_clusterProfiler_KEGG(
         prots_to_test, out_dir, prot_universe=None, forced=False, **kwargs):
     """
+    parameters: prots_to_test: the list of predicted proteins(UniprotID)
+                out_dir: Directory to write the output i.e. enrichment results
+                prot_universe: List of background proteins or protein universe(UniprotID)
+                forced: True means overwrite already existing results, False means use the existing results
+                **kwargs: The clusterProfiler result only includes geneID, so for geneNames we are passing the 'uniprot_to_gene map' via kwargs.
+                          This uniprotID to geneName mapping has to created outside this function.
     *returns*: a DataFrames of the enrichement of KEGG pathways
     """
     os.makedirs(out_dir, exist_ok=True)
@@ -246,8 +210,11 @@ def run_clusterProfiler_KEGG(
         # print("\twriting %s" % (out_file))
         utils_package.write_csv(e_kegg,out_file)
         df = pd.read_csv(out_file, index_col=0)
+
+        # get geneNames from geneIDs
         gene_map = kwargs['uniprot_to_gene']
         df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+
         df.to_csv(out_file)
 
     df = pd.read_csv(out_file, index_col=0)
@@ -256,7 +223,14 @@ def run_clusterProfiler_KEGG(
 
 def run_ReactomePA_Reactome(
         prots_to_test, out_dir, prot_universe=None, forced=False,**kwargs):
+
     """
+    parameters: prots_to_test: the list of predicted proteins(UniprotID)
+                out_dir: Directory to write the output i.e. enrichment results
+                prot_universe: List of background proteins or protein universe(UniprotID)
+                forced: True means overwrite already existing results, False means use the existing results
+                **kwargs: The ReactomePA package result only includes geneName, so for geneIDs we are passing the 'gene_to_uniprot' map via kwargs.
+                          This geneName to uniprot mapping has to created outside this function.
     *returns*: a DataFrames of the enrichement of Reactome pathways
     """
     os.makedirs(out_dir, exist_ok=True)
@@ -301,20 +275,97 @@ def run_ReactomePA_Reactome(
 
     return df
 
-def get_k_to_test(dataset, **kwargs):
-    k_to_test = dataset['k_to_test'] if 'k_to_test' in dataset else kwargs.get('k_to_test', [])
-    range_k_to_test = dataset['range_k_to_test'] if 'range_k_to_test' in dataset \
-                        else kwargs.get('range_k_to_test')
-    if range_k_to_test is not None:
-        k_to_test += list(range(
-            range_k_to_test[0], range_k_to_test[1], range_k_to_test[2]))
-    # if nothing was set, use the default value
-    if k_to_test is None or len(k_to_test) == 0:
-        k_to_test = [100]
-    return k_to_test
 
+
+def run_clusterProfiler_DAVID(
+        prots_to_test, out_dir,annotation_list, prot_universe=None, forced=False, **kwargs):
+    """
+    parameters: prots_to_test: the list of predicted proteins(UniprotID)
+                out_dir: Directory to write the output i.e. enrichment results
+                prot_universe: List of background proteins or protein universe(UniprotID)
+                annotation_list: For which annotations(e.g. UP_TISSUE, GOTERM_BP_DIRECT) you want to run this analysis
+                forced: True means overwrite already existing results, False means use the existing results
+                **kwargs: The clusterProfiler result only includes geneID, so for geneNames we are passing the 'uniprot_to_gene map' via kwargs.
+                          This uniprotID to geneName mapping has to created outside this function.
+    *returns*: a DataFrames of the enrichement of DAVID pathways/onts
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    # now load those results and make a table
+    # TODO make this a seting
+    print("Running enrich DAVID from clusterProfiler")
+    if prot_universe is None:
+        print("ERROR: default prot universe not yet implemented. Quitting")
+        sys.exit()
+
+
+    for annotation in annotation_list:
+        out_file = "%s/enrich-DAVID-%s-%s.csv" % (out_dir,annotation,str(kwargs.get('pval_cutoff')).replace('.','_'))
+        if forced is False and os.path.isfile(out_file):
+            print("\t%s already exists. Use --force-run to overwrite" % (out_file))
+            continue
+        client = None
+        if client is None:
+            print("Setting up david client")
+            client = david_client.DAVIDClient()
+            client.set_category(annotation)
+
+        client.setup_inputs(','.join(prots_to_test), idType='UNIPROT_ACCESSION', listName='prot')
+
+        client.build_functional_ann_chart()
+
+        client.write_functional_ann_chart(out_file)
+
+        df = pd.read_csv(out_file, sep='\t')
+
+        if 'GOTERM' in annotation:
+            df['ID'] = df['Term'].apply(lambda x: x.split('~')[0])
+            df['Description'] = df['Term'].apply(lambda x: x.split('~')[1])
+        else:
+            df['ID'] = df['Term']
+            df['Description'] = df['Term']
+
+        df['BgRatio'] = ['/'.join(x) for x in zip(list(df['Pop Hits'].astype(str)),list(df['Pop Total'].astype(str)))]
+        df.drop(['Pop Hits','Pop Total'], axis =1, inplace = True)
+
+        df['GeneRatio'] = ['/'.join(x) for x in zip(list(df['Count'].astype(str)),list(df['List Total'].astype(str)))]
+        df.drop('List Total', axis =1, inplace = True)
+
+        df['p.adjust'] = df['Benjamini']
+        df.drop('Benjamini', axis =1, inplace = True)
+
+        df['geneID'] = df['Genes'].apply(lambda x: '/'.join(x.split(', ')))
+        df['pvalue'] = df['Pvalue']
+
+        gene_map = kwargs['uniprot_to_gene']
+        df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+
+        df['index'] = df['ID']
+        df = df.set_index('index')
+
+        df.drop(['Category','%','Pvalue','Genes','Fold Enrichment','Bonferroni','FDR','Term'], axis =1, inplace = True)
+
+        print(df.columns)
+
+        columns = ['ID', 'Description','GeneRatio', 'BgRatio','pvalue','p.adjust','geneID','Count','geneName']
+
+        df = df[columns]
+
+        df.to_csv(out_file)
+
+    ann_dfs = {ann: pd.DataFrame() for ann in annotation_list}
+    for ann in annotation_list:
+        out_file = "%s/enrich-DAVID-%s-%s.csv" % (out_dir,ann,str(kwargs.get('pval_cutoff')).replace('.','_'))
+        print("\treading %s" % (out_file))
+        df = pd.read_csv(out_file, index_col=0)
+        print(df.index)
+        ann_dfs[ann] = df
+    return ann_dfs
 
 def load_gene_names(id_mapping_file):
+    """
+    parameters: id_mapping_file: a file containing Uniprot_ID and geneName mapping
+    returns: a dictionary where uniprot_id is the key and genename is the value
+    """
     df = pd.read_csv(id_mapping_file, sep='\t', header=0)
     ## keep only the first gene for each UniProt ID
     uniprot_to_gene = {p: genes.split(' ')[0] for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
@@ -324,6 +375,10 @@ def load_gene_names(id_mapping_file):
     return uniprot_to_gene
 
 def load_uniprot(id_mapping_file):
+    """
+    parameters: id_mapping_file: a file containing Uniprot_ID and geneName mapping
+    returns: a dictionary where genename is the key and uniprot_id is the value
+    """
     df = pd.read_csv(id_mapping_file, sep='\t', header=0)
     ## keep only the first gene for each UniProt ID
     gene_to_uniprot = {genes.split(' ')[0]: p for p, genes in zip(df['Entry'], df['Gene names'].astype(str))}
@@ -331,5 +386,5 @@ def load_uniprot(id_mapping_file):
     return gene_to_uniprot
 
 if __name__ == "__main__":
-    config_map, kwargs = parse_args()
-    main(config_map, **kwargs)
+    kwargs = parse_args()
+    main(**kwargs)
