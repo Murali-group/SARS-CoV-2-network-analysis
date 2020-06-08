@@ -548,9 +548,7 @@ def main(config_map, **kwargs):
             # build the 'Graph Information' metadata
             #desc = gs.buildGraphDescription(opts.edges, opts.net)
             desc = ''
-            metadata = {'description':desc,'tags':[], 'title':''}
-            if kwargs.get('tags') is not None:
-                metadata['tags'] = kwargs['tags']
+            metadata = {'description':desc,'tags':kwargs.get('tags',[]), 'title':''}
             G.set_data(metadata)
             if 'graph_exp_name' in dataset:
                 graph_exp_name = dataset['graph_exp_name']

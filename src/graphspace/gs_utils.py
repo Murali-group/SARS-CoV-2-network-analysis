@@ -2,6 +2,7 @@ import os, sys
 import pandas as pd
 import networkx as nx
 from collections import defaultdict
+import numpy as np
 
 METHODS_TO_IGNORE = set()
 
@@ -260,4 +261,68 @@ def parseCSBDBpubs(publication_id):
 
     return desc
 
+
+def grid_layout(G, graph_attr, parent_coord=None, padding=35, node_size=40):
+    """
+    parent_coord: a dictionary of initial x,y coordinates for each parent node
+    """
+    nodes_per_parent = defaultdict(set)
+    for n, attr in graph_attr.items():
+        if not G.has_node(n):
+            continue
+        if 'parent' in attr:
+            nodes_per_parent[attr['parent']].add(n)
+
+    # TODO also put the terms with the same colors next to each other
+    #parents_per_color = defaultdict(set)
+    #for parent in nodes_per_parent:
+    #    color = graph_attr[parent]['color']
+    # each node has a single parent. 
+
+    # get an x,y tuple per node
+    # the parent nodes are automatically sized to fit the children
+    layout = {}
+
+    padding = 35
+    node_size = 40
+    start_y = 0
+    start_x = 0
+    curr_y = 0
+    curr_x = 0
+    largest_y = 0 
+    # TODO figure out the right size of the image
+    num_term_cols = np.ceil(len(nodes_per_parent)**(1/2))
+    term_col_size = 400 * num_term_cols
+    # sort in order of the largest terms
+    for i, parent in enumerate(sorted(nodes_per_parent, key=lambda k: len(nodes_per_parent[k]), reverse=True)):
+        nodes = nodes_per_parent[parent]
+
+        # to make it mostly square, take the square root of the number of terms
+        num_cols = np.ceil(len(nodes)**(1/2))
+        if parent_coord is not None and parent in parent_coord:
+            x, y = parent_coord[parent]
+        else:
+            x = curr_x
+            y = curr_y
+        # add to the x value (col) until we reach the end of the squaure, then move to the next row
+        for j, n in enumerate(sorted(nodes)):
+            x += node_size + padding
+            if j % num_cols == 0:
+                x = curr_x
+                if j > 0:
+                    y += node_size + padding - 20
+            layout[n] = (x, y)
+        if y > largest_y:
+            largest_y = y
+
+        # now move to the next column 
+        y = curr_y
+        curr_x += num_cols * (node_size + padding) + 30
+        # if we've reached the end of the row, start the next row
+        if curr_x > term_col_size:
+            curr_x = start_x
+            curr_y = largest_y + 120
+            largest_y = 0
+
+    return layout
 

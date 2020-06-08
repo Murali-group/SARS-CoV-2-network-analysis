@@ -130,6 +130,28 @@ def readGraphAttr(graph_attr_file):
     return graph_attr, attr_desc
 
 
+def set_node_size(nodes, node_weights, graph_attr, a=60, b=160, min_weight=None, max_weight=None):
+    """
+    Set the width of edges according to edge weights that will be normalized between *a* and *b*
+    Width will be stored in graph_attr
+
+    20 and 80 seemed like good minimum and maximum widths
+    """
+    # TODO make this into a function
+    #def normalize_between_vals(values, a, b, max_val=None, min_val=None):
+    if max_weight is None:
+        max_weight = max(node_weights.values())
+    if min_weight is None:
+        min_weight = min(node_weights.values())
+    print("node max_weight = %s, min_weight = %s" % (max_weight, min_weight))
+    for n in nodes:
+        normalized_weight = (b-a) * (float(node_weights[n] - min_weight) / float(max_weight - min_weight)) + a
+        graph_attr[n]['width'] = normalized_weight
+        graph_attr[n]['height'] = normalized_weight
+
+    return graph_attr
+
+
 def set_edge_width(edges, edge_weights, graph_attr, a=1, b=12, min_weight=None, max_weight=None):
     """
     Set the width of edges according to edge weights that will be normalized between *a* and *b*
@@ -218,7 +240,7 @@ def post_graph_to_graphspace(G, username, password, graph_name, apply_layout=Non
         gs.share_graph(graph=gs_graph, graph_name=graph_name, group=group)
 
 
-def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}):
+def constructGraph(edges, prednodes=None, node_labels={}, graph_attr={}, popups={}, edge_dirs={}):
     """
     Posts the set of edges to graphspace
 
@@ -236,7 +258,8 @@ def constructGraph(edges, node_labels={}, graph_attr={}, popups={}, edge_dirs={}
     #G = nx.DiGraph(directed=True)
     G = GSGraph()
 
-    prednodes = set([t for t,h in edges]).union(set([h for t,h in edges]))
+    if prednodes is None:
+        prednodes = set([t for t,h in edges]).union(set([h for t,h in edges]))
 
     # GSGraph does not allow adding multiple nodes with the same name.
     # Use this set to make sure each node has a different gene name.
