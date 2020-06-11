@@ -40,7 +40,10 @@ def setup_opts():
 
     group.add_argument('--enrichmentdir',default = 'outputs/enrichment/combined-krogan-1_0/GO_BP')
 
-    group.add_argument('--order',type = list, default = ['GM+', 'SVM', 'Kr'])
+    # group.add_argument('--order',type = list, default = ['RL', 'SVM', 'Kr'])
+    group.add_argument('--compareRL', action='store_true', default = False )
+
+    group.add_argument('--cluster', action='store_true', default = False )
 
     return parser
 
@@ -50,7 +53,7 @@ def plot_heatmap(df,algo_order, out_file_path):
 
     pval_cutoff  =0.01
 
-    print(df.columns)
+
 
     df.index.rename('',inplace = True)
     pval_cols = [col for col in df.columns if 'p.adjust' in col]
@@ -73,10 +76,12 @@ def plot_heatmap(df,algo_order, out_file_path):
             changed_name = 'Kr'
         changed_col_name.append(changed_name)
 
+
     dict_for_rename = dict(zip(pval_cols, changed_col_name))
     df.rename(dict_for_rename, axis  = 1, inplace = True)
 
     df = df[algo_order]
+    print(df.columns)
 
     fig_height = len(df.index)*(10/35)
     plt.figure(figsize=(5,fig_height))
@@ -85,6 +90,7 @@ def plot_heatmap(df,algo_order, out_file_path):
 
     out_png = out_file_path+'_heatmap.png'
     out_pdf = out_file_path+'_heatmap.pdf'
+
 
     plt.savefig(out_png, bbox_inches='tight', format = 'png')
     plt.savefig(out_pdf, bbox_inches='tight', format = 'pdf')
@@ -96,7 +102,6 @@ def multi_level_to_single_level_enrichment_df(df):
     description = df['Description']['Unnamed: 1_level_1']['Unnamed: 1_level_2']
     df.drop('Description', level = 0, axis = 1, inplace = True)
     parsed_df = pd.DataFrame({'Description':description})
-    # filtered_simplified_df = pd.DataFrame({'Description':description})
 
     for dataset, df_d in df.groupby(level = 0, axis = 1):
 
@@ -104,49 +109,45 @@ def multi_level_to_single_level_enrichment_df(df):
 
             df_a.columns = df_a.columns.droplevel([0,1])
 
-            # df_a['pvalue']=df_a['pvalue'].fillna(1)
-            df_a['geneID'] = df_a['geneID'].fillna('/')
             df_a['p.adjust']=df_a['p.adjust'].fillna(1)
 
-            if 'geneID' not in parsed_df.columns:
-                parsed_df['geneID'] = df_a['geneID']
-                parsed_df['geneName'] = df_a['geneName']
-            else:
-                parsed_df['geneID'] =parsed_df['geneID'].astype(str) +'/'+ df_a['geneID']
-                parsed_df['geneName'] =parsed_df['geneName'].astype(str) +'/'+ df_a['geneName']
-
-
             if(alg !='-'):
-                # pval_col = alg+'_'+'pvalue'
+
                 adjust_pval_col = alg+'_'+'p.adjust'
-                BgRatio_col = alg+'_'+'BgRatio'
-                GeneRatio_col = alg+'_'+'GeneRatio'
-                qvalRatio_col = alg+'_'+'-(log(qvalue '+alg+')- log(qvalue Krogan))'
-                parsed_df[qvalRatio_col] = df_a['-(log(qvalue '+alg+')- log(qvalue Krogan))']
 
             else:
-                # pval_col = dataset+'_'+'pvalue'
                 adjust_pval_col = dataset+'_'+'p.adjust'
-                BgRatio_col = dataset+'_'+'BgRatio'
-                GeneRatio_col = dataset+'_'+'GeneRatio'
 
-            # parsed_df[pval_col] = df_a['pvalue']
             parsed_df[adjust_pval_col] = df_a['p.adjust']
-            parsed_df[BgRatio_col] = df_a['BgRatio']
-            parsed_df[GeneRatio_col] = df_a['GeneRatio']
 
-            # filtered_simplified_df[pval_col] = df_a['pvalue']
-
-
-
-    parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
 
     return  parsed_df
 
+def filter_reindex(df, df1):
+
+        df = multi_level_to_single_level_enrichment_df(df)
+
+        df = df[df.index.isin(df1.index)]
+        print('df shape before reindex: ', df.shape)
+
+        # before reindexing make sure that df and df1 contains the same set of indices
+        df1 = df1[df1.index.isin(df.index)]
+
+        df = df.reindex(df1.index)
+        print('df shape after reindex: ', df.shape)
+
+        name_map= dict(zip(df['Description'], df1['Description']))
+
+        df = df.set_index('Description')
+        df.rename(index = name_map,inplace=True)
+
+        return df
 
 def main(**kwargs):
     enrichment_dir = kwargs.get('enrichmentdir')
-    algo_order = kwargs.get('order')
+    algo_order = ['RL']
+    compare_RL= kwargs.get('compareRL')
+    cluster= kwargs.get('cluster')
     print(enrichment_dir)
 
     file = 'string-k332-BP.csv'
@@ -160,24 +161,76 @@ def main(**kwargs):
 
     out_file = enrichment_dir + '/' + file_name_without_extension
 
-    # index_col = 1 which is the Description column
-
     df1 = pd.read_csv(filter_file_path,index_col = 0)
 
     df = pd.read_csv(file_path, header = [0,1,2],index_col = 0)
 
-    print(df.columns)
+    df = filter_reindex(df,df1.copy())
 
-    df = multi_level_to_single_level_enrichment_df(df)
+    # df = multi_level_to_single_level_enrichment_df(df)
+    #
+    # df = df[df.index.isin(df1.index)]
+    #
+    # df = df.reindex(df1.index)
+    #
+    # name_map= dict(zip(df['Description'], df1['Description']))
+    #
+    # df = df.set_index('Description')
+    # df.rename(index = name_map,inplace=True)
 
-    df = df[df.index.isin(df1.index)]
 
-    df = df.reindex(df1.index)
+    print(df)
 
-    name_map= dict(zip(df['Description'], df1['Description']))
+    if(compare_RL):
+        k_to_compare = [600]
+        for k in k_to_compare:
+            compare_file_path =enrichment_dir+'/'+'string-k'+str(k)+'-BP.csv'
+            df_c =  pd.read_csv(compare_file_path, header = [0,1,2],index_col = 0)
+            # df_c = multi_level_to_single_level_enrichment_df(df_c)
+            #
+            # df_c = df_c[df_c.index.isin(df1.index)]
+            #
+            # df_c = df_c.reindex(df1.index)
+            #
+            # name_map= dict(zip(df_c['Description'], df1['Description']))
+            #
+            # df_c = df_c.set_index('Description')
+            #
+            # df_c.rename(index = name_map,inplace=True)
 
-    df = df.set_index('Description')
-    df.rename(index = name_map,inplace=True)
+            df_c = filter_reindex(df_c,df1.copy())
+
+            RL_cols = [col for col in df_c.columns if 'RL' in col]
+            df_c = df_c[RL_cols]
+
+            # change column name prefix from RL to RL(value of k) : e.g. RL600
+            changed_name_list = []
+            RL_cols = df_c.columns
+            for col in RL_cols:
+                changed_name = col.replace('RL','RL'+str(k))
+                changed_name_list.append(changed_name)
+            df_c.rename(dict(zip(RL_cols,changed_name_list)), axis  = 1, inplace = True)
+
+
+            df = pd.concat([df,df_c], axis = 1)
+            algo_order.append('RL'+str(k))
+
+    algo_order.append('SVM')
+    algo_order.append('Kr')
+
+    if cluster:
+        cluster_enrichment_file_path = 'outputs/enrichment/clustering/enrich-GO-BP.csv'
+        out_file =  'outputs/enrichment/clustering/string-k332-RL-SVM-Krogan-Cocluster'
+        df_cluster = pd.read_csv(cluster_enrichment_file_path,header = [0,1,2],index_col = 0)
+        df_cluster = filter_reindex(df_cluster,df1.copy())
+
+        print('df_cluster: ',df_cluster)
+
+        # print('df  shape: ' , df.shape)
+        # print('df_cluster shape: ', df_cluster.shape)
+        df = pd.concat([df,df_cluster], axis = 1)
+        algo_order = algo_order + ['CoClusters_1', 'CoClusters_2', 'CoClusters_3', 'CoClusters_4', 'CoClusters_5', 'CoClusters_6', 'CoClusters_7','CoClusters_8']
+
 
 
     df.to_csv(enrichment_dir+'/'+'filtered_GO-BP.csv')
