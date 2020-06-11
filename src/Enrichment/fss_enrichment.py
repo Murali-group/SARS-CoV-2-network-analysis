@@ -46,8 +46,7 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to test for enrichment of the top predictions among given genesets. " + \
-                                     "Currently only tests for GO term enrichment")
+    parser = argparse.ArgumentParser(description="Script to test for enrichment of the top predictions among given genesets. ")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
@@ -207,13 +206,13 @@ def simplify_enriched_terms_multiple(dfs, min_odds_ratio = 1):
         max_index = combined_df['OddsRatio'].idxmax()
         # return if OddsRatio is < min_odds_ratio.
         if (combined_df['OddsRatio'][max_index] < min_odds_ratio):
+            print('total_covered_prot: ',len(total_covered_prots))
             return(selected_terms)
 
         selected_term = combined_df['Description'][max_index]
         selected_terms.append(selected_term)
         print("Selected %s with odds ratio %f " % (selected_term, combined_df['OddsRatio'][max_index]))
 
-        # pval = 1
         for df in dfs:
             # now update each term in each df. We have to find where seleced_term is located.
             term_row = df[df['Description'] == selected_term]
@@ -256,25 +255,38 @@ def compare_selected_terms(df, terms):
     description1_list = []
     description2_list = []
     order_diff_list=[]
-
+    intersection_list = []
+    t1_and_t2_by_t1_list = []
 
     for (fn1, fn2) in all_pairs:
 
         gs1 = df.at[fn1, 'geneID']
         gs2 = df.at[fn2 , 'geneID']
 
+
+        if(len(gs1)>len(gs2)):
+            temp = gs1
+            gs1=gs2
+            gs2=temp
+
+            temp = fn1
+            fn1=fn2
+            fn2=temp
+
         jc = len(gs1.intersection(gs2))*1.0/len(gs1.union(gs2))
 
         all_pairs_jaccard_coeffs.append(jc)
 
+        t1_and_t2_by_t1_list.append(len(gs1.intersection(gs2))/len(gs1))
+        intersection_list.append(len(gs1.intersection(gs2)))
         gs1_list.append(len(gs1))
         gs2_list.append(len(gs2))
         description1_list.append(df.at[fn1,'Description'])
         description2_list.append(df.at[fn2,'Description'])
-        order_diff_list.append(terms.index(fn2)- terms.index(fn1))
 
+    all_pairs_jaccard_coeffs_dict['intersection'] = pd.Series(intersection_list)
+    all_pairs_jaccard_coeffs_dict['t1_and_t2_by_t1_list'] = pd.Series(t1_and_t2_by_t1_list)
 
-    all_pairs_jaccard_coeffs_dict['order_diff_2-1'] = pd.Series(order_diff_list)
     all_pairs_jaccard_coeffs_dict['Jaccard'] = pd.Series(all_pairs_jaccard_coeffs)
 
     all_pairs_jaccard_coeffs_dict['description_1'] = pd.Series(description1_list)
@@ -283,9 +295,6 @@ def compare_selected_terms(df, terms):
     all_pairs_jaccard_coeffs_dict['description_2'] = pd.Series(description2_list)
     all_pairs_jaccard_coeffs_dict['gs2'] = pd.Series(gs2_list)
 
-
-
-    # all_pairs_jaccard_coeffs_dict = all_pairs_jaccard_coeffs_dict.loc[all_pairs_jaccard_coeffs_dict[all_pairs_jaccard_coeffs_dict['order_diff_2-1']==1]]
     print("Maximum Jaccard coefficient is %f" % (max(all_pairs_jaccard_coeffs)))
     print("Median Jaccard coefficient is %f" % (statistics.median(all_pairs_jaccard_coeffs)))
     print("Mean Jaccard coefficient is %f" % (statistics.mean(all_pairs_jaccard_coeffs)))
@@ -351,13 +360,16 @@ def simplify_enrichment_greedy_algo(df,min_odds_ratio):
             df_a['geneID'] = df_a['geneID'].fillna('/')
 
             # fill the nan values in GeneRatio and BgRatio columns
-            df_temp = df_a[df_a['GeneRatio']!=np.nan]
-            generatio_denominator = df_temp.iloc[0].at['GeneRatio'].split('/')[1]
+            df_temp = df_a.dropna()
+
+            # print('inside simplified: ', df_temp, df_temp.iloc[0].at['GeneRatio'], type(df_temp.iloc[0].at['GeneRatio']))
+            generatio_denominator = str(df_temp.iloc[0].at['GeneRatio']).split('/')[1]
             filler_generatio = '0'+'/'+ generatio_denominator
 
-            df_temp = df_a[df_a['BgRatio']!=np.nan]
-            bgratio_denominator = df_temp.iloc[0].at['BgRatio'].split('/')[1]
-            # putting a dummy numerator=1 so that the odd ratio does not become nan. It will be 0.
+
+            # print('inside simplified: ', df_temp, df_temp.iloc[0].at['BgRatio'], type(df_temp.iloc[0].at['BgRatio']))
+            bgratio_denominator = str(df_temp.iloc[0].at['BgRatio']).split('/')[1]
+            # putting a dummy numerator=1 so that the odd ratio does not become nan. It does not affect the result as in such cases generatio will be 0 which makes oddratio=0
             filler_bgratio = '1'+'/'+bgratio_denominator
 
             df_a['GeneRatio'] = df_a['GeneRatio'].fillna(filler_generatio)
@@ -393,6 +405,9 @@ def simplify_enrichment_greedy_algo(df,min_odds_ratio):
 
         # return description of terms or pathways
     parsed_df['geneID'] = parsed_df['geneID'].astype(str).apply(lambda x: (set(filter(None,x.split('/')))))
+
+    all_pairs_jaccard_coeffs_df = compare_selected_terms(parsed_df.copy(),list(parsed_df.index))
+
     simple_df = parsed_df.copy()
 
     print('size of protein universe:' ,len(prot_universe))
@@ -404,14 +419,14 @@ def simplify_enrichment_greedy_algo(df,min_odds_ratio):
     description_id_map = description_id_map.set_index('Description')
 
 
-    filtered_orederd_description_id_map = description_id_map[description_id_map.index.isin(combined_selected_terms)].reindex(combined_selected_terms)
+    filtered_ordered_description_id_map = description_id_map[description_id_map.index.isin(combined_selected_terms)].reindex(combined_selected_terms)
 
-    simple_df = simple_df[simple_df['Description'].isin (combined_selected_terms)].reindex(list(filtered_orederd_description_id_map['index']))
+    simple_df = simple_df[simple_df['Description'].isin (combined_selected_terms)].reindex(list(filtered_ordered_description_id_map['index']))
 
     print('greedy simplified terms: ', simple_df.shape)
 
     # print('simple_df:' , simple_df)
-    all_pairs_jaccard_coeffs_df = compare_selected_terms(simple_df.copy(),list(filtered_orederd_description_id_map['index']))
+    # all_pairs_jaccard_coeffs_df = compare_selected_terms(simple_df.copy(),list(filtered_ordered_description_id_map['index']))
 
     return all_pairs_jaccard_coeffs_df, simple_df
 
@@ -445,11 +460,13 @@ def main(config_map, **kwargs):
     gene_to_uniprot = enrichment.load_uniprot(kwargs.get('id_mapping_file'))
     kwargs['gene_to_uniprot'] = gene_to_uniprot
 
+    annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UCSC_TFBS', 'UP_TISSUE', 'GAD_DISEASE']
 
     # store all the enriched terms in a single dataframe
     all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
     all_dfs_KEGG = pd.DataFrame()
     all_dfs_reactome = pd.DataFrame()
+
 
     terms_to_keep_GO = {g: [] for g in ['BP', 'CC', 'MF']}
     pathways_to_keep_KEGG=[]
@@ -483,7 +500,7 @@ def main(config_map, **kwargs):
             print("\t%d prots in universe after adding them to the universe" % (len(prot_universe)))
 
         # now load the predictions, test at the various k values, and TODO plot
-        k_to_test = enrichment.get_k_to_test(dataset, **kwargs)
+        k_to_test = get_k_to_test(dataset, **kwargs)
         print("\ttesting %d k value(s): %s" % (len(k_to_test), ", ".join([str(k) for k in k_to_test])))
 
         # now load the prediction scores
@@ -517,7 +534,9 @@ def main(config_map, **kwargs):
                 topk_predictions = list(df.iloc[:k]['prot'])
 
                 # now run clusterProfiler from R
-                out_dir = pred_filtered_file.split('.')[0]
+                out_dir = pred_filtered_file.split('.')[0] + '/'+ str(k)
+                os.makedirs(os.path.dirname(out_dir), exist_ok=True)
+
                 bp_df, mf_df, cc_df = enrichment.run_clusterProfiler_GO(
                     topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
                 for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
@@ -562,6 +581,7 @@ def main(config_map, **kwargs):
     all_dfs_reactome = all_dfs_reactome[all_dfs_reactome.index.isin(pathways_to_keep_Reactome)]
 
 
+
     if num_algs_with_results == 0:
         print("No results found. Quitting")
         sys.exit()
@@ -576,6 +596,9 @@ def main(config_map, **kwargs):
 
         reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
         all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
+
+
+
 
 
     # now write the combined df to a file
@@ -720,6 +743,17 @@ def write_combined_table(df, out_file, dataset_level=0):
     df.to_csv(out_file, sep=',')
     return df
 
+def get_k_to_test(dataset, **kwargs):
+    k_to_test = dataset['k_to_test'] if 'k_to_test' in dataset else kwargs.get('k_to_test', [])
+    range_k_to_test = dataset['range_k_to_test'] if 'range_k_to_test' in dataset \
+                        else kwargs.get('range_k_to_test')
+    if range_k_to_test is not None:
+        k_to_test += list(range(
+            range_k_to_test[0], range_k_to_test[1], range_k_to_test[2]))
+    # if nothing was set, use the default value
+    if k_to_test is None or len(k_to_test) == 0:
+        k_to_test = [100]
+    return k_to_test
 
 if __name__ == "__main__":
     config_map, kwargs = parse_args()
