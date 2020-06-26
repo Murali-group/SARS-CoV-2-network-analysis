@@ -53,8 +53,6 @@ def plot_heatmap(df,algo_order, out_file_path):
 
     pval_cutoff  =0.01
 
-
-
     df.index.rename('',inplace = True)
     pval_cols = [col for col in df.columns if 'p.adjust' in col]
 
@@ -74,6 +72,8 @@ def plot_heatmap(df,algo_order, out_file_path):
         changed_name = pval_col.replace('_p.adjust','').split('-')[0]
         if(changed_name == 'Krogan'):
             changed_name = 'Kr'
+        if('CoClusters' in changed_name ):
+            changed_name = changed_name.replace('CoClusters','bic')
         changed_col_name.append(changed_name)
 
 
@@ -229,7 +229,7 @@ def main(**kwargs):
         # print('df  shape: ' , df.shape)
         # print('df_cluster shape: ', df_cluster.shape)
         df = pd.concat([df,df_cluster], axis = 1)
-        algo_order = algo_order + ['CoClusters_1', 'CoClusters_2', 'CoClusters_3', 'CoClusters_4', 'CoClusters_5', 'CoClusters_6', 'CoClusters_7','CoClusters_8']
+        algo_order = algo_order + ['bic_1', 'bic_2', 'bic_3', 'bic_4', 'bic_5', 'bic_6', 'bic_7','bic_8']
 
 
 

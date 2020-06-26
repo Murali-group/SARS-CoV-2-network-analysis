@@ -87,14 +87,15 @@ def main( **kwargs):
         kwargs['gene_to_uniprot'] = gene_to_uniprot
 
     df = pd.read_csv(kwargs['prot_list_file'], sep='\t', header=None)
+    print(df)
     prots_to_test = list(df[df.columns[0]])
-    print("%d prots for which to test enrichment. (top 10: %s)" % (len(prots_to_test), prots_to_test[:10]))
+    # print("%d prots for which to test enrichment. (top 10: %s)" % (len(prots_to_test), prots_to_test[:10]))
     prot_universe = None
     # load the protein universe file
     if kwargs.get('prot_universe_file') is not None:
         df = pd.read_csv(kwargs['prot_universe_file'], sep='\t', header=None)
         prot_universe = df[df.columns[0]]
-        print("\t%d prots in universe" % (len(prot_universe)))
+        # print("\t%d prots in universe" % (len(prot_universe)))
         if kwargs.get('add_prot_list_to_prot_universe'):
             # make sure the list of proteins passed in are in the universe
             size_prot_universe = len(prot_universe)
@@ -112,10 +113,6 @@ def main( **kwargs):
     KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
     reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
-
-    # annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UP_TISSUE']
-    #
-    # run_clusterProfiler_DAVID(prots_to_test, out_pref, annotation_list, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
 
 
@@ -161,14 +158,13 @@ def run_clusterProfiler_GO(
     ont_dfs = []
     for ont in ['BP', 'MF', 'CC']:
         out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
-        print("\treading %s" % (out_file))
+        # print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
 
         # get geneNames from geneIDs
-        gene_map = kwargs['uniprot_to_gene']
-        df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
-
-
+        if not df.empty:
+            gene_map = kwargs['uniprot_to_gene']
+            df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
         df.to_csv(out_file)
         ont_dfs.append(df)
     return ont_dfs
@@ -212,8 +208,9 @@ def run_clusterProfiler_KEGG(
         df = pd.read_csv(out_file, index_col=0)
 
         # get geneNames from geneIDs
-        gene_map = kwargs['uniprot_to_gene']
-        df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
+        if not df.empty:
+            gene_map = kwargs['uniprot_to_gene']
+            df['geneName'] = df['geneID'].apply(lambda x: '/'.join([gene_map.get(p,p) for p in x.split('/')]))
 
         df.to_csv(out_file)
 
@@ -266,9 +263,11 @@ def run_ReactomePA_Reactome(
         utils_package.write_csv(e_reactome, out_file)
 
         df = pd.read_csv(out_file, index_col=0)
-        uniprot_map = kwargs['gene_to_uniprot']
-        df['geneName'] = df['geneID']
-        df['geneID'] = df['geneName'].apply(lambda x: '/'.join([uniprot_map.get(p,p) for p in x.split('/')]))
+
+        if not df.empty:
+            uniprot_map = kwargs['gene_to_uniprot']
+            df['geneName'] = df['geneID']
+            df['geneID'] = df['geneName'].apply(lambda x: '/'.join([uniprot_map.get(p,p) for p in x.split('/')]))
         df.to_csv(out_file)
 
     df = pd.read_csv(out_file, index_col=0)
@@ -299,7 +298,7 @@ def run_clusterProfiler_DAVID(
 
 
     for annotation in annotation_list:
-        out_file = "%s/enrich-DAVID-%s-%s.csv" % (out_dir,annotation,str(kwargs.get('pval_cutoff')).replace('.','_'))
+        out_file = "%s/enrich-%s-%s.csv" % (out_dir,annotation,str(kwargs.get('pval_cutoff')).replace('.','_'))
         if forced is False and os.path.isfile(out_file):
             print("\t%s already exists. Use --force-run to overwrite" % (out_file))
             continue
@@ -309,7 +308,8 @@ def run_clusterProfiler_DAVID(
             client = david_client.DAVIDClient()
             client.set_category(annotation)
 
-        client.setup_inputs(','.join(prots_to_test), idType='UNIPROT_ACCESSION', listName='prot')
+        client.setup_inputs(','.join(prots_to_test), idType='UNIPROT_ACCESSION', listName='gene')
+        client.setup_universe(','.join(prot_universe),idType = 'UNIPROT_ACCESSION', listName = 'universe')
 
         client.build_functional_ann_chart()
 
@@ -354,7 +354,7 @@ def run_clusterProfiler_DAVID(
 
     ann_dfs = {ann: pd.DataFrame() for ann in annotation_list}
     for ann in annotation_list:
-        out_file = "%s/enrich-DAVID-%s-%s.csv" % (out_dir,ann,str(kwargs.get('pval_cutoff')).replace('.','_'))
+        out_file = "%s/enrich-%s-%s.csv" % (out_dir,ann,str(kwargs.get('pval_cutoff')).replace('.','_'))
         print("\treading %s" % (out_file))
         df = pd.read_csv(out_file, index_col=0)
         print(df.index)

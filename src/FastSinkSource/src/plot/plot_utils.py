@@ -13,8 +13,8 @@ import networkx as nx
 # plotting imports
 import matplotlib
 if __name__ == "__main__":
-    # Use this to save files remotely. 
-    matplotlib.use('Agg')  
+    # Use this to save files remotely.
+    matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import pandas as pd
@@ -35,7 +35,7 @@ ALG_NAMES = {
     'sinksource': 'SS', 'sinksourceplus': 'SS+',
     'sinksource_bounds': 'SinkSource_Bounds',
     'fastsinksource': 'FSS', 'fastsinksourceplus': 'FSS+',
-    'genemania': 'GM', 'genemaniaplus': 'GM+',
+    'genemania': 'GM', 'genemaniaplus': 'RL',
     'logistic_regression': 'LogReg',
     'svm': 'SVM',
     }
@@ -87,11 +87,11 @@ def setup_opts():
                      help="Specify the GO terms to use (should be in GO:00XX format)")
     #group.add_argument('--exp-type', type=str, default='cv-5folds',
     #                 help='Type of experiment (e.g., cv-5fold, loso, temporal-holdout). Default: cv-5folds')
-    group.add_argument('--only-terms-file', type=str, 
+    group.add_argument('--only-terms-file', type=str,
                      help="File containing a list of terms (in the first col, tab-delimited) for which to limit the results")
     group.add_argument('--only-terms-name', type=str, default='',
                      help="If --only-terms is specified, use this option to append a name to the file. Default is to use the # of terms")
-    group.add_argument('--postfix', type=str, 
+    group.add_argument('--postfix', type=str,
                      help="Postfix to add to the end of the files")
     group.add_argument('--verbose', action="store_true", default=False,
                      help="Print more information when reading files")
@@ -99,11 +99,11 @@ def setup_opts():
     group = parser.add_argument_group("Evaluation options")
     group.add_argument('--cross-validation-folds', '-C', type=int,
                      help="Get results from cross validation using the specified # folds")
-    group.add_argument('--num-reps', type=int, 
+    group.add_argument('--num-reps', type=int,
                      help="If --exp-type is <cv-Xfold>, this number of times CV was repeated. Default=1")
     group.add_argument('--cv-seed', type=int,
                      help="Seed used when running CV")
-    group.add_argument('--sample-neg-examples-factor', type=float, 
+    group.add_argument('--sample-neg-examples-factor', type=float,
                      help="Factor of # positives used to sample a negative examples")
     group.add_argument('--loso', action='store_true',
                      help="Get results from leave-one-species-out validation")
@@ -138,7 +138,7 @@ def setup_opts():
     # figure parameters
     group = parser.add_argument_group('Figure Options')
     # Moved to the config file
-    group.add_argument('--title','-T', 
+    group.add_argument('--title','-T',
                      help="Title to give the figure. Default is the exp_name ")
     group.add_argument('--for-paper', action='store_true', default=False,
                      help="Exclude extra information from the title and make the labels big and bold")
@@ -194,7 +194,7 @@ def main(config_map, ax=None, out_pref='', **kwargs):
         config_map, out_pref, **kwargs)
     kwargs['out_pref'] = out_pref
     if kwargs['out_pref'] is not None:
-        kwargs['out_pref'] += kwargs.get('plot_postfix', '') 
+        kwargs['out_pref'] += kwargs.get('plot_postfix', '')
     print(kwargs)
 
     # plot prec-rec separately from everything else
@@ -231,7 +231,7 @@ def main(config_map, ax=None, out_pref='', **kwargs):
             #num_terms = df_all.groupby(['#taxon', '#term']).size()
         algs = df_all['Algorithm'].unique()
 
-        # if specified, use the ratio over a random predictor 
+        # if specified, use the ratio over a random predictor
         if kwargs.get('ratio_over_random'):
             df_all = get_ratios_over_random(df_all, **kwargs)
             # and rename the columns to include 'ratio'
@@ -247,7 +247,7 @@ def main(config_map, ax=None, out_pref='', **kwargs):
         kwargs['title'] = title
         kwargs['alg_params'] = alg_settings
         kwargs['algs'] = get_algs_to_run(alg_settings, **kwargs)
-        # if no algs were specified and the yaml file default algs were used, 
+        # if no algs were specified and the yaml file default algs were used,
         # then update the list of algs here
         #if kwargs['algs'] is None:
 
@@ -258,7 +258,7 @@ def main(config_map, ax=None, out_pref='', **kwargs):
             if kwargs['compare_param'] and kwargs['max_val']:
                 compute_param_stat_sig(df_all, measure=measure, **kwargs)
             if kwargs['scatter']:
-                ax = plot_scatter(df_all, measure=measure, ax=ax, **kwargs) 
+                ax = plot_scatter(df_all, measure=measure, ax=ax, **kwargs)
             if kwargs['line']:
                 ax = plot_line(df_all, measure=measure, ax=ax, **kwargs)
             if kwargs['boxplot']:
@@ -280,7 +280,7 @@ def get_ratios_over_random(df_all, sample_neg_examples_factor=None, **kwargs):
               "random predictor for non-sampled negative examples. Quitting")
         sys.exit()
 
-    # The random predictor precision can be calculated by the ratio of positives to negatives 
+    # The random predictor precision can be calculated by the ratio of positives to negatives
     # P / (P + N)
     rand_pred_prec = 1 / float(1 + sample_neg_examples_factor)
     print("Dividing by a random predictor precision of %0.3f to get the fmax/auprc/early-prec ratios" % (
@@ -339,8 +339,8 @@ def setup_variables(config_map, out_pref='', **kwargs):
 
     if out_pref == "":
         out_pref = "%s/viz/%s/%s/" % (
-                output_dir, 
-                input_settings['datasets'][0]['net_version'], 
+                output_dir,
+                input_settings['datasets'][0]['net_version'],
                 input_settings['datasets'][0]['exp_name'])
     if kwargs.get('only_terms_file') is not None:
         only_terms = pd.read_csv(kwargs['only_terms_file'], sep='\t', index_col=None)
@@ -393,26 +393,26 @@ def plot_line(df, measure='fmax', out_pref="test", title="", ax=None, **kwargs):
         curr_markers = [alg_shapes[alg] for alg in algs]
     except KeyError:
         curr_palette = my_palette
-        curr_markers = my_shapes 
+        curr_markers = my_shapes
     #print(df.head())
     #df = df.pivot(columns='Algorithm', values=[x,y])
     #print(df.head())
     if ax is None:
-        if kwargs['horizontal']: 
+        if kwargs['horizontal']:
             f, ax = plt.subplots(figsize=(6,5))
         else:
             f, ax = plt.subplots(figsize=(4,6))
     if kwargs.get('for_paper'):
         # make the fonts bigger
-        matplotlib.rc('xtick', labelsize=18) 
-        matplotlib.rc('ytick', labelsize=18) 
+        matplotlib.rc('xtick', labelsize=18)
+        matplotlib.rc('ytick', labelsize=18)
 
     # doesn't work for categorical data
     #sns.lineplot(x=measure, y='pen-alg', data=df, ax=ax,
     if kwargs.get('ci'):
         ax = sns.pointplot(
             x=x, y=y, data=df, hue='Algorithm', hue_order=algs, estimator=np.median,  # ci=None,
-            dodge=0.6, join=False, ci=kwargs['ci'], 
+            dodge=0.6, join=False, ci=kwargs['ci'],
             ax=ax, markers=curr_markers, palette=curr_palette)
         # also make a table for the row names
         # and to alternate the grid colors
@@ -431,12 +431,12 @@ def plot_line(df, measure='fmax', out_pref="test", title="", ax=None, **kwargs):
     if kwargs.get('for_paper') and kwargs.get('horizontal'):
         # add alternating colors for the columns
         num_cols = df[x].nunique()
-        add_alternating_columns(ax, num_cols) 
+        add_alternating_columns(ax, num_cols)
 
         # add the table below the figure
         ax_below = add_net_combination_table(ax, df[x].unique())
         # and also add alternating columns for this table
-        add_alternating_columns(ax_below, num_cols) 
+        add_alternating_columns(ax_below, num_cols)
         # remove the extra space on the ends of the x axis
         x1, x2 = ax.get_xlim()
         ax.set_xlim(int(x1)-0.5, int(x2)+0.5)
@@ -446,7 +446,7 @@ def plot_line(df, measure='fmax', out_pref="test", title="", ax=None, **kwargs):
 #        # TODO add an option for this:
 #        #x1, x2 = kwargs.get('ax_limit',(0.6, 0.8))
 #        x1, x2 = kwargs.get('ax_limit',(0.34, 0.72))
-#        if kwargs['horizontal']: 
+#        if kwargs['horizontal']:
 #            #ax.set_ylim(-0.02, 1.02)
 #            #ax.set_ylim(0.28, 0.72)
 #            ax.set_ylim(x1,x2)
@@ -536,7 +536,7 @@ def plot_multi_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, *
         curr_markers = [alg_shapes[alg] for alg in algs]
     except KeyError:
         curr_palette = my_palette
-        curr_markers = my_shapes 
+        curr_markers = my_shapes
 
     if kwargs['for_paper'] is True:
         sns.set_style("darkgrid", {
@@ -548,10 +548,10 @@ def plot_multi_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, *
     df['Algorithm'] = df['Algorithm'].astype(str)
     df = df[['Algorithm', measure, 'plot_exp_name']]
     g = sns.catplot(x=measure, y='Algorithm', data=df,  # hue='Algorithm',
-                    col='plot_exp_name', col_wrap=5, #row='plot_exp_name',  
-                    height=2, aspect=4, palette=curr_palette, 
+                    col='plot_exp_name', col_wrap=5, #row='plot_exp_name',
+                    height=2, aspect=4, palette=curr_palette,
                     #orient='v' if not kwargs.get('horizontal') else 'h',
-                    fliersize=1,  
+                    fliersize=1,
                     kind='box',)
                     #kind="violin", cut=0, inner='quartile',)
     # put less space between the plots
@@ -616,7 +616,7 @@ def plot_boxplot(df, measure='fmax', out_pref="test", title="", ax=None, **kwarg
 
 def plot_curves(df, out_pref="test", title="", ax=None, **kwargs):
     """
-    Plot precision recall curves, or (TODO) ROC curves 
+    Plot precision recall curves, or (TODO) ROC curves
     """
     # make a prec-rec plot per term
     for term in sorted(df["#term"].unique()):
@@ -632,7 +632,7 @@ def plot_curves(df, out_pref="test", title="", ax=None, **kwargs):
             #print(df_alg['prec'], df_alg['rec'])
             fmax, idx = eval_utils.compute_fmax(df_alg['prec'].values, df_alg['rec'].values, fmax_idx=True)
             new_alg_name = "%s (%0.3f)" % (alg, fmax)
-            new_alg_names.append(new_alg_name) 
+            new_alg_names.append(new_alg_name)
             fmax_points[alg] = (df_alg['prec'].values[idx], df_alg['rec'].values[idx])
 
         fig, ax = plt.subplots()
@@ -656,7 +656,7 @@ def plot_curves(df, out_pref="test", title="", ax=None, **kwargs):
             ax.plot([rec], [prec], marker="*", color=sns.color_palette()[i])
 
         if kwargs.get('term_stats') is not None:
-            df_stats = kwargs['term_stats'] 
+            df_stats = kwargs['term_stats']
             curr_df_stats = df_stats[df_stats['#GO term'] == term]
             # TODO what if there are multiple stats lines?
             term_name = curr_df_stats['GO term name'].values[0]
@@ -698,7 +698,7 @@ def plot_scatter(df, measure='fmax', out_pref="test", title="", ax=None, **kwarg
     df2 = df[[measure, compare_col]]
     print(df2.head())
     if kwargs['term_stats'] is not None:
-        df_stats = kwargs['term_stats'] 
+        df_stats = kwargs['term_stats']
         # change the index to the terms
         df_stats.set_index(df_stats.columns[0], inplace=True)
         # plot the fmax by the # annotations
@@ -776,8 +776,8 @@ def compute_param_stat_sig(df, measure='fmax', **kwargs):
                     params_alg[p], max_val, p, np.median(param_vals))
             else:
                 # to be consistent, I'm going to use the wilcoxon rank-sum test here as well
-                #test_statistic, pval = mannwhitneyu(max_param_vals, param_vals, alternative='greater') 
-                test_statistic, pval = wilcoxon(max_param_vals, param_vals, alternative='greater') 
+                #test_statistic, pval = mannwhitneyu(max_param_vals, param_vals, alternative='greater')
+                test_statistic, pval = wilcoxon(max_param_vals, param_vals, alternative='greater')
                 out_str += "%s\t%s\t%s\t%0.3f\t%0.3e\t%0.3e\n" % (
                     params_alg[p], max_val, p, np.median(param_vals),
                     pval, np.median(max_param_vals - param_vals))
@@ -795,7 +795,7 @@ def compute_param_stat_sig(df, measure='fmax', **kwargs):
 #        if compare_to is None:
 #            alg1 = max(params_list)
 #            if exp_type == "maxi-alpha":
-#                alg1 = "a1.0-1000" 
+#                alg1 = "a1.0-1000"
 #        else:
 #            alg1 = compare_to
 #        alpha_1 = df_fmax[alg1].dropna().values
@@ -803,8 +803,8 @@ def compute_param_stat_sig(df, measure='fmax', **kwargs):
 #        # for a in params_list[:-1]:
 #        for a in params_list:
 #            fmax_a = df_fmax[a].dropna().values
-#            test_statistic, pval = mannwhitneyu(alpha_1, fmax_a, alternative='greater') 
-#            out_str += "%s\t%s\t%s\t%0.3f\t%0.3e\t%0.3e\n" % (alg, max(params_list), str(a), np.median(fmax_a), pval, 
+#            test_statistic, pval = mannwhitneyu(alpha_1, fmax_a, alternative='greater')
+#            out_str += "%s\t%s\t%s\t%0.3f\t%0.3e\t%0.3e\n" % (alg, max(params_list), str(a), np.median(fmax_a), pval,
 #                    np.median(alpha_1 - fmax_a) if len(alpha_1) == len(fmax_a) else -1)
 #        print("appending to %s" % (stat_file))
 #        with open(stat_file, 'w') as out:
@@ -845,7 +845,7 @@ def get_algs_to_run(alg_settings, **kwargs):
         if print_warning:
             print("\nNo algs were specified. Using the algorithms in the yaml file:")
             print(str(kwargs['algs']))
-            print_warning = False 
+            print_warning = False
         if len(algs_to_run) == 0:
             print("ERROR: Must specify algs with --alg or by setting 'should_run' to [True] in the config file")
             sys.exit("Quitting")
@@ -872,16 +872,16 @@ def load_all_results(input_settings, alg_settings, output_settings, prec_rec_str
                     prec_rec_str=prec_rec_str, **kwargs)
                 df_all = pd.concat([df_all, df])
             else:
-                eval_type = "" 
+                eval_type = ""
                 if kwargs.get('loso'):
                     eval_type = 'loso'
                 df = load_alg_results(
-                    dataset, alg, alg_settings[alg], prec_rec_str=prec_rec_str, 
+                    dataset, alg, alg_settings[alg], prec_rec_str=prec_rec_str,
                     results_dir=output_settings['output_dir'],
                     eval_type=eval_type, **kwargs,
                     #only_terms=kwargs.get('only_terms'), postfix=kwargs.get('postfix',''),
                 )
-                add_dataset_settings(dataset, df) 
+                add_dataset_settings(dataset, df)
                 df_all = pd.concat([df_all, df])
     return df_all
 
@@ -917,13 +917,13 @@ def read_cv_results(dataset, alg, alg_params, results_dir, **kwargs):
     #    curr_seed = cv_seed + rep-1
     eval_type = cv.get_output_prefix(folds, kwargs.get('num_reps',1), **kwargs)
     df = load_alg_results(
-        dataset, alg, alg_params, 
+        dataset, alg, alg_params,
         results_dir=results_dir, eval_type=eval_type, **kwargs)
-    add_dataset_settings(dataset, df) 
+    add_dataset_settings(dataset, df)
         #df['rep'] = rep
         #reps_df = pd.concat([reps_df, df])
 #    if kwargs.get('num_reps',1) > 1 and len(reps_df) > 0:
-#        print("Writing %s" % (rep_file)) 
+#        print("Writing %s" % (rep_file))
 #        reps_df.to_csv(rep_file, sep='\t')
     return df
 
@@ -933,7 +933,7 @@ def add_dataset_settings(dataset, df):
     df['net_version'] = dataset['net_version']
     df['exp_name'] = dataset['exp_name']
     if 'net_settings' in dataset and 'weight_method' in dataset['net_settings']:
-        df['weight_method'] = dataset['net_settings']['weight_method'] 
+        df['weight_method'] = dataset['net_settings']['weight_method']
     # if they specified a name to use in the plot for this experiment, then use that
     plot_exp_name = "%s %s" % (dataset['net_version'], dataset['exp_name'])
     if 'plot_exp_name' in dataset:
@@ -943,7 +943,7 @@ def add_dataset_settings(dataset, df):
 
 
 def load_alg_results(
-        dataset, alg, alg_params, prec_rec_str="", 
+        dataset, alg, alg_params, prec_rec_str="",
         results_dir='outputs', eval_type="cv-5folds",
         only_terms=None, postfix='', **kwargs):
     """
@@ -985,7 +985,7 @@ def load_alg_results(
         if kwargs.get('compare_param') is not None:
             df['Algorithm'] = str(param_combo[kwargs['compare_param']])
             df['alg_name'] = alg_name
-        elif len(combos) == 1: 
+        elif len(combos) == 1:
             df['Algorithm'] = alg_name
         else:
             df['Algorithm'] = alg_name + params_str
