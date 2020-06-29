@@ -27,7 +27,7 @@ base.require('org.Hs.eg.db')
 # # from src.FastSinkSource.src import main as run_eval_algs
 # # from src.FastSinkSource.src.utils import config_utils
 # # from src.FastSinkSource.src.algorithms import alg_utils
-# import david_client
+import david_client
 
 
 def parse_args():
@@ -107,13 +107,18 @@ def main( **kwargs):
     if out_pref is None:
         out_pref = "outputs/enrichment/%s" % (os.path.basename(kwargs['prot_list_file']).split('.')[0])
 
-    bp_df, mf_df, cc_df = run_clusterProfiler_GO(
-        prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
+    # bp_df, mf_df, cc_df = run_clusterProfiler_GO(
+    #     prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
+    #
+    # KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
+    #
+    # reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
-    KEGG_df = run_clusterProfiler_KEGG(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
+    # annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UCSC_TFBS', 'UP_TISSUE', 'GAD_DISEASE']
+    # annotation_list=   [ 'GOTERM_BP_FAT', 'GOTERM_CC_FAT', 'GOTERM_MF_FAT','KEGG_PATHWAY', 'REACTOME_PATHWAY']
+    annotation_list = ['HIV_INTERACTION_PUBMED_ID']
 
-    reactome_df = run_ReactomePA_Reactome(prots_to_test, out_pref, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
-
+    run_clusterProfiler_DAVID(prots_to_test, out_pref, annotation_list, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
 
 
 def run_clusterProfiler_GO(
@@ -154,6 +159,7 @@ def run_clusterProfiler_GO(
             qvalueCutoff  = kwargs.get('qval_cutoff')
             )
         utils_package.write_table(ego,out_file, sep=",")
+        # print(ego)
 
     ont_dfs = []
     for ont in ['BP', 'MF', 'CC']:
@@ -291,7 +297,7 @@ def run_clusterProfiler_DAVID(
     os.makedirs(out_dir, exist_ok=True)
     # now load those results and make a table
     # TODO make this a seting
-    print("Running enrich DAVID from clusterProfiler")
+    print("Running DAVID Analysis")
     if prot_universe is None:
         print("ERROR: default prot universe not yet implemented. Quitting")
         sys.exit()
@@ -320,6 +326,9 @@ def run_clusterProfiler_DAVID(
         if 'GOTERM' in annotation:
             df['ID'] = df['Term'].apply(lambda x: x.split('~')[0])
             df['Description'] = df['Term'].apply(lambda x: x.split('~')[1])
+        elif 'KEGG' in annotation or 'REACTOME' in annotation:
+            df['ID'] = df['Term'].apply(lambda x: x.split(':')[0])
+            df['Description'] = df['Term'].apply(lambda x: x.split(':')[1])
         else:
             df['ID'] = df['Term']
             df['Description'] = df['Term']
