@@ -181,62 +181,63 @@ dataset_settings:
             #columns_to_keep: []
             sep: " "
 
-          - name: "tissuenet-v2/hpa-protein"
-            file_name: "hpa-protein.zip"
-            network_collection: True
-            collection_settings:
-              gzip_files: True
-              remove_filename_spaces: True
-            weighted: False
-            unpack_command: "unzip"
-            namespace: "ensembl"
-            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-Protein.zip"
-            taxon: 9606
-            species: "human"
-            mapping_settings:
-              #keep_multiple: False
-              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
-              prefer_reviewed: True
-            columns_to_keep: []
-            sep: "\t"
-
-          - name: "tissuenet-v2/hpa-rnaseq"
-            file_name: "hpa-rnaseq.zip"
-            network_collection: True
-            collection_settings:
-              gzip_files: True
-              remove_filename_spaces: True
-            weighted: False
-            unpack_command: "unzip"
-            namespace: "ensembl"
-            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-RNA-Seq.zip"
-            taxon: 9606
-            species: "human"
-            mapping_settings:
-              #keep_multiple: False
-              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
-              prefer_reviewed: True
-            columns_to_keep: []
-            sep: "\t"
-
-          - name: "tissuenet-v2/gtex-rnaseq"
-            file_name: "gtex-rnaseq.zip"
-            network_collection: True
-            collection_settings:
-              gzip_files: True
-              remove_filename_spaces: True
-            weighted: False
-            unpack_command: "unzip"
-            namespace: "ensembl"
-            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/GTEx-RNA-Seq.zip"
-            taxon: 9606
-            species: "human"
-            mapping_settings:
-              #keep_multiple: False
-              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
-              prefer_reviewed: True
-            columns_to_keep: []
-            sep: "\t"
+            # skipping the TissueNetv2 networks since they take a while to download and setup.
+#          - name: "tissuenet-v2/hpa-protein"
+#            file_name: "hpa-protein.zip"
+#            network_collection: True
+#            collection_settings:
+#              gzip_files: True
+#              remove_filename_spaces: True
+#            weighted: False
+#            unpack_command: "unzip"
+#            namespace: "ensembl"
+#            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-Protein.zip"
+#            taxon: 9606
+#            species: "human"
+#            mapping_settings:
+#              #keep_multiple: False
+#              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+#              prefer_reviewed: True
+#            columns_to_keep: []
+#            sep: "\t"
+#
+#          - name: "tissuenet-v2/hpa-rnaseq"
+#            file_name: "hpa-rnaseq.zip"
+#            network_collection: True
+#            collection_settings:
+#              gzip_files: True
+#              remove_filename_spaces: True
+#            weighted: False
+#            unpack_command: "unzip"
+#            namespace: "ensembl"
+#            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/HPA-RNA-Seq.zip"
+#            taxon: 9606
+#            species: "human"
+#            mapping_settings:
+#              #keep_multiple: False
+#              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+#              prefer_reviewed: True
+#            columns_to_keep: []
+#            sep: "\t"
+#
+#          - name: "tissuenet-v2/gtex-rnaseq"
+#            file_name: "gtex-rnaseq.zip"
+#            network_collection: True
+#            collection_settings:
+#              gzip_files: True
+#              remove_filename_spaces: True
+#            weighted: False
+#            unpack_command: "unzip"
+#            namespace: "ensembl"
+#            url: "http://netbio.bgu.ac.il/tissuenet2-interactomes/TissueNet2.0/GTEx-RNA-Seq.zip"
+#            taxon: 9606
+#            species: "human"
+#            mapping_settings:
+#              #keep_multiple: False
+#              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+#              prefer_reviewed: True
+#            columns_to_keep: []
+#            sep: "\t"
 
 # This section contains settings which will be used to create another config file
 # in order to run the FastSinkSource pipeline.
@@ -272,12 +273,12 @@ fastsinksource_pipeline_settings:
 #            weight_method: 'gmw'
 #            string_nets: 'all'
 #            string_cutoff: 400
-      - names: ["tissuenet-v2/hpa-protein"]
-        network_collection: True
-      - names: ["tissuenet-v2/gtex-rnaseq"]
-        network_collection: True
-      - names: ["tissuenet-v2/hpa-rnaseq"]
-        network_collection: True
+#      - names: ["tissuenet-v2/hpa-protein"]
+#        network_collection: True
+#      - names: ["tissuenet-v2/gtex-rnaseq"]
+#        network_collection: True
+#      - names: ["tissuenet-v2/hpa-rnaseq"]
+#        network_collection: True
 
 #      # also try combining the drugbank drug-protein interactions
 #      - names: ["stringv11"]
