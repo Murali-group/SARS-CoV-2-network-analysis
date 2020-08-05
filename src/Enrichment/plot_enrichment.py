@@ -38,7 +38,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
 
-    group.add_argument('--enrichmentdir',default = 'outputs/enrichment/combined-krogan-1_0/greedy_simplified')
+    group.add_argument('--enrichmentfile',default = 'outputs/enrichment/combined-krogan-1_0/greedy_simplified/string_k332_GO-BP_simplified.csv')
 
     # group.add_argument('--order',type = list, default = ['RL-a0_01','RL-a0_1','RL-a0_5','RL-a1','RL-a2','RL-a10','RL-a100','SVM', 'Kr'])
 
@@ -105,31 +105,25 @@ def plot_heatmap_all_algo_krogan(df,algo_order, out_file_path,mult_alpha):
 
 
 def main(**kwargs):
-    enrichment_dir = kwargs.get('enrichmentdir')
+    enrichment_file = kwargs.get('enrichmentfile')
     mult_alpha = kwargs.get('multAlpha')
     if mult_alpha:
-        algo_order = ['RL-a0_01','RL-a0_1','RL-a0_5','RL-a1','RL-a2','RL-a10','RL-a100','SVM', 'Kr']
+        algo_order = ['RL-a0_01','RL-a0_1','RL-a0_5','RL-a1','RL-a2','RL-a10','RL-a100']
     else:
         algo_order = ['RL','SVM', 'Kr']
 
-    print(enrichment_dir)
+    # if enrichment_dir == 'outputs/enrichment/combined-krogan-1_0/greedy_simplified':
+    enrichment_dir = os.path.dirname(enrichment_file)
+    file_name_without_extension = os.path.splitext(enrichment_file)[0]
+    print('filename without extension: ', file_name_without_extension)
+    # enrichment_type = file.split('.|_')[-3]
 
-    if enrichment_dir == 'outputs/enrichment/combined-krogan-1_0/greedy_simplified':
+    out_file = file_name_without_extension
 
-        for file in os.listdir(enrichment_dir):
-            if '_simplified.csv' in file:
+    # index_col = 1 which is the Description column
+    df = pd.read_csv(enrichment_file, index_col = 1)
 
-                file_path  = enrichment_dir+'/'+file
-                # extract GO,KEGG,Reactome from filename
-                file_name_without_extension = os.path.splitext(file)[0]
-                # enrichment_type = file.split('.|_')[-3]
-
-                out_file = enrichment_dir + '/' + file_name_without_extension
-
-                # index_col = 1 which is the Description column
-                df = pd.read_csv(file_path, index_col = 1)
-
-                plot_heatmap_all_algo_krogan(df,algo_order, out_file,mult_alpha)
+    plot_heatmap_all_algo_krogan(df,algo_order, out_file,mult_alpha)
 
 
 if __name__ == "__main__":
