@@ -9,7 +9,7 @@ cmd="""python src/graphspace/sars_cov2_post_to_gs.py \
     --parent-nodes \
     --edge-weight-cutoff 700 \
     --user jeffl@vt.edu \
-    --pass f1fan \
+    --pass <password> \
     --drug-list-file fss_inputs/graphspace/gene_lists/protein-folding-in-er-drugs.txt \
     --graph-attr-file fss_inputs/graphspace/gene_lists/protein-folding-in-er-styles.txt \
     --out-pref fss_inputs/graphspace/graphs/protein-folding-in-er \
