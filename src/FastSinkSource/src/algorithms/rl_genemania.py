@@ -108,13 +108,24 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
     return M_inv
 
 
-def get_fraction_nbrs(top_k_pred_idx, M_inv, pos_idx, cutoff=0.001, W=None):  #clustering=False):
+def get_pred_main_contributors(pred_scores, M_inv, pos_idx, cutoff=0.001, k=332, W=None):  #clustering=False):
     """
+    Get the main contributors for each top prediction. 
     Now normalize each row, and get all nodes with a value > some cutoff
-    *top_k_pred_idx*: list of nodes for which to get their top contributors
+    *pred_scores*: prediction scores from running RL / GeneMANIA
+    *M_inv*: inverse of the laplacian
+    *pos_idx*: indexes of positive examples
+    *cutoff*: if a positive example contributes to the fraction of propagation score of a given node > *cutoff*,
+        it will be a main contributor for that node
+    *k*: number of top predictions to consider
     *W*: original network. If passed in, will compute the fraction of top contributing nodes that are neighbors
         and return a list along with the top contributing pos nodes for each prediction
+    
+    *returns*: dictionary with node idx as keys, and an array of main contributors as the values
     """
+    # 
+    pred_scores[pos_idx] = 0
+    top_k_pred_idx = np.argsort(pred_scores)[::-1][:k]
     # get the diffusion values from the positive nodes to the top predictions 
     pos_to_top_dfsn = M_inv[pos_idx,:][:,top_k_pred_idx] 
     # normalize by the column to get the fraction of diffusion from each pos node
