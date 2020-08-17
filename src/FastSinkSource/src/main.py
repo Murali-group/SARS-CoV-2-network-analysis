@@ -197,6 +197,7 @@ def setup_net(input_dir, dataset, **kwargs):
         dataset['multi_net'] = True
     else:
         dataset['multi_net'] = False
+    out_pref = net_dir
 
     # parse and store the networks 
     if dataset.get('multi_net') is True or 'string_net_files' in dataset: 
@@ -242,6 +243,8 @@ def setup_net(input_dir, dataset, **kwargs):
         W, prots = alg_utils.setup_sparse_network(net_files[0], forced=kwargs.get('forcenet',False))
         net_obj = setup.Sparse_Networks(
             W, prots, unweighted=unweighted, verbose=kwargs.get('verbose',False))
+    # store the output prefix of the network to use later
+    net_obj.out_pref = out_pref
     return net_obj
 
 

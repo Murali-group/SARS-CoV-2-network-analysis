@@ -4,7 +4,7 @@ import time
 from scipy import sparse as sp
 from scipy.sparse.linalg import spilu, LinearOperator
 import numpy as np
-from . import genemania
+from . import rl_genemania as genemania
 
 
 def setupInputs(run_obj):
@@ -86,7 +86,7 @@ def run(run_obj):
             W,_,_ = run_obj.net_obj.weight_GMW(y, term)
             L = genemania.setup_laplacian(W)
             params_results['%s_weight_time'%(alg)] += time.process_time() - start_time
-        if alg in ['genemaniaplus']:
+        if alg in ['genemaniaplus', 'rl']:
             # remove the negative examples
             y = (y > 0).astype(int)
 
