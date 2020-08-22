@@ -58,15 +58,6 @@ def setup_opts():
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
     group.add_argument('--compare-krogan-terms',type=str,
                        help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv) inside. Will be added to the combined table")
-    # Should be specified in the config file
-    #group.add_argument('--gmt-file', append=True,
-    #                   help="Test for enrichment using the genesets present in a GMT file.")
-    #group.add_argument('--prot-list-file',
-    #                   help="Test for enrichment of a list of proteins (UniProt IDs) (e.g., Krogan nodes).")
-    #group.add_argument('--prot-universe-file',
-    #                   help="Protein universe to use when testing for enrichment")
-    #group.add_argument('--out-dir', type=str,
-    #                   help="path/to/output directory for enrichemnt files")
     group.add_argument('--out-pref',
                        help="Output prefix where final output file will be placed. " +
                        "Default is <outputs>/enrichement/combined/<config_file_name>")
@@ -333,11 +324,6 @@ def overlap_stat(jaccard_dict_before, jaccard_dict_after):
         df_dict[protein_set_name] = df
     return df_dict
 
-# def compute_composite_p_adjust_mean(df):
-#     p_adjust_col = [col for col in df.columns if 'p.adjust' in col]
-#     df = df[p_adjust_col]
-#     mult = df.prod(axis = 1)
-#     return statistics.mean(list(mult))
 
 def jaccard_histogram(jaccard_df_dict_before,jaccard_df_dict_after,out_file_base):
 
@@ -695,6 +681,7 @@ def main(config_map, **kwargs):
     num_algs_with_results = 0
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap
+    algs_out_dir = ""
     for dataset in input_settings['datasets']:
         print("Loading data for %s" % (dataset['net_version']))
         base_out_dir = "%s/enrichment/%s/%s" % (output_dir, dataset['net_version'], dataset['exp_name'])
@@ -726,6 +713,8 @@ def main(config_map, **kwargs):
         dataset_name = config_utils.get_dataset_name(dataset)
         alg_pred_files = config_utils.get_dataset_alg_prediction_files(
             output_dir, dataset, alg_settings, algs, **kwargs)
+
+
         for alg, pred_file in alg_pred_files.items():
             if not os.path.isfile(pred_file):
                 print("Warning: %s not found. skipping" % (pred_file))
@@ -744,6 +733,16 @@ def main(config_map, **kwargs):
             pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
                 base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
                 "-p%s"%str(kwargs['stat_sig_cutoff']).replace('.','_') if kwargs.get('stat_sig_cutoff') else "")
+
+            # extract alpha for RL here from pred_file
+            # in existing setup when RL is tun for multiple alpha at a time only then alpha value shows up in combined sheet. Now I want to see alpha value always,
+            if alg == 'RL':
+                alpha_val = os.path.basename(pred_file).split('-')[2]
+                alg = alg + '-'+alpha_val
+
+            algs_out_dir=algs_out_dir+alg+'-'
+
+
             os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
             if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
                 # print("writing %s" % (pred_filtered_file))
@@ -823,24 +822,27 @@ def main(config_map, **kwargs):
     # now write the combined df to a file
 
     out_pref = kwargs.get('out_pref')
+    algs_out_dir = '-'.join(algs_out_dir.split('-')[:-1])
     if out_pref is None:
         pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
-        out_pref_dir = "%s/enrichment/combined%s-%s/" % (
+        out_pref_dir = "%s/enrichment/combined%s-%s/%s" % (
             output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
-            pval_str)
+            pval_str,algs_out_dir)
 
-        network = os.path.basename(kwargs['config']).split('.')[0]
+        network = (os.path.basename(kwargs['config']).split('.')[0]).upper()
 
-        out_pref = "%s/enrichment/combined%s-%s/%s-" % (
-            output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
-            pval_str, os.path.basename(kwargs['config']).split('.')[0])
+        out_pref = out_pref_dir+'/'+network+'-'
 
-    super_combined_file = "%s-k%s.xlsx" % (out_pref,k_to_test[0])
+        # out_pref = "%s/enrichment/combined%s-%s/%s-" % (
+        #     output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
+        #     pval_str, os.path.basename(kwargs['config']).split('.')[0])
+
+    super_combined_file = "%sk%s.xlsx" % (out_pref,k_to_test[0])
     super_combined_df = pd.DataFrame()
 
     #write combined KEGG Enrichment
 
-    greedy_simplified_files_dir = out_pref_dir+'greedy_simplified/'
+    greedy_simplified_files_dir = out_pref_dir+'/greedy_simplified/'
 
     os.makedirs(os.path.dirname(greedy_simplified_files_dir), exist_ok=True)
 
