@@ -83,6 +83,8 @@ def setup_opts():
                        help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
     group.add_argument('--fss-pval', type=float, default=0.01,
                        help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
+    group.add_argument('--keep-diff-alpha-separate', action='store_true', default=False,
+                       help="mention if you want to combine all the enrichment result for all RL prediction using different alpha altogether.")
 
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
@@ -665,23 +667,13 @@ def main(config_map, **kwargs):
     gene_to_uniprot = enrichment.load_uniprot(kwargs.get('id_mapping_file'))
     kwargs['gene_to_uniprot'] = gene_to_uniprot
 
-    annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UCSC_TFBS', 'UP_TISSUE', 'GAD_DISEASE']
 
-    # store all the enriched terms in a single dataframe
-    all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
-    all_dfs_KEGG = pd.DataFrame()
-    all_dfs_reactome = pd.DataFrame()
-
-
-    terms_to_keep_GO = {g: [] for g in ['BP', 'CC', 'MF']}
-    pathways_to_keep_KEGG=[]
-    pathways_to_keep_Reactome = []
 
 
     num_algs_with_results = 0
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap
-    algs_out_dir = ""
+
     for dataset in input_settings['datasets']:
         print("Loading data for %s" % (dataset['net_version']))
         base_out_dir = "%s/enrichment/%s/%s" % (output_dir, dataset['net_version'], dataset['exp_name'])
@@ -710,229 +702,267 @@ def main(config_map, **kwargs):
         # print("\ttesting %d k value(s): %s" % (len(k_to_test), ", ".join([str(k) for k in k_to_test])))
 
         # now load the prediction scores
+
         dataset_name = config_utils.get_dataset_name(dataset)
         alg_pred_files = config_utils.get_dataset_alg_prediction_files(
             output_dir, dataset, alg_settings, algs, **kwargs)
 
 
-        for alg, pred_file in alg_pred_files.items():
-            if not os.path.isfile(pred_file):
-                print("Warning: %s not found. skipping" % (pred_file))
-                continue
-            num_algs_with_results += 1
-            # print("reading: %s" % (pred_file))
-            df = pd.read_csv(pred_file, sep='\t')
-            # remove the original positives
-            df = df[~df['prot'].isin(orig_pos)]
-            df.reset_index(inplace=True, drop=True)
-            #df = df[['prot', 'score']]
-            df.sort_values(by='score', ascending=False, inplace=True)
-            if kwargs.get('stat_sig_cutoff'):
-                df = config_utils.get_pvals_apply_cutoff(df, pred_file, **kwargs)
-            # write these results to file
-            pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
-                base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
-                "-p%s"%str(kwargs['stat_sig_cutoff']).replace('.','_') if kwargs.get('stat_sig_cutoff') else "")
 
-            # extract alpha for RL here from pred_file
-            # in existing setup when RL is tun for multiple alpha at a time only then alpha value shows up in combined sheet. Now I want to see alpha value always,
-            if alg == 'RL':
-                alpha_val = os.path.basename(pred_file).split('-')[2]
-                alg = alg + '-'+alpha_val
+        #running enrichment for multiple alpha value for RL and keeping them separately i.e. in each sheet there will be one value of alpha (and if wanted SVM and Korgan)
+        list_algs_combination=[]
+        if kwargs.get('keep_diff_alpha_separate'):
+            RL_dict={}
+            other_algo_dict={}
+            for alg, pred_file in alg_pred_files.items():
+                if 'RL' in alg:
+                    RL_dict[alg]=pred_file
+                else:
+                    other_algo_dict[alg] = pred_file
+            for alg in RL_dict:
+                each_RL_alpha_other_algo={}
+                each_RL_alpha_other_algo[alg] = RL_dict[alg]
+                each_RL_alpha_other_algo.update(other_algo_dict)
+                list_algs_combination.append(each_RL_alpha_other_algo)
+            print('\n\n size of algo combo list\n\n', len(list_algs_combination))
+        else:
+            list_algs_combination.append(alg_pred_files)
 
-            algs_out_dir=algs_out_dir+alg+'-'
+        for algo_combo in list_algs_combination:
+            print('\n\nALGO combo:\n\n' ,algo_combo)
+
+            annotation_list = ['HIV_INTERACTION_PUBMED_ID', 'HIV_INTERACTION', 'HIV_INTERACTION_CATEGORY', 'UCSC_TFBS', 'UP_TISSUE', 'GAD_DISEASE']
+            # store all the enriched terms in a single dataframe
+            all_dfs = {g: pd.DataFrame() for g in ['BP', 'CC', 'MF']}
+            all_dfs_KEGG = pd.DataFrame()
+            all_dfs_reactome = pd.DataFrame()
 
 
-            os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
-            if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
-                # print("writing %s" % (pred_filtered_file))
-                df.to_csv(pred_filtered_file, sep='\t', index=None)
+            terms_to_keep_GO = {g: [] for g in ['BP', 'CC', 'MF']}
+            pathways_to_keep_KEGG=[]
+            pathways_to_keep_Reactome = []
 
-            for k in k_to_test:
-                topk_predictions = list(df.iloc[:k]['prot'])
+            algs_out_dir = ""
 
-                # now run clusterProfiler from R
-                out_dir = pred_filtered_file.split('.')[0] + '/'+ str(k)
-                os.makedirs(os.path.dirname(out_dir), exist_ok=True)
 
-                bp_df, mf_df, cc_df = enrichment.run_clusterProfiler_GO(
-                    topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
-                for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
-                    # make it into a multi-column-level dataframe
-                    # print('fss_pval: ' , kwargs.get('fss_pval'))
-                    # print('fss_pval type : ', type(kwargs.get('fss_pval')))
-                    terms_to_keep_GO[ont] = terms_to_keep_GO[ont] + list(df[df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
+            for alg, pred_file in algo_combo.items():
+                if not os.path.isfile(pred_file):
+                    print("Warning: %s not found. skipping" % (pred_file))
+                    continue
+                num_algs_with_results += 1
+                # print("reading: %s" % (pred_file))
+                df = pd.read_csv(pred_file, sep='\t')
+                # remove the original positives
+                df = df[~df['prot'].isin(orig_pos)]
+                df.reset_index(inplace=True, drop=True)
+                #df = df[['prot', 'score']]
+                df.sort_values(by='score', ascending=False, inplace=True)
+                if kwargs.get('stat_sig_cutoff'):
+                    df = config_utils.get_pvals_apply_cutoff(df, pred_file, **kwargs)
+                # write these results to file
+                pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
+                    base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
+                    "-p%s"%str(kwargs['stat_sig_cutoff']).replace('.','_') if kwargs.get('stat_sig_cutoff') else "")
+
+                # extract alpha for RL here from pred_file
+                # in existing setup when RL is tun for multiple alpha at a time only then alpha value shows up in combined sheet. Now I want to see alpha value always,
+                if 'RL' in alg:
+                    alpha_val = os.path.basename(pred_file).split('-')[2]
+                    alg = 'RL' + '-'+alpha_val
+
+                algs_out_dir=algs_out_dir+alg+'-'
+
+
+                os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
+                if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
+                    # print("writing %s" % (pred_filtered_file))
+                    df.to_csv(pred_filtered_file, sep='\t', index=None)
+
+                for k in k_to_test:
+                    topk_predictions = list(df.iloc[:k]['prot'])
+
+                    # now run clusterProfiler from R
+                    out_dir = pred_filtered_file.split('.')[0] + '/'+ str(k)
+                    os.makedirs(os.path.dirname(out_dir), exist_ok=True)
+
+                    bp_df, mf_df, cc_df = enrichment.run_clusterProfiler_GO(
+                        topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
+                    for ont, df in [('BP', bp_df), ('MF', mf_df), ('CC', cc_df)]:
+                        # make it into a multi-column-level dataframe
+                        # print('fss_pval: ' , kwargs.get('fss_pval'))
+                        # print('fss_pval type : ', type(kwargs.get('fss_pval')))
+                        terms_to_keep_GO[ont] = terms_to_keep_GO[ont] + list(df[df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
+                        if kwargs.get('compare_krogan_terms'):
+                            df = add_qval_ratio(df,ont, krogan_dir,alg)
+                        tuples = [(dataset_name, alg, col) for col in df.columns]
+                        index = pd.MultiIndex.from_tuples(tuples)
+                        df.columns = index
+                        all_dfs[ont] = pd.concat([all_dfs[ont], df], axis=1)
+
+
+                    KEGG_df = enrichment.run_clusterProfiler_KEGG(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
                     if kwargs.get('compare_krogan_terms'):
-                        df = add_qval_ratio(df,ont, krogan_dir,alg)
-                    tuples = [(dataset_name, alg, col) for col in df.columns]
+                        KEGG_df = add_qval_ratio(KEGG_df,'KEGG',krogan_dir,alg)
+                    pathways_to_keep_KEGG = pathways_to_keep_KEGG + list(KEGG_df[KEGG_df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
+                    tuples = [(dataset_name, alg, col) for col in KEGG_df.columns]
                     index = pd.MultiIndex.from_tuples(tuples)
-                    df.columns = index
-                    all_dfs[ont] = pd.concat([all_dfs[ont], df], axis=1)
-
-
-                KEGG_df = enrichment.run_clusterProfiler_KEGG(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'), **kwargs)
-                if kwargs.get('compare_krogan_terms'):
-                    KEGG_df = add_qval_ratio(KEGG_df,'KEGG',krogan_dir,alg)
-                pathways_to_keep_KEGG = pathways_to_keep_KEGG + list(KEGG_df[KEGG_df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
-                tuples = [(dataset_name, alg, col) for col in KEGG_df.columns]
-                index = pd.MultiIndex.from_tuples(tuples)
-                KEGG_df.columns = index
-                all_dfs_KEGG = pd.concat([all_dfs_KEGG, KEGG_df], axis=1)
+                    KEGG_df.columns = index
+                    all_dfs_KEGG = pd.concat([all_dfs_KEGG, KEGG_df], axis=1)
 
 
 
-                reactome_df = enrichment.run_ReactomePA_Reactome(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
-                if kwargs.get('compare_krogan_terms'):
-                    reactome_df = add_qval_ratio(reactome_df,'Reactome',krogan_dir,alg)
-                pathways_to_keep_Reactome = pathways_to_keep_Reactome + list(reactome_df[reactome_df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
-                tuples = [(dataset_name, alg, col) for col in reactome_df.columns]
-                index = pd.MultiIndex.from_tuples(tuples)
-                reactome_df.columns = index
+                    reactome_df = enrichment.run_ReactomePA_Reactome(topk_predictions, out_dir, prot_universe=prot_universe, forced=kwargs.get('force_run'),**kwargs)
+                    if kwargs.get('compare_krogan_terms'):
+                        reactome_df = add_qval_ratio(reactome_df,'Reactome',krogan_dir,alg)
+                    pathways_to_keep_Reactome = pathways_to_keep_Reactome + list(reactome_df[reactome_df['p.adjust']<=kwargs.get('fss_pval')]['ID'])
+                    tuples = [(dataset_name, alg, col) for col in reactome_df.columns]
+                    index = pd.MultiIndex.from_tuples(tuples)
+                    reactome_df.columns = index
+                    all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
+
+
+            for geneset, g_df in all_dfs.items():
+                all_dfs[geneset] = g_df[g_df.index.isin(terms_to_keep_GO[geneset])]
+
+            all_dfs_KEGG = all_dfs_KEGG[all_dfs_KEGG.index.isin(pathways_to_keep_KEGG)]
+
+            all_dfs_reactome = all_dfs_reactome[all_dfs_reactome.index.isin(pathways_to_keep_Reactome)]
+
+
+
+            if num_algs_with_results == 0:
+                print("No results found. Quitting")
+                sys.exit()
+
+            if kwargs.get('compare_krogan_terms'):
+                for geneset, g_df in all_dfs.items():
+                    df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
+                    all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
+
+                kegg_df = include_Krogan_enrichment_result(krogan_dir,'KEGG',all_dfs_KEGG)
+                all_dfs_KEGG = pd.concat([all_dfs_KEGG, kegg_df], axis=1)
+
+                reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
                 all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
 
 
-    for geneset, g_df in all_dfs.items():
-        all_dfs[geneset] = g_df[g_df.index.isin(terms_to_keep_GO[geneset])]
-
-    all_dfs_KEGG = all_dfs_KEGG[all_dfs_KEGG.index.isin(pathways_to_keep_KEGG)]
-
-    all_dfs_reactome = all_dfs_reactome[all_dfs_reactome.index.isin(pathways_to_keep_Reactome)]
 
 
 
-    if num_algs_with_results == 0:
-        print("No results found. Quitting")
-        sys.exit()
+            # now write the combined df to a file
 
-    if kwargs.get('compare_krogan_terms'):
-        for geneset, g_df in all_dfs.items():
-            df = include_Krogan_enrichment_result(krogan_dir,geneset,g_df)
-            all_dfs[geneset] = pd.concat([all_dfs[geneset], df], axis=1)
+            out_pref = kwargs.get('out_pref')
+            algs_out_dir = '-'.join(algs_out_dir.split('-')[:-1])
+            if out_pref is None:
+                pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
+                out_pref_dir = "%s/enrichment/combined%s-%s/%s" % (
+                    output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
+                    pval_str,algs_out_dir)
 
-        kegg_df = include_Krogan_enrichment_result(krogan_dir,'KEGG',all_dfs_KEGG)
-        all_dfs_KEGG = pd.concat([all_dfs_KEGG, kegg_df], axis=1)
+                network = (os.path.basename(kwargs['config']).split('.')[0]).upper()
 
-        reactome_df = include_Krogan_enrichment_result(krogan_dir,'Reactome',all_dfs_reactome)
-        all_dfs_reactome = pd.concat([all_dfs_reactome, reactome_df], axis=1)
+                out_pref = out_pref_dir+'/'+network+'-'
 
+                # out_pref = "%s/enrichment/combined%s-%s/%s-" % (
+                #     output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
+                #     pval_str, os.path.basename(kwargs['config']).split('.')[0])
 
+            super_combined_file = "%sk%s.xlsx" % (out_pref,k_to_test[0])
+            super_combined_df = pd.DataFrame()
 
+            #write combined KEGG Enrichment
 
+            greedy_simplified_files_dir = out_pref_dir+'/greedy_simplified/'
 
-    # now write the combined df to a file
+            os.makedirs(os.path.dirname(greedy_simplified_files_dir), exist_ok=True)
 
-    out_pref = kwargs.get('out_pref')
-    algs_out_dir = '-'.join(algs_out_dir.split('-')[:-1])
-    if out_pref is None:
-        pval_str = str(kwargs.get('pval_cutoff')).replace('.','_')
-        out_pref_dir = "%s/enrichment/combined%s-%s/%s" % (
-            output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
-            pval_str,algs_out_dir)
-
-        network = (os.path.basename(kwargs['config']).split('.')[0]).upper()
-
-        out_pref = out_pref_dir+'/'+network+'-'
-
-        # out_pref = "%s/enrichment/combined%s-%s/%s-" % (
-        #     output_dir, "-krogan" if kwargs.get('compare_krogan_terms') else "",
-        #     pval_str, os.path.basename(kwargs['config']).split('.')[0])
-
-    super_combined_file = "%sk%s.xlsx" % (out_pref,k_to_test[0])
-    super_combined_df = pd.DataFrame()
-
-    #write combined KEGG Enrichment
-
-    greedy_simplified_files_dir = out_pref_dir+'/greedy_simplified/'
-
-    os.makedirs(os.path.dirname(greedy_simplified_files_dir), exist_ok=True)
-
-    if kwargs.get('file_per_alg'):
-        all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
-        for alg, df_alg in all_dfs_KEGG.groupby(level=0, axis=1):
-            df_alg.dropna(how='all', inplace=True)
-            # print('KEGG FILE PER ALGO')
-            out_file = "%s%s-k%s-KEGG.csv" % (out_pref, alg, k_to_test[0])
-            write_combined_table(df_alg, out_file, dataset_level=1)
+            if kwargs.get('file_per_alg'):
+                all_dfs_KEGG = all_dfs_KEGG.swaplevel(0,1,axis=1)
+                for alg, df_alg in all_dfs_KEGG.groupby(level=0, axis=1):
+                    df_alg.dropna(how='all', inplace=True)
+                    # print('KEGG FILE PER ALGO')
+                    out_file = "%s%s-k%s-KEGG.csv" % (out_pref, alg, k_to_test[0])
+                    write_combined_table(df_alg, out_file, dataset_level=1)
 
 
-    else:
-        out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
-        print('KEGG ALL')
+            else:
+                out_file = "%sk%s-KEGG.csv" % (out_pref, k_to_test[0])
+                print('KEGG ALL')
 
-        processed_df = write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
+                processed_df = write_combined_table(all_dfs_KEGG, out_file, dataset_level=0)
 
-        # write all the results from KEGG, GO, Reactome in one xlsx file.
-        with pd.ExcelWriter(super_combined_file) as writer:
-            # print('processed_df: ', processed_df.shape)
-            processed_df.to_excel(writer, sheet_name = 'KEGG')
+                # write all the results from KEGG, GO, Reactome in one xlsx file.
+                with pd.ExcelWriter(super_combined_file) as writer:
+                    # print('processed_df: ', processed_df.shape)
+                    processed_df.to_excel(writer, sheet_name = 'KEGG')
 
-        # out_file_simplified = "%s_k%s_KEGG_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
-        # out_file_jaccard = "%s_k%s_KEGG_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0])
+                # out_file_simplified = "%s_k%s_KEGG_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
+                # out_file_jaccard = "%s_k%s_KEGG_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0])
 
-        out_file_base = "%s_k%s_KEGG" % (greedy_simplified_files_dir+network,k_to_test[0])
-        simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
-        # greedy_simplified_df.to_csv(out_file_1)
-        # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
-
-
-    #write combined Reactome Enrichment
-    if kwargs.get('file_per_alg'):
-        all_dfs_reactome = all_dfs_reactome.swaplevel(0,1,axis=1)
-        for alg, df_alg in all_dfs_reactome.groupby(level=0, axis=1):
-            df_alg.dropna(how='all', inplace=True)
-            # print('REACTOME FILE PER ALGO')
-            out_file = "%s%s-k%s-Reactome.csv" % (out_pref, alg, k_to_test[0])
-            write_combined_table(df_alg, out_file,dataset_level=1)
-
-    else:
-        print('REACTOME')
-        out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
-        # print('REACTOME ALL')
-        # super_combined_df = pd.concat([super_combined_df, all_dfs_reactome],axis=0)
-        processed_df = write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
-        with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
-            # print('processed_df: ', processed_df.shape)
-            processed_df.to_excel(writer, sheet_name = 'Reactome')
+                out_file_base = "%s_k%s_KEGG" % (greedy_simplified_files_dir+network,k_to_test[0])
+                simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
+                # greedy_simplified_df.to_csv(out_file_1)
+                # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
 
 
-        # out_file_simplified = "%s_k%s_Reactome_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
-        # out_file_jaccard = "%s_k%s_Reactome_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0])
+            #write combined Reactome Enrichment
+            if kwargs.get('file_per_alg'):
+                all_dfs_reactome = all_dfs_reactome.swaplevel(0,1,axis=1)
+                for alg, df_alg in all_dfs_reactome.groupby(level=0, axis=1):
+                    df_alg.dropna(how='all', inplace=True)
+                    # print('REACTOME FILE PER ALGO')
+                    out_file = "%s%s-k%s-Reactome.csv" % (out_pref, alg, k_to_test[0])
+                    write_combined_table(df_alg, out_file,dataset_level=1)
 
-        out_file_base = "%s_k%s_Reactome" % (greedy_simplified_files_dir+network,k_to_test[0])
-        simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
-        # greedy_simplified_df.to_csv(out_file_1)
-        # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
-
-    #write GO enrichment
-    for geneset, df in all_dfs.items():
-        if kwargs.get('file_per_alg'):
-            df = df.swaplevel(0,1,axis=1)
-            for alg, df_alg in df.groupby(level=0, axis=1):
-                df_alg.dropna(how='all', inplace=True)
-                # TODO add back the krogan terms
-                #if kwargs.get('compare_krogan_terms') and :
-                # print(df_alg.head())
-                out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
-                write_combined_table(df_alg, out_file, dataset_level=1)
-        else:
-            print(geneset,'\n\n\n\n')
-            out_file = "%sk%s-%s.csv" % (out_pref, k_to_test[0], geneset)
-            # super_combined_df = pd.concat([super_combined_df, df],axis=0)
-            processed_df= write_combined_table(df, out_file,dataset_level=0)
-            with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
-                # print('processed_df: ', processed_df.shape)
-                processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
-            if geneset == 'MF':
-                continue
+            else:
+                print('REACTOME')
+                out_file = "%sk%s-Reactome.csv" % (out_pref, k_to_test[0])
+                # print('REACTOME ALL')
+                # super_combined_df = pd.concat([super_combined_df, all_dfs_reactome],axis=0)
+                processed_df = write_combined_table(all_dfs_reactome, out_file, dataset_level=0)
+                with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
+                    # print('processed_df: ', processed_df.shape)
+                    processed_df.to_excel(writer, sheet_name = 'Reactome')
 
 
-            # out_file_simplified = "%s_k%s_GO-%s_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
-            # out_file_jaccard = "%s_k%s_GO-%s_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
+                # out_file_simplified = "%s_k%s_Reactome_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0])
+                # out_file_jaccard = "%s_k%s_Reactome_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0])
 
-            out_file_base = "%s_k%s_GO-%s" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
-            simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
-            # greedy_simplified_df.to_csv(out_file_1)
-            # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
+                out_file_base = "%s_k%s_Reactome" % (greedy_simplified_files_dir+network,k_to_test[0])
+                simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
+                # greedy_simplified_df.to_csv(out_file_1)
+                # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
+
+            #write GO enrichment
+            for geneset, df in all_dfs.items():
+                if kwargs.get('file_per_alg'):
+                    df = df.swaplevel(0,1,axis=1)
+                    for alg, df_alg in df.groupby(level=0, axis=1):
+                        df_alg.dropna(how='all', inplace=True)
+                        # TODO add back the krogan terms
+                        #if kwargs.get('compare_krogan_terms') and :
+                        # print(df_alg.head())
+                        out_file = "%s%s-k%s-%s.csv" % (out_pref, alg, k_to_test[0], geneset)
+                        write_combined_table(df_alg, out_file, dataset_level=1)
+                else:
+                    print(geneset,'\n\n\n\n')
+                    out_file = "%sk%s-%s.csv" % (out_pref, k_to_test[0], geneset)
+                    # super_combined_df = pd.concat([super_combined_df, df],axis=0)
+                    processed_df= write_combined_table(df, out_file,dataset_level=0)
+                    with pd.ExcelWriter(super_combined_file, mode ='a') as writer:
+                        # print('processed_df: ', processed_df.shape)
+                        processed_df.to_excel(writer, sheet_name = 'GO-'+ geneset)
+                    if geneset == 'MF':
+                        continue
+
+
+                    # out_file_simplified = "%s_k%s_GO-%s_simplified.csv" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
+                    # out_file_jaccard = "%s_k%s_GO-%s_simplified_Jaccard" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
+
+                    out_file_base = "%s_k%s_GO-%s" % (greedy_simplified_files_dir+network,k_to_test[0],geneset)
+                    simplify_enrichment_greedy_algo(processed_df.copy(),1,out_file_base)
+                    # greedy_simplified_df.to_csv(out_file_1)
+                    # all_pairs_jaccard_coeffs_df.to_csv(out_file_2)
 
 
 
