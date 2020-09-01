@@ -19,7 +19,7 @@ cmd="""python src/graphspace/sars_cov2_post_to_gs.py \
     --parent-nodes \
     --edge-weight-cutoff $string_cutoff \
     --user jeffl@vt.edu \
-    --pass <pass> \
+    --pass <password> \
     --graph-attr-file fss_inputs/graphspace/gene_lists/cilium-assembly-styles.txt \
     --out-pref fss_inputs/graphspace/graphs/protein-folding-in-er \
     --name-postfix=-string$string_cutoff-2 \

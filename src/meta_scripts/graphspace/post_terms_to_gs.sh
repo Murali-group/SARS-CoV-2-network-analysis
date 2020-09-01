@@ -27,7 +27,7 @@ cmd="""python src/graphspace/sars_cov2_post_to_gs.py \
     --name-postfix=-string700   \
     --edge-weight-cutoff 700 \
     --user jeffl@vt.edu \
-    --pass <pass> \
+    --pass <password> \
     --group SARS-CoV-2-network-testing \
     --tag simplified --tag svm --tag covid19
 

@@ -13,7 +13,7 @@ cmd="""python src/graphspace/sars_cov2_post_to_gs.py \
     --k-to-test 332 \
     --edge-weight-cutoff $string_cutoff \
     --user jeffl@vt.edu \
-    --pass <pass> \
+    --pass <password> \
     --drug-list-file fss_inputs/graphspace/gene_lists/protein-folding-in-er-drugs.txt \
     --graph-attr-file fss_inputs/graphspace/gene_lists/protein-folding-in-er-styles.txt \
     --out-pref fss_inputs/graphspace/graphs/protein-folding-in-er \
