@@ -17,7 +17,6 @@ To install the R packages:
 ```
 R -e "install.packages('https://cran.r-project.org/src/contrib/PRROC_1.3.1.tar.gz', type = 'source')"
 conda install -c bioconda bioconductor-clusterprofiler
-"""
 ```
 
 ## Download Datasets
