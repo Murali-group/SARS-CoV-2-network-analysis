@@ -5,15 +5,8 @@ import argparse
 import itertools
 from tqdm import tqdm
 from collections import defaultdict
-# TODO give the path to this repo
-#from graphspace_python.api.client import GraphSpace
-#from graphspace_python.graphs.classes.gsgraph import GSGraph
 import pandas as pd
 import numpy as np
-import scipy
-from scipy import sparse as sp
-# GSGraph already implements networkx
-import networkx as nx
 import matplotlib
 if __name__ == "__main__":
     # Use this to save files remotely. 
