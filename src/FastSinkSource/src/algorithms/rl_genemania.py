@@ -2,10 +2,13 @@
 # since they are very similar
 __author__ = "Jeff Law"
 
+import os
 import time
 import numpy as np
+from scipy.linalg import inv
 from scipy.sparse import eye, diags
 from scipy.sparse.linalg import spsolve, cg, spilu, LinearOperator
+
 from . import alg_utils
 
 
@@ -68,7 +71,7 @@ def runGeneMANIA(L, y, alpha=1, tol=1e-05, Milu=None, verbose=False):
     process_time = time.process_time() - start_process_time
     wall_time = time.time() - start_wall_time
     if verbose:
-        print("Solved GeneMANIA using conjugate gradient (%0.2f sec, %0.2f sec process_time). Info: %s, k=%0.2f, iters=%d" % (
+        print("Solved GeneMANIA using conjugate gradient (%0.2f sec, %0.2f sec process_time). Info: %s, k=%0.6f, iters=%d" % (
             wall_time, process_time, str(info), k, num_iters))
 
     return f, process_time, wall_time, num_iters
@@ -90,15 +93,15 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
         return np.load(diff_mat_file)
 
     # now get the laplacian
-    L = gm.setup_laplacian(W)
+    L = setup_laplacian(W)
     # the equation is (I + a*L)s = y
     # we want to solve for (I + a*L)^-1
-    M = sp.eye(L.shape[0]) + alpha*L 
+    M = eye(L.shape[0]) + alpha*L 
     print("computing the inverse of (I + a*L) as the diffusion matrix, for alpha=%s" % (alpha))
     # first convert the scipy sparse matrix to a numpy matrix
     M_full = M.A
     # now take the inverse
-    M_inv = scipy.linalg.inv(M_full)
+    M_inv = inv(M_full)
 
     # write to file so this doesn't have to be recomputed
     if diff_mat_file is not None:
@@ -108,7 +111,9 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
     return M_inv
 
 
-def get_pred_main_contributors(pred_scores, M_inv, pos_idx, cutoff=0.001, k=332, W=None):  #clustering=False):
+def get_pred_main_contributors(
+        pred_scores, M_inv, pos_idx,
+        cutoff=0.001, k=332, W=None, **kwargs):  #clustering=False):
     """
     Get the main contributors for each top prediction. 
     Now normalize each row, and get all nodes with a value > some cutoff
@@ -120,7 +125,7 @@ def get_pred_main_contributors(pred_scores, M_inv, pos_idx, cutoff=0.001, k=332,
     *k*: number of top predictions to consider
     *W*: original network. If passed in, will compute the fraction of top contributing nodes that are neighbors
         and return a list along with the top contributing pos nodes for each prediction
-    
+
     *returns*: dictionary with node idx as keys, and an array of main contributors as the values
     """
     # 
@@ -131,8 +136,13 @@ def get_pred_main_contributors(pred_scores, M_inv, pos_idx, cutoff=0.001, k=332,
     # normalize by the column to get the fraction of diffusion from each pos node
     pos_to_k_dfsn_norm = (pos_to_top_dfsn*np.divide(1,pos_to_top_dfsn.sum(axis=0)))
 
+    # plot those values if specified
+    if kwargs.get('plot_file'):
+        plot_frac_dfsn_from_pos(top_k_pred_idx, pos_to_k_dfsn_norm, kwargs['plot_file'], cutoff=cutoff, **kwargs)
+
     main_contributors = {}
     fracs_top_nbrs = {}
+    nodes_pos_nbr_dfsn = {} 
     for i, n in enumerate(top_k_pred_idx):
         # get the diffusion values from pos nodes for this node
         # if not clustering:
@@ -153,11 +163,53 @@ def get_pred_main_contributors(pred_scores, M_inv, pos_idx, cutoff=0.001, k=332,
             row = W[n,:]
             nbrs = (row > 0).nonzero()[1]
             top_pos_node_idx = [pos_idx[k] for k in pos_above_cutoff]
-            # measure the fraction of top pos nodes that are also neighbors
-            frac_top_nbr = len(set(top_pos_node_idx) & set(nbrs)) / len(top_pos_node_idx)
+            if len(top_pos_node_idx) == 0:
+                #frac_top_nbr = -1
+                frac_top_nbr = 2
+            else:
+                # measure the fraction of top pos nodes that are also neighbors
+                frac_top_nbr = len(set(top_pos_node_idx) & set(nbrs)) / len(top_pos_node_idx)
             fracs_top_nbrs[n] = frac_top_nbr
 
+            # get the neighbors that are pos nodes
+            # convert to the current indexes
+            nbrs = set(nbrs)
+            pos_nbrs = [j for j, kn in enumerate(pos_idx) if kn in nbrs]
+            # and measure the fraction of diffusion that comes from the pos nodes
+            # get the diffusion values from pos nodes for this node
+            pos_nbr_dfsn = pos_to_k_dfsn_norm[pos_nbrs,:][:,i].sum()
+            nodes_pos_nbr_dfsn[n] = pos_nbr_dfsn
+
     if W is not None:
-        return main_contributors, fracs_top_nbrs
+        return main_contributors, fracs_top_nbrs, nodes_pos_nbr_dfsn
     else:
         return main_contributors
+
+
+def plot_frac_dfsn_from_pos(top_k_pred_idx, pos_to_k_dfsn_norm, out_file, cutoff=0.01, **kwargs):
+    import pandas as pd
+    import matplotlib
+    # Use this to save files remotely. 
+    matplotlib.use('Agg')  
+    import matplotlib.pyplot as plt
+
+    for i in range(len(top_k_pred_idx)):
+        #s1 = pd.Series(np.log10(pos_to_k_dfsn_norm[:][:,i]))
+        # try just the top 50 pos
+        s1 = pd.Series(np.log10(pos_to_k_dfsn_norm[:50][:,i]))
+        s1 = s1.sort_values(ascending=False).reset_index()[0]
+    #     kmeans = KMeans(n_clusters=2, random_state=0).fit(s1.values.reshape(-1,1))
+    #     split_point = [i for i, x in enumerate(kmeans.labels_) if x == 1][-1]
+        ax = s1.plot(alpha=0.2)
+    #     ax.axvline(split_point, linestyle='--', alpha=0.2)
+    #     break
+
+    ax.axhline(np.log10(cutoff), linestyle='--')
+
+    plt.ylabel("log normalized diffusion value")
+    plt.xlabel("node # (sorted by diffusion value)")
+    if kwargs.get('alpha'):
+        plt.title("alpha=%s"%kwargs['alpha'])
+    print("writing diffusion score curves to %s" % (out_file))
+    plt.savefig(out_file)
+    plt.close()
