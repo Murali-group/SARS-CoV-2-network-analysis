@@ -1,3 +1,5 @@
+# here's an example call to this script: 
+#python src/scripts/effective_diffusion_analysis.py --config fss_inputs/config_files/params-testing/400-cv5-nf5-nr100-ace2.yaml --cutoff 0.01 --k-to-test=332 --stat-sig-cutoff 0.05
 
 import os, sys
 import yaml
@@ -205,7 +207,7 @@ def main(config_map, **kwargs):
         out_file = "%s-effective-diffusion.pdf" % (out_pref)
         #print(out_file)
         # plt.savefig(out_file, bbox_inches='tight')
-        # plt.close()
+        plt.close()
 
         out_pref = "outputs/viz/%s/%s/diffusion-analysis/k%s%s" % (
             dataset['net_version'], dataset['exp_name'], k, sig_str)
