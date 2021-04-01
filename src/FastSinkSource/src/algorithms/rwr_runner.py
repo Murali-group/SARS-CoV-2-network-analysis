@@ -1,8 +1,9 @@
+import json
 
 def setupInputs(run_obj):
     print("setupInputs")
     print("run_obj")
-    print(run_obj)
+    print(json.dumps(run_obj))
     return
 
 
@@ -10,7 +11,7 @@ def setupInputs(run_obj):
 def run(run_obj):
     print("run")
     print("run_obj")
-    print(run_obj)
+    print(json.dumps(run_obj))
     return
 
 
