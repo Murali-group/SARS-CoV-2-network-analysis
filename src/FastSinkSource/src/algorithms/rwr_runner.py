@@ -3,7 +3,13 @@ import json
 def setupInputs(run_obj):
     print("setupInputs")
     print("run_obj")
-    print(json.dumps(run_obj))
+
+    print("run_obj.ann_obj.ann_matrix>")
+    print(run_obj.ann_obj.ann_matrix)
+    print("run_obj.ann_obj.terms>")
+    print(run_obj.ann_obj.terms)
+    print("run_obj.net_obj.W")
+    print(run_obj.net_obj.W)
     return
 
 
@@ -11,7 +17,7 @@ def setupInputs(run_obj):
 def run(run_obj):
     print("run")
     print("run_obj")
-    print(json.dumps(run_obj))
+
     return
 
 
