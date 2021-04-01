@@ -363,7 +363,7 @@ fastsinksource_pipeline_settings:
             tol: [1e-05]
 
         fastsinksource:
-            should_run: [False]
+            should_run: [True]
             alpha: [0.99]
             eps: [0]
             max_iters: [10]
