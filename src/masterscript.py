@@ -288,6 +288,7 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 continue
         write_yaml_file(config_file, net_config_map)
         config_files.append(config_file)
+    print("*******")
     print("config files")
     print(config_files)
     return config_files
