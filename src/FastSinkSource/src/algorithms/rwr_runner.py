@@ -21,7 +21,7 @@ def setupOutputs(self, **kwargs):
 
 
 # setup the params_str used in the output file
-def setupParamsStr(self, weight_str, params, name):
+def setup_params_str(self, weight_str, params, name):
     print("setupParamsStr")
     print("Weight_str")
     print(weight_str)

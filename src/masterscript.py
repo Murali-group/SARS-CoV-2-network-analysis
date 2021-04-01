@@ -278,7 +278,6 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 dataset_net_settings=net_settings, plot_exp_name=net_settings.get('plot_exp_name'))
             net_config_map['input_settings']['datasets'].append(curr_settings) 
         # now write the config file
-        print("Writing config file %s/%s%s.yaml" % (config_dir, name, eval_str))
         config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
         if kwargs.get('force_run') is not True and os.path.isfile(config_file):
             print("'%s' already exists. Use --force-run to overwite and run 'run_eval_algs.py'." % (config_file))
@@ -288,8 +287,6 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 continue
         write_yaml_file(config_file, net_config_map)
         config_files.append(config_file)
-    print("*******")
-    print("config files")
     print(config_files)
     return config_files
 
