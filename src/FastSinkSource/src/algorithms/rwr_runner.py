@@ -1,0 +1,35 @@
+
+def setupInputs(run_obj):
+    print("setupInputs")
+    print("run_obj")
+    print(run_obj)
+    return
+
+
+# run the method
+def run(run_obj):
+    print("run")
+    print("run_obj")
+    print(run_obj)
+    return
+
+
+# if the method is not in Python and was called elsewhere (e.g., R),
+# then parse the outputs of the method
+def setupOutputs(self, **kwargs):
+    return
+
+
+# setup the params_str used in the output file
+def setupParamsStr(self, weight_str, params, name):
+    print("setupParamsStr")
+    print("Weight_str")
+    print(weight_str)
+    print("params")
+    print(params)
+    print("name")
+    print(name)
+
+
+def get_alg_type(self):
+    return
