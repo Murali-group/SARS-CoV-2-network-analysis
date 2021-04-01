@@ -16,12 +16,12 @@ def run(run_obj):
 
 # if the method is not in Python and was called elsewhere (e.g., R),
 # then parse the outputs of the method
-def setupOutputs(self, **kwargs):
+def setupOutputs(run_obj):
     return
 
 
 # setup the params_str used in the output file
-def setup_params_str(self, weight_str, params, name):
+def setup_params_str(weight_str, params, name):
     print("setupParamsStr")
     print("Weight_str")
     print(weight_str)
@@ -31,5 +31,5 @@ def setup_params_str(self, weight_str, params, name):
     print(name)
 
 
-def get_alg_type(self):
+def get_alg_type():
     return
