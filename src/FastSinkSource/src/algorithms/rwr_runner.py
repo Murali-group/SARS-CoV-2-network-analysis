@@ -1,4 +1,5 @@
 import json
+from src.PathLinker import PageRank
 
 def setupInputs(run_obj):
     print("setupInputs")
@@ -17,7 +18,6 @@ def setupInputs(run_obj):
 def run(run_obj):
     print("run")
     print("run_obj")
-
     return
 
 
