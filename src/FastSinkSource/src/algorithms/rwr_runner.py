@@ -1,4 +1,5 @@
 #import src.PathLinker.PageRank
+from .alg_utils import str_
 
 def setupInputs(run_obj):
     print("setupInputs")
@@ -35,7 +36,11 @@ def setup_params_str(weight_str, params, name):
     print(params)
     print("name")
     print(name)
+    q = params.get('q', 0.5)
+    eps, maxi = params.get('eps', 0.01), params.get('max_iters', 500)
+    params_str = "-q%s-eps%s-maxi%s" % (str_(q), str_(eps), str_(maxi))
+    return params_str
 
 
 def get_alg_type():
-    return
+    return 'RWR'
