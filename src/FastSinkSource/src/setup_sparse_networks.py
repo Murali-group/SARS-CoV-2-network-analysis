@@ -40,9 +40,10 @@ class Sparse_Networks:
     *unweighted*: set the edge weights to 1 for all given networks.
     *term_weights*: a dictionary of tuples containing the weights and indices to use for each term.
         Would be used instead of running 'gmw'
+    *sparse_netx_graphs*: list of sparse NetworkX graphs (used in RWR algorithm executions only)
     """
     def __init__(self, sparse_networks, nodes, net_names=None,
-                 weight_method='swsn', unweighted=False, term_weights=None, verbose=False):
+                 weight_method='swsn', unweighted=False, term_weights=None, sparse_netx_graphs=None, verbose=False):
         self.multi_net = False
         if isinstance(sparse_networks, list):
             if len(sparse_networks) > 1:
@@ -58,6 +59,7 @@ class Sparse_Networks:
         self.net_names = net_names
         self.weight_method = weight_method
         self.unweighted = unweighted
+        self.sparse_netx_graphs = sparse_netx_graphs
         self.verbose = verbose
         # make sure the values are correct
         if self.multi_net is True:
@@ -263,7 +265,7 @@ def create_sparse_net_file(
 
     else:
         print("\tcreating sparse nets and writing to %s" % (sparse_nets_file))
-        sparse_networks, network_names, nodes = setup_sparse_networks(
+        sparse_networks, network_names, nodes, sparse_netx_graphs = setup_sparse_networks(
             net_files=net_files, string_net_files=string_net_files, string_nets=string_nets, string_cutoff=string_cutoff)
 
         # now write them to a file
@@ -271,7 +273,7 @@ def create_sparse_net_file(
             sparse_networks, sparse_nets_file, network_names,
             net_names_file, nodes, node_ids_file)
 
-    return sparse_networks, network_names, nodes
+    return sparse_networks, network_names, nodes, sparse_netx_graphs
 
 
 def write_sparse_net_file(
@@ -368,6 +370,7 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
     print("\tconverting graph to sparse matrices")
     sparse_networks = []
     net_names = []
+    sparse_netx_graphs = []
     for i, net in enumerate(tqdm(network_names)):
         # all of the edges that don't have a weight for the specified network will be given a weight of 1
         # get a subnetwork with the edges that have a weight for this network
@@ -384,9 +387,10 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
         # see here: https://github.com/scipy/scipy/issues/5028
         sparse_matrix = sparse_matrix.astype(float) 
         sparse_networks.append(sparse_matrix)
-        net_names.append(net) 
+        net_names.append(net)
+        sparse_netx_graphs.append(netG)
 
-    return sparse_networks, net_names, nodes
+    return sparse_networks, net_names, nodes, sparse_netx_graphs
 
 
 def convert_nodes_to_int(G):

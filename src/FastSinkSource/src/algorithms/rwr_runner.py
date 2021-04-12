@@ -1,23 +1,25 @@
-#import src.PathLinker.PageRank
+import src.PathLinker.PageRank as PageRank
 from .alg_utils import str_
 
 def setupInputs(run_obj):
-    print("setupInputs")
-    print("run_obj")
-
-    print("run_obj.ann_obj.ann_matrix>")
-    print(run_obj.ann_obj.ann_matrix)
-    print("run_obj.ann_obj.terms>")
-    print(run_obj.ann_obj.terms)
-    print("run_obj.net_obj.W")
-    print(run_obj.net_obj.W)
+    print("RWR: setupInputs")
+    run_obj.ann_matrix = run_obj.ann_obj.ann_matrix
+    run_obj.terms = run_obj.ann_obj.terms
     return
 
 
 # run the method
 def run(run_obj):
-    print("run")
-    print("run_obj")
+    sparse_netx_graphs = run_obj.net_obj.sparse_netx_graphs
+    params = run_obj.params
+
+    print("Number of networks: %s" % (sparse_netx_graphs.length))
+    print("Running +RWR+ with these parameters: %s" % (params))
+
+    finalProbs = PageRank.pagerank(sparse_netx_graphs[0], #weights=teleProbs,
+            q=params.q, eps=params.eps, maxIters=params.max_iters, verbose=True)
+    print("Completed RWR")
+    print(finalProbs)
     return
 
 
