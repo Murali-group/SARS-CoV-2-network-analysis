@@ -1,6 +1,5 @@
 from .alg_utils import str_
-#import sys, os
-#sys.path.append(os.path.abspath(os.path.join('..', '..', '..', 'PathLinker')))
+from scipy import sparse
 from . import PageRank
 
 def setupInputs(run_obj):
@@ -23,7 +22,7 @@ def run(run_obj):
             q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
     print("Completed RWR")
     print(finalProbs)
-    run_obj.term_scores = finalProbs
+    run_obj.term_scores = sparse.lil_matrix(finalProbs, dtype=float)
     return
 
 
