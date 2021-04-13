@@ -20,7 +20,7 @@ def run(run_obj):
     print("Running +RWR+ with these parameters: %s" % (params))
 
     finalProbs = PageRank.pagerank(sparse_netx_graphs[0], #weights=teleProbs,
-            q=params.q, eps=params.eps, maxIters=params.max_iters, verbose=True)
+            q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
     print("Completed RWR")
     print(finalProbs)
     return
