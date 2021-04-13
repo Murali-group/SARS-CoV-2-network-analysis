@@ -382,6 +382,7 @@ def run_algs(alg_runners, **kwargs):
             avg_term_scores = avg_term_scores / num_reps 
             run_obj.term_scores = avg_term_scores
         else:
+            print("385: else %s" % run_obj.name)
             # run the method like normal
             run_obj.setupInputs()
             # TODO storing all of the runners scores simultaneously could be costly (too much RAM).
