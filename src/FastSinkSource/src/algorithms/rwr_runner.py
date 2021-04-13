@@ -1,5 +1,7 @@
-import src.PathLinker.PageRank as PageRank
 from .alg_utils import str_
+import sys, os
+sys.path.append(os.path.abspath(os.path.join('..', '..', '..', 'PathLinker')))
+from PathLinker import PageRank
 
 def setupInputs(run_obj):
     print("RWR: setupInputs")
