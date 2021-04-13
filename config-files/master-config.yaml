@@ -402,4 +402,4 @@ fastsinksource_pipeline_settings:
             should_run: [True]
             q: [0.5]
             eps: [0.01]
-            max_iters: [500]
+            max_iters: [10]

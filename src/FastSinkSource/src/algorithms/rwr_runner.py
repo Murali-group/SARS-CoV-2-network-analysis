@@ -23,6 +23,7 @@ def run(run_obj):
             q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
     print("Completed RWR")
     print(finalProbs)
+    run_obj.term_scores = finalProbs
     return
 
 
