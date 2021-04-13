@@ -262,7 +262,7 @@ def create_sparse_net_file(
         print("\tcreating sparse netx graphs from loaded sparse nets")
         for sparse_network in sparse_networks:
             print("\tcreating sparse netx graph > ")
-            sparse_netx_graphs.append(nx.from_scipy_sparse_matrix(sparse_network))
+            sparse_netx_graphs.append(nx.from_scipy_sparse_matrix(sparse_network), create_using=nx.DiGraph)
         print("\treading node ids file from %s" % (node_ids_file))
         nodes = utils.readItemList(node_ids_file, 1)
         print("\treading network_names from %s" % (net_names_file))
