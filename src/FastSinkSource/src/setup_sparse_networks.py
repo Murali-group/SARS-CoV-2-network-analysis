@@ -252,6 +252,7 @@ def create_sparse_net_file(
     # so no need to include the # in the ids file
     node_ids_file = "%snode-ids.txt" % (out_pref)
     net_names_file = "%snet-names.txt" % (out_pref)
+    sparse_netx_graphs = None
     if forcenet is False \
        and os.path.isfile(sparse_nets_file) and os.path.isfile(node_ids_file) \
        and os.path.isfile(net_names_file):
