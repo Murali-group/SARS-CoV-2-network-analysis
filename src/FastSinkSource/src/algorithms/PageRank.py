@@ -86,7 +86,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
 
         # Explicitly calculate the weight, including the added
         # teleportation probabilitiy.
-        for v in net.nodes_iter():
+        for v in net.nodes():
             weight = weights.get(v, 0.0) # return weights[v], 0 otherwise
             incomingTeleProb[v] = 1.0*(weight + smallWeight)/(totWeight + smallWeight*N)
         prevVisitProb = incomingTeleProb.copy()
@@ -96,7 +96,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
     # Cache out-degree of all nodes to speed up the update loop
     outDeg = {}
     zeroDegNodes = set()
-    for v in net.nodes_iter():
+    for v in net.nodes():
         outDeg[v] = 1.0*net.out_degree(v, weight= weightName)
         if outDeg[v]==0:
             zeroDegNodes.add(v)
@@ -121,7 +121,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         zSum = sum([prevVisitProb[x] for x in zeroDegNodes]) / N
 
         # Calculate a new visitation probability for each node
-        for v in net.nodes_iter():
+        for v in net.nodes():
 
             # Calculate the total probability of a walker entering this
             # node from any of the neighbors
