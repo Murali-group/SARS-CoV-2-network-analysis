@@ -126,7 +126,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
             # Calculate the total probability of a walker entering this
             # node from any of the neighbors
             eSum = 0
-            for u in net.predecessors_iter(v):
+            for u in net.predecessors(v):
                 w_uv = 1.0*net[u][v][weightName]
                 eSum += w_uv/outDeg[u] * prevVisitProb[u]
 
