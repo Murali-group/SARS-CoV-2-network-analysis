@@ -14,7 +14,8 @@ def setupInputs(run_obj):
 def run(run_obj):
     sparse_netx_graphs = run_obj.net_obj.sparse_netx_graphs
     params = run_obj.params
-
+    print("params>>>>")
+    print(params)
     print("Number of networks: %s" % len(sparse_netx_graphs))
     print("Running +RWR+ with these parameters: %s" % (params))
 
