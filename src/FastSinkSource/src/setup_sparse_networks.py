@@ -252,13 +252,17 @@ def create_sparse_net_file(
     # so no need to include the # in the ids file
     node_ids_file = "%snode-ids.txt" % (out_pref)
     net_names_file = "%snet-names.txt" % (out_pref)
-    sparse_netx_graphs = None
+    sparse_netx_graphs = []
     if forcenet is False \
        and os.path.isfile(sparse_nets_file) and os.path.isfile(node_ids_file) \
        and os.path.isfile(net_names_file):
         # read the files
         print("\treading sparse nets from %s" % (sparse_nets_file))
         sparse_networks = list(loadmat(sparse_nets_file)['Networks'][0])
+        print("\tcreating sparse netx graphs from loaded sparse nets")
+        for sparse_network in sparse_networks:
+            print("\tcreating sparse netx graph > ")
+            sparse_netx_graphs.append(nx.from_scipy_sparse_matrix(sparse_network))
         print("\treading node ids file from %s" % (node_ids_file))
         nodes = utils.readItemList(node_ids_file, 1)
         print("\treading network_names from %s" % (net_names_file))
