@@ -15,7 +15,7 @@ def run(run_obj):
     sparse_netx_graphs = run_obj.net_obj.sparse_netx_graphs
     params = run_obj.params
 
-    print("Number of networks: %s" % (sparse_netx_graphs.length))
+    print("Number of networks: %s" % len(sparse_netx_graphs))
     print("Running +RWR+ with these parameters: %s" % (params))
 
     finalProbs = PageRank.pagerank(sparse_netx_graphs[0], #weights=teleProbs,
