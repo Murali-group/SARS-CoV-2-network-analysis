@@ -26,7 +26,7 @@ def run(run_obj):
         positives = (y > 0).nonzero()[1]
         print("Annotation Matrix :: ")
         print(run_obj.ann_matrix.shape)
-        print("Number of positives :: " + len(positives))
+        print("Number of positives :: %s" % len(positives))
         print('Starting RWR')
         finalProbs = PageRank.pagerank(sparse_netx_graphs[0], weights=positives, q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
         print('Number of finalProbs :: %s' % len(finalProbs))
