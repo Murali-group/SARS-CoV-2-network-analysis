@@ -24,7 +24,8 @@ def run(run_obj):
         # get the row corresponding to the current terms annotations
         y = run_obj.ann_matrix[idx, :]
         positives = (y > 0).nonzero()[1]
-        print("Annotation Matrix :: " + run_obj.ann_matrix.shape)
+        print("Annotation Matrix :: ")
+        print(run_obj.ann_matrix.shape)
         print("Number of positives :: " + len(positives))
         print('Starting RWR')
         finalProbs = PageRank.pagerank(sparse_netx_graphs[0], weights=positives, q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
