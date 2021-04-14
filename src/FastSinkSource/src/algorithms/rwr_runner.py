@@ -18,11 +18,21 @@ def run(run_obj):
     print("Number of networks: %s" % len(sparse_netx_graphs))
     print("Running +RWR+ with these parameters: %s" % (params))
 
-    finalProbs = PageRank.pagerank(sparse_netx_graphs[0], #weights=teleProbs,
-            q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
-    print("Completed RWR")
-    print(finalProbs)
-    run_obj.term_scores = sparse.lil_matrix(finalProbs, dtype=float)
+    term_scores = sparse.lil_matrix(run_obj.ann_matrix.shape, dtype=float)
+    for term in run_obj.terms_to_run:
+        idx = run_obj.ann_obj.term2idx[term]
+        # get the row corresponding to the current terms annotations
+        y = run_obj.ann_matrix[idx, :]
+        positives = (y > 0).nonzero()[1]
+        print("Annotation Matrix :: %s" % run_obj.ann_matrix.shape)
+        print("Number of positives :: " + len(positives))
+        print('Starting RWR')
+        finalProbs = PageRank.pagerank(sparse_netx_graphs[0], weights=positives, q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
+        print('Number of finalProbs :: %s' % len(finalProbs))
+        term_scores[idx] = finalProbs
+        print("Completed RWR")
+
+    run_obj.term_scores = term_scores
     return
 
 
