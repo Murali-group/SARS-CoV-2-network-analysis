@@ -1,6 +1,7 @@
 from .alg_utils import str_
 from scipy import sparse
 from . import PageRank
+import numpy as np
 
 def setupInputs(run_obj):
     print("RWR: setupInputs")
@@ -36,7 +37,10 @@ def run(run_obj):
         print('Starting RWR')
         finalProbs = PageRank.pagerank(sparse_netx_graphs[0], weights=positive_weights, q=params.get('q'), eps=params.get('eps'), maxIters=params.get('max_iters'), verbose=True)
         print('Number of finalProbs :: %s' % len(finalProbs))
-        term_scores[idx] = finalProbs
+        scores = np.zeros(len(finalProbs))
+        for id,score in finalProbs.items():
+            scores[id] = score
+        term_scores[idx] = scores
         print("Completed RWR")
 
     run_obj.term_scores = term_scores
