@@ -68,7 +68,7 @@ def run(run_obj):
     # make sure the term_scores matrix is reset
     # because if it isn't empty, overwriting the stored scores seems to be time consuming
     term_scores = sp.lil_matrix(run_obj.ann_matrix.shape, dtype=np.float)
-    print("Running %s with these parameters:" + (alg, params))
+    print("Running %s with these parameters: %s" % (alg, params))
     if len(run_obj.target_prots) != len(run_obj.net_obj.nodes):
         print("\tstoring scores for only %d target prots" % (len(run_obj.target_prots)))
 
