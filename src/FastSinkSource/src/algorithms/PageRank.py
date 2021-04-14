@@ -97,7 +97,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
     outDeg = {}
     zeroDegNodes = set()
     for v in net.nodes():
-        outDeg[v] = 1.0*net.degree[v]
+        outDeg[v] = 1.0*net.out_degree[v]
         if outDeg[v]==0:
             zeroDegNodes.add(v)
 
