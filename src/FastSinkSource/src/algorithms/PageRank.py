@@ -90,8 +90,8 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         for v in net.nodes():
             weight = weights.get(v, 0.0) # return weights[v], 0 otherwise
             incomingTeleProb[v] = 1.0*(weight + smallWeight)/(totWeight + smallWeight*N)
-        print("Incoming Tele Prob >> ")
-        print(incomingTeleProb)
+        #print("Incoming Tele Prob >> ")
+        #print(incomingTeleProb)
         prevVisitProb = incomingTeleProb.copy()
         currVisitProb = incomingTeleProb.copy()
     # END if/else that initializes teleportation probabilities.
