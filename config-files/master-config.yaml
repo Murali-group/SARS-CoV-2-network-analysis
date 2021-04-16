@@ -338,10 +338,10 @@ fastsinksource_pipeline_settings:
       # for the methods that need negative examples, randomly sample negatives equal to a ratio of 5:1 Neg:Pos
       sample_neg_examples_factor: 5
       # 100 repetitions 
-      num_reps: 1
+      num_reps: 10
       # uncomment this setting to run cross validation
-      #cross_validation_folds: 5
-      #cv_seed: 1
+      cross_validation_folds: 5
+      cv_seed: 1
 
     # Algorithms to run along with their settings.
     # All combinations of parameters will be run. 
