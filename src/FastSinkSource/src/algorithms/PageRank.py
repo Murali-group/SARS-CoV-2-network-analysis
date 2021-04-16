@@ -75,6 +75,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         # Find the smallests non-zero weight in the graph. 
         minPosWeight = 1.0
         for v, weight in weights.items():
+            print("v = %d weight = %f" % (v, weight))
             if weight==0:
                 continue
             minPosWeight = min(minPosWeight, 1.0*weight/totWeight)
@@ -89,6 +90,8 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         for v in net.nodes():
             weight = weights.get(v, 0.0) # return weights[v], 0 otherwise
             incomingTeleProb[v] = 1.0*(weight + smallWeight)/(totWeight + smallWeight*N)
+        print("Incoming Tele Prob >> ")
+        print(incomingTeleProb)
         prevVisitProb = incomingTeleProb.copy()
         currVisitProb = incomingTeleProb.copy()
     # END if/else that initializes teleportation probabilities.
