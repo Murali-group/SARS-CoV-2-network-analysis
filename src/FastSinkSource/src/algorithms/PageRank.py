@@ -76,6 +76,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         minPosWeight = 1.0
         for v, weight in weights.items():
             print("v = %d weight = %f" % (v, weight))
+            print("Is present: %d : %s", v, net.has_node(v))
             if weight==0:
                 continue
             minPosWeight = min(minPosWeight, 1.0*weight/totWeight)
