@@ -348,28 +348,28 @@ fastsinksource_pipeline_settings:
     algs: 
         # local has no parameters
         local:
-            should_run: [True]
+            should_run: [False]
         localplus:
-            should_run: [True]
+            should_run: [False]
 
         genemania:
-            should_run: [True]
+            should_run: [False]
             alpha: [1.0]
             tol: [1e-05]
 
         genemaniaplus:
-            should_run: [True]
+            should_run: [False]
             alpha: [1.0]
             tol: [1e-05]
 
         fastsinksource:
-            should_run: [True]
+            should_run: [False]
             alpha: [0.99]
             eps: [0]
             max_iters: [10]
 
         fastsinksourceplus:
-            should_run: [True]
+            should_run: [False]
             alpha: [0.99]
             eps: [0]
             max_iters: [10]
@@ -377,13 +377,13 @@ fastsinksource_pipeline_settings:
             #sinksourceplus_lambda: [0]
 
         sinksource:
-            should_run: [True]
+            should_run: [False]
             alpha: [1.0]
             eps: [1e-4]
             max_iters: [1000]
 
         sinksourceplus:
-            should_run: [True]
+            should_run: [False]
             alpha: [1.0]
             eps: [0]
             max_iters: [1000]
@@ -391,9 +391,13 @@ fastsinksource_pipeline_settings:
             lambda: [10]
 
         logistic_regression:
-            should_run: [True]
+            should_run: [False]
             max_iters: [100]
 
         svm:
-            should_run: [True]
+            should_run: [False]
             max_iters: [1000]
+
+        hotnet2:
+            should_run: [True]
+            max_iters: [10]
