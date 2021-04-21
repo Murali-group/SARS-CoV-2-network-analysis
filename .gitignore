@@ -12,4 +12,8 @@ __pycache__
 # emacs backup files
 *~
 *#
-
+# IDE files
+.idea/*
+*.iml
+venv/*
+datasets/*
