@@ -1,0 +1,26 @@
+During startup - Warning messages:
+1: package ‘methods’ was built under R version 3.6.1 
+2: package ‘datasets’ was built under R version 3.6.1 
+3: package ‘utils’ was built under R version 3.6.1 
+4: package ‘grDevices’ was built under R version 3.6.1 
+5: package ‘graphics’ was built under R version 3.6.1 
+6: package ‘stats’ was built under R version 3.6.1 
+Running with these kwargs: {'config': 'fss_inputs/config_files/stringv11/400-nf5-nr100.yaml', 'only_eval': False, 'loso': False, 'write_prec_rec': False, 'early_prec': ['k1', '0.1'], 'num_bins': 10, 'forcealg': False, 'forcenet': False, 'stats_only': False, 'verbose': False, 'num_pred_to_write': -1, 'num_reps': 100, 'sample_neg_examples_factor': 5}
+	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
+	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-node-ids.txt
+	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
+	creating sparse netx graph > 
+Traceback (most recent call last):
+  File "src/FastSinkSource/run_eval_algs.py", line 8, in <module>
+    main.run(config_map, **kwargs)
+  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 124, in run
+    net_obj, ann_obj, eval_ann_obj = setup_dataset(dataset, input_dir, **kwargs) 
+  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 303, in setup_dataset
+    net_obj = setup_net(input_dir, dataset, **kwargs)
+  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 223, in setup_net
+    forcenet=kwargs.get('forcenet',False))
+ValueError: too many values to unpack (expected 3)
+R[write to console]: Warning message:
+
+R[write to console]: package ‘tools’ was built under R version 3.6.1 
+

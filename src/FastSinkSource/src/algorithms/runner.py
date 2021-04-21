@@ -9,6 +9,7 @@ from . import fastsinksource_runner as fastsinksource
 from . import sinksource_bounds_runner as ss_bounds
 from . import rl_genemania_runner as genemania
 from . import logistic_regression_runner as logistic_regression
+from . import hotnet2_runner as hotnet2
 
 
 LibMapper = {
@@ -25,6 +26,7 @@ LibMapper = {
     'rl': genemania,
     'svm': logistic_regression,
     'logistic_regression': logistic_regression,
+    'hotnet2' : hotnet2,
 }
 
 

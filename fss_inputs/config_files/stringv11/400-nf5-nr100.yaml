@@ -1,0 +1,24 @@
+algs:
+  hotnet2:
+    max_iters:
+    - 10
+    should_run:
+    - true
+eval_settings:
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    net_settings:
+      string_cutoff: 400
+      string_nets: combined_score
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: fss_inputs
+output_settings:
+  output_dir: outputs/
