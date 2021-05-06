@@ -1,12 +1,12 @@
 algs:
   hotnet2:
     max_iters:
-    - 10
+    - 1
     should_run:
     - true
 eval_settings:
   num_pred_to_write: -1
-  num_reps: 100
+  num_reps: 1
   sample_neg_examples_factor: 5
 input_settings:
   datasets:

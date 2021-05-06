@@ -5,21 +5,25 @@ During startup - Warning messages:
 4: package ‘grDevices’ was built under R version 3.6.1 
 5: package ‘graphics’ was built under R version 3.6.1 
 6: package ‘stats’ was built under R version 3.6.1 
-Running with these kwargs: {'config': 'fss_inputs/config_files/stringv11/400-nf5-nr100.yaml', 'only_eval': False, 'loso': False, 'write_prec_rec': False, 'early_prec': ['k1', '0.1'], 'num_bins': 10, 'forcealg': False, 'forcenet': False, 'stats_only': False, 'verbose': False, 'num_pred_to_write': -1, 'num_reps': 100, 'sample_neg_examples_factor': 5}
+Running with these kwargs: {'config': 'fss_inputs/config_files/stringv11/400-nf5-nr1.yaml', 'only_eval': False, 'loso': False, 'write_prec_rec': False, 'early_prec': ['k1', '0.1'], 'num_bins': 10, 'forcealg': False, 'forcenet': False, 'stats_only': False, 'verbose': False, 'num_pred_to_write': -1, 'num_reps': 1, 'sample_neg_examples_factor': 5}
 	reading sparse nets from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-sparse-nets.mat
 	reading node ids file from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-node-ids.txt
 	reading network_names from fss_inputs/networks/stringv11/400/sparse-nets/c400-combined_score-net-names.txt
 	creating sparse netx graph > 
-Traceback (most recent call last):
-  File "src/FastSinkSource/run_eval_algs.py", line 8, in <module>
-    main.run(config_map, **kwargs)
-  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 124, in run
-    net_obj, ann_obj, eval_ann_obj = setup_dataset(dataset, input_dir, **kwargs) 
-  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 303, in setup_dataset
-    net_obj = setup_net(input_dir, dataset, **kwargs)
-  File "/home/moumi/SARS-CoV-2-network-analysis/src/FastSinkSource/src/main.py", line 223, in setup_net
-    forcenet=kwargs.get('forcenet',False))
-ValueError: too many values to unpack (expected 3)
+Reading annotation matrix from fss_inputs/networks/stringv11/400/sparse-anns/combined_score-2020-03-sarscov2-human-ppi-ace2-pos.npz
+	18879 nodes, 977587.0 edges
+1 connected_components; sizes: max: 18879, 75%: 18879, median: 18879, 25%: 18879
+	100.00% nodes in the largest cc
+top 20 connected_components sizes:
+18879
+329/329 (100.00%) pos prots are in the largest cc
+Algs to run: hotnet2
+	1 total runners
+outputs//networks/stringv11/400/2020-03-sarscov2-human-ppi-ace2//hotnet2//pred-scoresNone.txt already exists. Use --forcealg to overwite
+Generating inputs and running the algorithms
+Algs to run: hotnet2
+	1 total runners
+Finished
 R[write to console]: Warning message:
 
 R[write to console]: package ‘tools’ was built under R version 3.6.1 

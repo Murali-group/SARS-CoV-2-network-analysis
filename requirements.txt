@@ -17,3 +17,4 @@ seaborn
 sklearn 
 # used to compute the AUPRC and AUROC, and for gene set enrichment
 rpy2
+h5py

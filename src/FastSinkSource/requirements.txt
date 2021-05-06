@@ -10,3 +10,4 @@ tqdm
 rpy2
 # used for CV
 sklearn
+h5py

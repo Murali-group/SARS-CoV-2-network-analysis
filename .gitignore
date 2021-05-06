@@ -17,3 +17,7 @@ __pycache__
 *.iml
 venv/*
 datasets/*
+data/*
+data_diff_heat/*
+results/*
+results_diff_heat/*

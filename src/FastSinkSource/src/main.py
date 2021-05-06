@@ -216,7 +216,7 @@ def setup_net(input_dir, dataset, **kwargs):
                 string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
             out_pref = "%s/sparse-nets/%s" % (net_dir, "c%d-"%string_cutoff if string_net_files else "")
             utils.checkDir(os.path.dirname(out_pref))
-            sparse_nets, net_names, prots, sparse_netx_graphs = setup.create_sparse_net_file(
+            sparse_nets, net_names, prots = setup.create_sparse_net_file(
                     out_pref, net_files=net_files, string_net_files=string_net_files, 
                     string_nets=string_nets,
                     string_cutoff=string_cutoff,
@@ -234,7 +234,7 @@ def setup_net(input_dir, dataset, **kwargs):
             weight_method = dataset['net_settings']['weight_method'].lower()
         net_obj = setup.Sparse_Networks(
             sparse_nets, prots, net_names=net_names, weight_method=weight_method,
-            unweighted=unweighted,  sparse_netx_graphs=sparse_netx_graphs, verbose=kwargs.get('verbose',False)
+            unweighted=unweighted, verbose=kwargs.get('verbose',False)
         )
     else:
         if net_files is None:
