@@ -11,7 +11,6 @@ from . import rl_genemania_runner as genemania
 from . import logistic_regression_runner as logistic_regression
 from . import rwr_runner as rwr
 
-
 LibMapper = {
     'sinksource': fastsinksource,
     'sinksourceplus': fastsinksource,

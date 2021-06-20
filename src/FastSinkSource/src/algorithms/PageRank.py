@@ -1,4 +1,11 @@
 '''
+Created a copy of the PageRank implementation from the PathLinker repo added as git sub-repo due to
+version incompatibility : networkx v1.11 in used in PathLinker whereas it is v2 in SARS-CoV-2-network-analysis.
+TODO: update the networkx package to v2 in PathLinker, delete this file and reference the implementation from the sub-repo.
+'''
+
+
+'''
 An implementation of the standard pagerank algorithm, using iterative convergence.
 
 Citation for this work:
@@ -45,7 +52,7 @@ Outputs:
 '''
 def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weightName = 'weight'):
 
-    incomingTeleProb = {}   # The node weights when the algorithm begins, also used as 
+    incomingTeleProb = {}   # The node weights when the algorithm begins, also used as
                             # teleport-to probabilities
 
     prevVisitProb = {}      # The visitation probability in the previous iteration
@@ -72,11 +79,9 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
     #   - Normalize the weights to sum to one: these are now probabilities.
     else:
 
-        # Find the smallests non-zero weight in the graph. 
+        # Find the smallest non-zero weight in the graph.
         minPosWeight = 1.0
         for v, weight in weights.items():
-            print("v = %d weight = %f" % (v, weight))
-            print("Is present: %d : %s", v, net.has_node(v))
             if weight==0:
                 continue
             minPosWeight = min(minPosWeight, 1.0*weight/totWeight)
@@ -87,12 +92,10 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
         smallWeight = minPosWeight/(10**6)
 
         # Explicitly calculate the weight, including the added
-        # teleportation probabilitiy.
+        # teleportation probability.
         for v in net.nodes():
             weight = weights.get(v, 0.0) # return weights[v], 0 otherwise
             incomingTeleProb[v] = 1.0*(weight + smallWeight)/(totWeight + smallWeight*N)
-        #print("Incoming Tele Prob >> ")
-        #print(incomingTeleProb)
         prevVisitProb = incomingTeleProb.copy()
         currVisitProb = incomingTeleProb.copy()
     # END if/else that initializes teleportation probabilities.
@@ -101,7 +104,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
     outDeg = {}
     zeroDegNodes = set()
     for v in net.nodes():
-        outDeg[v] = 1.0*net.out_degree[v]
+        outDeg[v] = 1.0 * net.out_degree(v, weight = weightName)
         if outDeg[v]==0:
             zeroDegNodes.add(v)
 
@@ -157,7 +160,7 @@ def pagerank(net, weights={}, q=0.5, eps=0.01, maxIters=500, verbose=False, weig
                 print('PageRank converged after %d iterations, max difference %f.' %(iters, maxDiff))
 
         # Give a warning if termination happens by the iteration cap,
-        # which generally should not be expcted.
+        # which generally should not be expected.
         if iters >= maxIters:
             print('WARNING:PageRank terminated because max iters (%d) was reached.' %(maxIters))
 

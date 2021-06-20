@@ -216,16 +216,11 @@ def setup_net(input_dir, dataset, **kwargs):
                 string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
             out_pref = "%s/sparse-nets/%s" % (net_dir, "c%d-"%string_cutoff if string_net_files else "")
             utils.checkDir(os.path.dirname(out_pref))
-            sparse_nets, net_names, prots, sparse_netx_graphs = setup.create_sparse_net_file(
+            sparse_nets, net_names, prots, netx_graphs = setup.create_sparse_net_file(
                     out_pref, net_files=net_files, string_net_files=string_net_files, 
                     string_nets=string_nets,
                     string_cutoff=string_cutoff,
                     forcenet=kwargs.get('forcenet',False))
-            print(">>>> Here >>> sparse_netx_graphs")
-            print(sparse_netx_graphs)
-            print (len(sparse_netx_graphs))
-            print(">>>> Here >>> sparse_netx_graphs")
-
         else:
             # if a .mat file with multiple sparse matrix networks inside of it is passed in, read that here
             net_names_file = "%s/%s/%s" % (input_dir, dataset['net_version'], dataset['net_settings']['net_names_file'])
@@ -239,15 +234,13 @@ def setup_net(input_dir, dataset, **kwargs):
             weight_method = dataset['net_settings']['weight_method'].lower()
         net_obj = setup.Sparse_Networks(
             sparse_nets, prots, net_names=net_names, weight_method=weight_method,
-            unweighted=unweighted, sparse_netx_graphs=sparse_netx_graphs, verbose=kwargs.get('verbose',False)
+            unweighted=unweighted, netx_graphs=netx_graphs, verbose=kwargs.get('verbose',False)
         )
     else:
         if net_files is None:
             print("ERROR: no net files specified in the config file. Must provide either 'net_files', or 'string_net_files'")
             sys.exit()
         W, prots = alg_utils.setup_sparse_network(net_files[0], forced=kwargs.get('forcenet',False))
-        print("<<< Here <<< NO sparse_netx_graphs")
-        print("<<< Here <<< NO sparse_netx_graphs")
         net_obj = setup.Sparse_Networks(
             W, prots, unweighted=unweighted, verbose=kwargs.get('verbose',False))
     # store the output prefix of the network to use later
@@ -389,7 +382,6 @@ def run_algs(alg_runners, **kwargs):
             avg_term_scores = avg_term_scores / num_reps 
             run_obj.term_scores = avg_term_scores
         else:
-            print("385: else %s" % run_obj.name)
             # run the method like normal
             run_obj.setupInputs()
             # TODO storing all of the runners scores simultaneously could be costly (too much RAM).

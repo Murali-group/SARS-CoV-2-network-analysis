@@ -57,20 +57,22 @@ dataset_settings:
               prefer_reviewed: True
             sep: "\t"
 
-#          - name: "wikipathways"
-#            file_name: "human-wikipathways.gmt"
-#            file_type: "wikipathways"
-#            downloaded_file: "pathway-list.json"
-            #namespace: "uniprot"
-#            url: "https://webservice.wikipathways.org/listPathways?organism=Homo%20sapiens&format=json"
-            # this is the template url for the individual pathway files that will be downloaded
-            # code='S': uniprot, code='L': entrez gene
-#            pathway_prots_url: "https://webservice.wikipathways.org/getXrefList?pwId=%s&code=L&format=json"
-#            taxon: 9606
-#            species: "human"
-#            namespace: "geneid"
-#            mapping_settings:
-#              prefer_reviewed: True
+         ### Commenting out wikipathways as the link is broken.
+         ### TODO: update the config with the latest link and validate the format of the downloaded input.
+         # - name: "wikipathways"
+         #   file_name: "human-wikipathways.gmt"
+         #   file_type: "wikipathways"
+         #   downloaded_file: "pathway-list.json"
+         #  #namespace: "uniprot"
+         #   url: "https://webservice.wikipathways.org/listPathways?organism=Homo%20sapiens&format=json"
+         #  # this is the template url for the individual pathway files that will be downloaded
+         #  # code='S': uniprot, code='L': entrez gene
+         #   pathway_prots_url: "https://webservice.wikipathways.org/getXrefList?pwId=%s&code=L&format=json"
+         #   taxon: 9606
+         #   species: "human"
+         #   namespace: "geneid"
+         #   mapping_settings:
+         #     prefer_reviewed: True
 
       #### Gene-drug dataset options:
       # *name*: name of this dataset. Will be used as the directory name
@@ -245,7 +247,7 @@ dataset_settings:
 fastsinksource_pipeline_settings:
     # Base directory where the inputs to the FastSinkSource pipeline will be placed
     input_dir: "fss_inputs"
-    exp_name: "2020-03-sarscov2-human-ppi-ace2" 
+    exp_name: "2020-03-sarscov2-human-ppi-ace2"
     pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt"
     # *name*: name of the corresponding downloaded network under "datasets_to_download"
     # *network_collection*: T/F use this flag to run all of the networks in the collection
@@ -340,16 +342,17 @@ fastsinksource_pipeline_settings:
       # 100 repetitions 
       num_reps: 100
       # uncomment this setting to run cross validation
-      cross_validation_folds: 5
+      # cross_validation_folds: 5
+      # cv_seed: 1
 
     # Algorithms to run along with their settings.
     # All combinations of parameters will be run. 
     algs: 
         # local has no parameters
         local:
-            should_run: [False]
+            should_run: [True]
         localplus:
-            should_run: [False]
+            should_run: [True]
 
         genemania:
             should_run: [True]
@@ -357,7 +360,7 @@ fastsinksource_pipeline_settings:
             tol: [1e-05]
 
         genemaniaplus:
-            should_run: [False]
+            should_run: [True]
             alpha: [1.0]
             tol: [1e-05]
 
@@ -368,7 +371,7 @@ fastsinksource_pipeline_settings:
             max_iters: [10]
 
         fastsinksourceplus:
-            should_run: [False]
+            should_run: [True]
             alpha: [0.99]
             eps: [0]
             max_iters: [10]
@@ -376,13 +379,13 @@ fastsinksource_pipeline_settings:
             #sinksourceplus_lambda: [0]
 
         sinksource:
-            should_run: [False]
+            should_run: [True]
             alpha: [1.0]
             eps: [1e-4]
             max_iters: [1000]
 
         sinksourceplus:
-            should_run: [False]
+            should_run: [True]
             alpha: [1.0]
             eps: [0]
             max_iters: [1000]
@@ -390,7 +393,7 @@ fastsinksource_pipeline_settings:
             lambda: [10]
 
         logistic_regression:
-            should_run: [False]
+            should_run: [True]
             max_iters: [100]
 
         svm:

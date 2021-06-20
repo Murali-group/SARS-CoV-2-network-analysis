@@ -1,4 +1,3 @@
-
 # Script to setup network and annotations files as sparse matrices
 # also used for weighting the networks with the
 # Simultaneous Weight with Specific Negatives (SWSN) method
@@ -40,10 +39,10 @@ class Sparse_Networks:
     *unweighted*: set the edge weights to 1 for all given networks.
     *term_weights*: a dictionary of tuples containing the weights and indices to use for each term.
         Would be used instead of running 'gmw'
-    *sparse_netx_graphs*: list of sparse NetworkX graphs (used in RWR algorithm executions only)
+    *netx_graphs*: list of sparse networkX graphs (used in RWR(PageRank) execution only)
     """
     def __init__(self, sparse_networks, nodes, net_names=None,
-                 weight_method='swsn', unweighted=False, term_weights=None, sparse_netx_graphs=None, verbose=False):
+                 weight_method='swsn', unweighted=False, term_weights=None, netx_graphs=None, verbose=False):
         self.multi_net = False
         if isinstance(sparse_networks, list):
             if len(sparse_networks) > 1:
@@ -59,7 +58,7 @@ class Sparse_Networks:
         self.net_names = net_names
         self.weight_method = weight_method
         self.unweighted = unweighted
-        self.sparse_netx_graphs = sparse_netx_graphs
+        self.netx_graphs = netx_graphs
         self.verbose = verbose
         # make sure the values are correct
         if self.multi_net is True:
@@ -82,7 +81,7 @@ class Sparse_Networks:
 
         # set a weight str for writing output files
         self.weight_str = '%s%s%s' % (
-            '-unw' if self.unweighted else '', 
+            '-unw' if self.unweighted else '',
             '-gmw' if self.weight_gmw else '',
             '-swsn' if self.weight_swsn else '')
 
@@ -90,13 +89,13 @@ class Sparse_Networks:
             print("\tsetting all edge weights to 1 (unweighted)")
             if self.multi_net is False:
                 # convert all of the entries to 1s to "unweight" the network
-                self.W = (self.W > 0).astype(int) 
+                self.W = (self.W > 0).astype(int)
             else:
                 new_sparse_networks = []
                 for i in range(len(self.sparse_networks)):
                     net = self.sparse_networks[i]
                     # convert all of the entries to 1s to "unweight" the network
-                    net = (net > 0).astype(int) 
+                    net = (net > 0).astype(int)
                     new_sparse_networks.append(net)
                 self.sparse_networks = new_sparse_networks
 
@@ -108,7 +107,7 @@ class Sparse_Networks:
 
     def weight_SWSN(self, ann_matrix):
         self.W, self.swsn_time, self.swsn_weights = weight_SWSN(
-            ann_matrix, normalized_nets=self.normalized_nets, 
+            ann_matrix, normalized_nets=self.normalized_nets,
             net_names=self.net_names, nodes=self.nodes, verbose=self.verbose)
         return self.W, self.swsn_time
 
@@ -118,9 +117,9 @@ class Sparse_Networks:
         """
         assert len(weights) == len(self.normalized_nets), \
             "%d weights supplied not enough for %d nets" % (len(weights), len(self.normalized_nets))
-        combined_network = weights[0]*self.normalized_nets[0]
+        combined_network = weights[0] * self.normalized_nets[0]
         for i, w in enumerate(weights):
-            combined_network += w*self.normalized_nets[i] 
+            combined_network += w * self.normalized_nets[i]
         return combined_network
 
     def weight_GMW(self, y, term=None):
@@ -129,7 +128,7 @@ class Sparse_Networks:
             W = self.combine_using_weights(weights)
             process_time = 0
         else:
-            W, process_time, weights = weight_GMW(y, self.normalized_nets, self.net_names, term=term) 
+            W, process_time, weights = weight_GMW(y, self.normalized_nets, self.net_names, term=term)
         return W, process_time, weights
 
     def save_net(self, out_file):
@@ -166,11 +165,11 @@ class Sparse_Annotations:
         # used to map from node/prot to the index and vice versa
         self.node2idx = {n: i for i, n in enumerate(prots)}
 
-        #self.eval_ann_matrix = None 
-        #if pos_neg_file_eval is not None:
+        # self.eval_ann_matrix = None
+        # if pos_neg_file_eval is not None:
         #    self.add_eval_ann_matrix(pos_neg_file_eval)
 
-    #def add_eval_ann_matrix(self, pos_neg_file_eval):
+    # def add_eval_ann_matrix(self, pos_neg_file_eval):
     #    self.ann_matrix, self.terms, self.eval_ann_matrix = setup_eval_ann(
     #        pos_neg_file_eval, self.ann_matrix, self.terms, self.prots)
     #    # update the term2idx mapping
@@ -216,53 +215,50 @@ class Sparse_Annotations:
 
 
 def get_net_out_str(net_files, string_net_files=None, string_nets=None):
-    #num_networks = len(net_files) + len(string_nets)
-    net_files_str = '-'.join(os.path.basename(f).split('.')[0] for f in net_files)+'-' \
+    # num_networks = len(net_files) + len(string_nets)
+    net_files_str = '-'.join(os.path.basename(f).split('.')[0] for f in net_files) + '-' \
                     if len(net_files) > 0 else ""
     # if there is only 1 string network, then write the name instead of the number
-    string_nets_str = "" 
+    string_nets_str = ""
     if string_net_files is not None and len(string_net_files) > 0 and \
        string_nets is not None:
         if len(string_nets) == 1:
             string_nets_str = list(string_nets)[0] + '-'
         elif len(string_nets) > 1:
-            string_nets_str = "string%d-" % (len(string_nets)) 
+            string_nets_str = "string%d-" % (len(string_nets))
 
     net_str = net_files_str + string_nets_str
     return net_str
 
 
 def create_sparse_net_file(
-        out_pref, net_files=[], string_net_files=[], 
+        out_pref, net_files=[], string_net_files=[],
         string_nets=STRING_NETWORKS, string_cutoff=None, forcenet=False):
     if net_files is None:
         net_files = []
     # if there aren't any string net files, then set the string nets to empty
     if len(string_net_files) == 0:
-        string_nets = [] 
+        string_nets = []
     # if there are string_net_files, and string_nets is None, set it back to its default
     elif string_nets is None:
         string_nets = STRING_NETWORKS
     string_nets = list(string_nets)
     net_str = get_net_out_str(net_files, string_net_files, string_nets)
     out_pref += net_str
-    sparse_nets_file = "%ssparse-nets.mat" % (
-        out_pref)
+    sparse_nets_file = "%ssparse-nets.mat" % (out_pref)
+    netx_graphs_file = "%snetx-graphs.gpickle.gz" % (out_pref)
     # the node IDs should be the same for each of the networks,
     # so no need to include the # in the ids file
     node_ids_file = "%snode-ids.txt" % (out_pref)
     net_names_file = "%snet-names.txt" % (out_pref)
-    sparse_netx_graphs = []
     if forcenet is False \
        and os.path.isfile(sparse_nets_file) and os.path.isfile(node_ids_file) \
        and os.path.isfile(net_names_file):
         # read the files
         print("\treading sparse nets from %s" % (sparse_nets_file))
         sparse_networks = list(loadmat(sparse_nets_file)['Networks'][0])
-        print("\tcreating sparse netx graphs from loaded sparse nets")
-        for sparse_network in sparse_networks:
-            print("\tcreating sparse netx graph > ")
-            sparse_netx_graphs.append(nx.from_scipy_sparse_matrix(sparse_network, create_using=nx.DiGraph))
+        print("\treading netx graphs from %s" % (netx_graphs_file))
+        netx_graphs = list(nx.read_gpickle(netx_graphs_file))
         print("\treading node ids file from %s" % (node_ids_file))
         nodes = utils.readItemList(node_ids_file, 1)
         print("\treading network_names from %s" % (net_names_file))
@@ -270,21 +266,21 @@ def create_sparse_net_file(
 
     else:
         print("\tcreating sparse nets and writing to %s" % (sparse_nets_file))
-        sparse_networks, network_names, nodes, sparse_netx_graphs = setup_sparse_networks(
+        sparse_networks, network_names, nodes, netx_graphs = setup_sparse_networks(
             net_files=net_files, string_net_files=string_net_files, string_nets=string_nets, string_cutoff=string_cutoff)
 
         # now write them to a file
         write_sparse_net_file(
-            sparse_networks, sparse_nets_file, network_names,
+            sparse_networks, sparse_nets_file, netx_graphs, netx_graphs_file, network_names,
             net_names_file, nodes, node_ids_file)
 
-    return sparse_networks, network_names, nodes, sparse_netx_graphs
+    return sparse_networks, network_names, nodes, netx_graphs
 
 
 def write_sparse_net_file(
-        sparse_networks, out_file, network_names,
+        sparse_networks, out_file, netx_graphs,  netx_graphs_out_file, network_names,
         net_names_file, nodes, node_ids_file):
-    #out_file = "%s/%s-net.mat" % (out_dir, version)
+    # out_file = "%s/%s-net.mat" % (out_dir, version)
     # save this graph into its own matlab file because it doesn't change by GO category
     print("\twriting sparse networks to %s" % (out_file))
     mat_networks = np.zeros(len(sparse_networks), dtype=np.object)
@@ -292,8 +288,11 @@ def write_sparse_net_file(
         # convert to float otherwise matlab won't parse it correctly
         # see here: https://github.com/scipy/scipy/issues/5028
         mat_networks[i] = sparse_networks[i].astype(float)
-    savemat(out_file, {"Networks":mat_networks}, do_compression=True)
-
+    savemat(out_file, {"Networks": mat_networks}, do_compression=True)
+    # write the networkX graphs in a separate file
+    # TODO: support writing multiple networkX graphs in same file as done for sparse matrices in previous step
+    print("\twriting ntex graphs to %s" % (netx_graphs_out_file))
+    nx.write_gpickle(netx_graphs[0], netx_graphs_out_file)
     print("\twriting node2idx labels to %s" % (node_ids_file))
     with open(node_ids_file, 'w') as out:
         out.write(''.join(["%s\t%s\n" % (n, i) for i, n in enumerate(nodes)]))
@@ -332,11 +331,11 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
                 line = line.decode() if '.gz' in net_file else line
                 if line[0] == "#":
                     continue
-                #u,v,w = line.rstrip().split('\t')[:3]
+                # u,v,w = line.rstrip().split('\t')[:3]
                 line = line.rstrip().split('\t')
-                u,v = line[:2]
+                u, v = line[:2]
                 w = line[2] if len(line) > 2 else 1
-                G.add_edge(u,v,**{name:float(w)})
+                G.add_edge(u, v, **{name: float(w)})
 
     network_names += string_nets
     print("Reading %d STRING networks" % len(string_net_files))
@@ -350,21 +349,21 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
                 line = line.decode() if '.gz' in string_net_file else line
                 if line[0] == "#":
                     continue
-                #u,v,w = line.rstrip().split('\t')[:3]
+                # u,v,w = line.rstrip().split('\t')[:3]
                 line = line.rstrip().split('\t')
-                u,v = line[:2]
+                u, v = line[:2]
                 attr_dict = {}
                 combined_score = float(line[-1])
                 # first check if the combined score is above the cutoff
                 if string_cutoff is not None and combined_score < string_cutoff:
                     continue
                 for net in string_nets:
-                    w = float(line[full_column_names[net]-1])
+                    w = float(line[full_column_names[net] - 1])
                     if w > 0:
                         attr_dict[net] = w
                 # if the edge already exists, 
                 # the old attributes will still be retained
-                G.add_edge(u,v,**attr_dict)
+                G.add_edge(u, v, **attr_dict)
     print("\t%d nodes and %d edges" % (G.number_of_nodes(), G.number_of_edges()))
 
     print("\trelabeling node IDs with integers")
@@ -375,39 +374,40 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
     print("\tconverting graph to sparse matrices")
     sparse_networks = []
     net_names = []
-    sparse_netx_graphs = []
+    netx_graphs = []
     for i, net in enumerate(tqdm(network_names)):
         # all of the edges that don't have a weight for the specified network will be given a weight of 1
         # get a subnetwork with the edges that have a weight for this network
         print("\tgetting subnetwork for '%s'" % (net))
         netG = nx.Graph()
-        netG.add_weighted_edges_from([(u,v,w) for u,v,w in G.edges(data=net) if w is not None])
+        netG.add_weighted_edges_from([(u, v, w) for u, v, w in G.edges(data=net) if w is not None])
         # skip this network if it has no edges, or leave it empty(?)
         if netG.number_of_edges() == 0:
             print("\t0 edges. skipping.")
             continue
         # now convert it to a sparse matrix. The nodelist will make sure they're all the same dimensions
+        # this function returns a symmetric sparse_matrix if netG is undirected.
         sparse_matrix = nx.to_scipy_sparse_matrix(netG, nodelist=sorted(idx2node))
         # convert to float otherwise matlab won't parse it correctly
         # see here: https://github.com/scipy/scipy/issues/5028
-        sparse_matrix = sparse_matrix.astype(float) 
+        sparse_matrix = sparse_matrix.astype(float)
         sparse_networks.append(sparse_matrix)
         net_names.append(net)
-        sparse_netx_graphs.append(netG)
+        netx_graphs.append(netG)
 
-    return sparse_networks, net_names, nodes, sparse_netx_graphs
+    return sparse_networks, net_names, nodes, netx_graphs
 
 
 def convert_nodes_to_int(G):
-    index = 0 
+    index = 0
     node2int = {}
     int2node = {}
     for n in sorted(G.nodes()):
         node2int[n] = index
-        int2node[index] = n 
+        int2node[index] = n
         index += 1
     # see also convert_node_labels_to_integers
-    G = nx.relabel_nodes(G,node2int, copy=False)
+    G = nx.relabel_nodes(G, node2int, copy=False)
     return G, node2int, int2node
 
 
@@ -418,7 +418,7 @@ def create_sparse_ann_and_align_to_net(
     Wrapper around create_sparse_ann_file that also runs Youngs Negatives (potentially RAM heavy)
     and aligns the ann_matrix to a given network, both of which can be time consuming
     and stores those results to a file
-    """ 
+    """
     if not kwargs.get('forcenet') and os.path.isfile(sparse_ann_file):
         print("Reading annotation matrix from %s" % (sparse_ann_file))
         loaded_data = np.load(sparse_ann_file, allow_pickle=True)
@@ -467,8 +467,8 @@ def create_sparse_ann_file(
         loaded_data = np.load(sparse_ann_file, allow_pickle=True)
         ann_matrix = make_csr_from_components(loaded_data['arr_0'])
         terms, prots = loaded_data['arr_1'], loaded_data['arr_2']
-        #ann_matrix = make_csr_from_components(loaded_data['ann_matrix_data'])
-        #terms, prots = loaded_data['terms'], loaded_data['prots']
+        # ann_matrix = make_csr_from_components(loaded_data['ann_matrix_data'])
+        # terms, prots = loaded_data['terms'], loaded_data['prots']
 
     return ann_matrix, terms, prots
 
@@ -484,9 +484,9 @@ def setup_sparse_annotations(pos_neg_file):
 
     print("Reading positive and negative annotations for each protein from %s" % (pos_neg_file))
     if '-list' in pos_neg_file:
-        ann_matrix, terms, prots = read_pos_neg_list_file(pos_neg_file) 
+        ann_matrix, terms, prots = read_pos_neg_list_file(pos_neg_file)
     else:
-        ann_matrix, terms, prots = read_pos_neg_table_file(pos_neg_file) 
+        ann_matrix, terms, prots = read_pos_neg_table_file(pos_neg_file)
     num_pos = len((ann_matrix > 0).astype(int).data)
     num_neg = len(ann_matrix.data) - num_pos
     print("\t%d terms, %d prots, %d annotations. %d positives, %d negatives" % (
@@ -574,7 +574,7 @@ def read_pos_neg_list_file(pos_neg_file):
             for prot in curr_prots.split(','):
                 prot_idx = node2idx.get(prot)
                 if prot_idx is None:
-                    prot_idx = i 
+                    prot_idx = i
                     node2idx[prot] = i
                     prots.append(prot)
                     i += 1
@@ -608,13 +608,13 @@ def weight_GMW(y, normalized_nets, net_names=None, term=None):
             "%s: %s" % (net_names[x], alphas[i]) for
             i, x in enumerate(indices))))
 
-    weights_list = [0]*len(normalized_nets)
+    weights_list = [0] * len(normalized_nets)
     weights_list[indices[0]] = alphas[0]
     # now add the networks together with the alpha weight applied
-    combined_network = alphas[0]*normalized_nets[indices[0]]
-    for i in range(1,len(alphas)):
-        combined_network += alphas[i]*normalized_nets[indices[i]] 
-        weights_list[indices[i]] = alphas[i] 
+    combined_network = alphas[0] * normalized_nets[indices[0]]
+    for i in range(1, len(alphas)):
+        combined_network += alphas[i] * normalized_nets[indices[i]]
+        weights_list[indices[i]] = alphas[i]
     total_time = time.process_time() - start_time
 
     # don't write each term's combined network to a file
@@ -658,25 +658,25 @@ def weight_SWSN(ann_matrix, sparse_nets=None, normalized_nets=None, net_names=No
     print("Weighting networks for %d different GO terms" % (curr_ann_mat.shape[0]))
     print("Running simultaneous weights with specific negatives")
     start_time = time.process_time()
-    alpha, indices = combineNetworksSWSN(curr_ann_mat, normalized_nets, verbose=verbose) 
+    alpha, indices = combineNetworksSWSN(curr_ann_mat, normalized_nets, verbose=verbose)
     # print out the computed weights for each network
     if net_names is not None:
         print("network weights:")
-        #print("\tnetworks chosen: %s" % (', '.join([net_names[i] for i in indices])))
+        # print("\tnetworks chosen: %s" % (', '.join([net_names[i] for i in indices])))
         weights = defaultdict(int)
         for i in range(len(alpha)):
             weights[net_names[indices[i]]] = alpha[i]
-        weights_table = ["%0.3e"%weights[net] for net in net_names]
+        weights_table = ["%0.3e" % weights[net] for net in net_names]
         print('\t'.join(net_names))
         print('\t'.join(weights_table))
 
     # now add the networks together with the alpha weight applied
-    weights_list = [0]*len(normalized_nets)
+    weights_list = [0] * len(normalized_nets)
     weights_list[indices[0]] = alpha[0]
-    combined_network = alpha[0]*normalized_nets[indices[0]]
-    for i in range(1,len(alpha)):
-        combined_network += alpha[i]*normalized_nets[indices[i]] 
-        weights_list[indices[i]] = alpha[i] 
+    combined_network = alpha[0] * normalized_nets[indices[0]]
+    for i in range(1, len(alpha)):
+        combined_network += alpha[i] * normalized_nets[indices[i]]
+        weights_list[indices[i]] = alpha[i]
     total_time = time.process_time() - start_time
 
     if out_file is not None:
@@ -688,13 +688,13 @@ def weight_SWSN(ann_matrix, sparse_nets=None, normalized_nets=None, net_names=No
         # also write the node ids so it's easier to access
         # TODO figure out a better way to store this
         node2idx_file = out_file + "-node-ids.txt"
-        print("\twriting node ids to %s" % (node2idx_file)) 
+        print("\twriting node ids to %s" % (node2idx_file))
         with open(node2idx_file, 'w') as out:
             out.write(''.join("%s\t%s\n" % (n, i) for i, n in enumerate(nodes)))
 
         # write the alpha/weight of the networks as well
         net_weight_file = out_file + "-net-weights.txt"
-        print("\twriting network weights to %s" % (net_weight_file)) 
+        print("\twriting network weights to %s" % (net_weight_file))
         with open(net_weight_file, 'w') as out:
             out.write(''.join("%s\t%s\n" % (net_names[idx], str(alpha[i])) for i, idx in enumerate(indices)))
 
@@ -722,7 +722,7 @@ def _net_normalize(X):
     # normalizing the matrix
     deg = X.sum(axis=1).A.flatten()
     deg = np.divide(1., np.sqrt(deg))
-    deg[np.isinf(deg)] = 0 
+    deg[np.isinf(deg)] = 0
     # sparse matrix function to make a diagonal matrix
     D = sp.spdiags(deg, 0, X.shape[0], X.shape[1], format="csr")
     X = D.dot(X.dot(D))
