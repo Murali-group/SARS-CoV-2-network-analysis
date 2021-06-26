@@ -14,10 +14,10 @@ import copy
 
 # add a folder up from this file to the path so these imports work from anywhere
 sys.path.insert(0,os.path.dirname(os.path.dirname(__file__)))
-from FastSinkSource.src import main as run_eval_algs
-from FastSinkSource.src.algorithms import runner
-from FastSinkSource.src.utils import config_utils
-from FastSinkSource.src.evaluate import cross_validation as cv
+from annotation_prediction.src import main as run_eval_algs
+from annotation_prediction.src.algorithms import runner
+from annotation_prediction.src.utils import config_utils
+from annotation_prediction.src.evaluate import cross_validation as cv
 
 
 """
@@ -297,7 +297,7 @@ def setup_parser(parser=None):
             help='Overwrite the ExpressionData.csv file if it already exists.')
 
     group = parser.add_argument_group('masterscript options')
-    group.add_argument('--script-to-run', default="FastSinkSource/run_eval_algs.py",
+    group.add_argument('--script-to-run', default="src/annotation_prediction/run_eval_algs.py",
             help="script to run when submitting to screen / qsub")
     group.add_argument('--alg', dest="algs", action="append", 
             help="Name of algorithm to run. May specify multiple. Default is whatever is set to true in the config file")
