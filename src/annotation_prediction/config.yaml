@@ -1,0 +1,130 @@
+# Input Settings: initialize base input folder names,
+# and dataset collections
+input_settings:
+
+    # Base input directory
+    input_dir: "inputs"
+
+    # "datasets" denotes a list of experiments to run, each with the folling specified (a * indicates required options):
+    #   *net_version: name to give this network. Will be used to organize output files 
+    #
+    #   net_files: list of one or more network files, 
+    #       or a .mat file containing multiple networks.
+    #       multi_net must be set to True if multiple networks are to be combined.
+    #       the path should be from <input_dir>/<net_version>
+    #
+    #   string_net_files: a list of full STRING files, meaning all 16, tab-delimited columns are present
+    #       the path should be from <input_dir>/<net_version>
+    #
+    #   *exp_name: the name to give the experiment to run
+    #
+    #   *pos_neg_file: a 3 column, tab-delimited file with two lines per term.
+    #       Col1: term, Col2: 1 or -1 denoting positive or negative, and a comma-separated list of proteins
+    #
+    #   only_functions_file: a file containing the GO term IDs to run.
+    #
+    #   taxon_file: a tab-delimited file indicating the NCBI taxononmy ID (2nd col) for each gene/UniProt ID (1st col).
+    #       Necessary to perform Leave-One-Species-Out (LOSO) evaluation.
+    #
+    #   only_taxon_file: a file containing the taxon IDs to evaluate. Also used to get the names of the species
+    #
+    #   pos_neg_file_eval: same as the pos_neg_file, only these annotations are used to evaluate.
+    #       Some use cases: temporal holdout, or recovering annotations of another evidence code
+    #
+    #   
+    datasets:
+        - net_version: "2018_06-seq-sim-e0_1"
+          net_files: ["2018_06-seq-sim-e0_1-net.txt"]
+          #string_net_files: [""]
+          exp_name: "expc-bp"
+          pos_neg_file: "pos-neg/expc/expc-bp.tsv"
+          #only_functions_file: ""
+          # if passing in multiple networks or one or more 'string_net_files',
+          # set multi_net to True and use these settings
+          multi_net: False
+          net_settings:
+              # method to combine the networks. either swsn, gmw, or unweighted
+              weight_method: 'swsn'
+              # if full STRING files are given, 'string_nets' and 'string_cutoff' are required
+              ## either core, nontransferred, all, or a comma-separated list of the string networks, or a combination of the above. Default: all
+              #string_nets: 'core'
+              ## cutoff of the STRING scores. Default: 150
+              #string_cutoff: 400
+              # If a .mat file is given, 'net_names_file' and 'node_ids_file' are required.
+              net_names_file: ""
+              node_ids_file: ""
+
+
+
+# the outputs will follow this structure:
+# outputs/<net_version>/<exp_name>/<alg_name>/output_files
+output_settings:
+    output_dir: "outputs/"
+
+# Algorithms to run along with their settings.
+# All combinations of parameters will be run. 
+algs: 
+    # local has no parameters
+    local:
+        should_run: [False]
+    localplus:
+        should_run: [True]
+
+    genemania:
+        should_run: [False]
+        alpha: [1.0]
+        tol: [1e-05]
+
+    genemaniaplus:
+        should_run: [False]
+        alpha: [1.0]
+        tol: [1e-05]
+
+    fastsinksource:
+        should_run: [True]
+        alpha: [0.95]
+        eps: [0]
+        max_iters: [10]
+
+    fastsinksourceplus:
+        should_run: [True]
+        alpha: [0.99]
+        eps: [0]
+        max_iters: [10]
+        # this option isn't needed if alpha is < 1
+        #sinksourceplus_lambda: [0]
+
+    sinksource:
+        should_run: [True]
+        alpha: [1.0]
+        eps: [1e-4]
+        max_iters: [1000]
+    
+    sinksource-bounds:
+        should_run: [False]
+        rank_all: [False]
+        rank_pos_neg: [False]
+        compare_ranks: [False]
+        alpha: [0.95]
+        max_iters: [10]
+
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
+    logistic_regression:
+        should_run: [True]
+        max_iters: [100]
+
+    # https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html
+    svm:
+        should_run: [True]
+        max_iters: [1000]
+
+# Evaluation settings for CV or LOSO can be set here 
+# TODO these should probably be unique per dataset
+eval_settings:
+
+    ### LOSO parameters
+    # Minimum number of annotations for each term in the "left-out" species to test. Default: 10
+    num_test_cutoff: 10
+    # Postfix to append to output file. Useful if running multiple in parallel. TODO figure out how to automatically combine the multiple output files
+    postfix: ""
+
