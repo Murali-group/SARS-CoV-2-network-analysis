@@ -1,3 +1,0 @@
-[submodule "src/FastSinkSource/src/algorithms/deepNF"]
-	path = src/FastSinkSource/src/algorithms/deepNF
-	url = https://github.com/VGligorijevic/deepNF
