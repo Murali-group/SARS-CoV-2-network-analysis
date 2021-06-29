@@ -57,7 +57,7 @@ def runFastSinkSource(
         max_iters=1000, eps=0.0001, a=0.8,
         tol=1e-5, solver=None, Milu=None, verbose=False):
     """
-    *P*: Network ags a scipy sparse matrix. Should already be normalized
+    *P*: Network as a scipy sparse matrix. Should already be normalized
     *positives*: numpy array of node ids to be used as positives
     *negatives*: numpy array of node ids to be used as negatives. 
         If not given, will be run as FastSinkSourcePlus. 

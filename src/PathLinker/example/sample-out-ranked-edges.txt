@@ -1,0 +1,18 @@
+#tail	head	KSP index
+S2	T3	1
+A	E	2
+E	T1	2
+S1	A	2
+B	F	3
+F	T2	3
+S2	B	3
+C	F	4
+S2	C	4
+C	G	5
+G	T2	5
+G	T3	6
+E	F	7
+B	C	8
+F	E	11
+G	F	13
+F	A	16

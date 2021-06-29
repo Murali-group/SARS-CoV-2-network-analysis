@@ -20,6 +20,7 @@ ALGORITHMS = [
     "birgrank",
     "aptrank",
     "genemania",
+    "rwr"
     ]
 
 

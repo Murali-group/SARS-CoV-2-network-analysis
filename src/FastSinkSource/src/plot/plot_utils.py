@@ -44,6 +44,7 @@ ALG_NAMES = {
     'genemania': 'GM', 'genemaniaplus': 'RL',
     'logistic_regression': 'LogReg',
     'svm': 'SVM',
+    'rwr': 'RWR'
     }
 
 measure_map = {'fmax': r'F$_{\mathrm{max}}$'}

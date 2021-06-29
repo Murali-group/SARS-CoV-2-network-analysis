@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = https://github.com/Murali-group/PathLinker.git
+	branch = master
+	commit = d4a44c9f44f4afe30fd945015d84c1ce8c602c00
+	parent = f91b002c0b6de93221b8dbf25a7777ef373de39c
+	method = merge
+	cmdver = 0.4.3
