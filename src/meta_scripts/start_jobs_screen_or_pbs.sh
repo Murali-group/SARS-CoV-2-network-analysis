@@ -283,7 +283,7 @@ meta_args = [
 def setup_parser(parser=None):
     if parser is None:
         parser = argparse.ArgumentParser(
-            description='Script for setting up various string experiments. ' +
+            description='Script for running algorithms in parallel either using screen or by submitting an HPC job (using the PBS scheduler). ' +
             'The options here include all of the options for run_eval_algs.py ' +
             'and everything specified after --pass-to-script will be passed on to that script')
 
