@@ -1,0 +1,213 @@
+algs:
+  genemaniaplus:
+    alpha: [3.4]
+    should_run:
+    - false
+    tol:
+    - 1e-05
+  genemania:
+    alpha: [0.1]
+    should_run:
+    - false
+    tol:
+    - 1e-05
+  sinksourceplus:
+      #alpha: [0.99, 0.95, 0.9, 0.75, 0.5]
+    alpha: [1.0]
+    eps:
+    - 0
+    max_iters:
+    - 100
+    should_run:
+    - false
+    lambda: [100]
+  rwr:
+    alpha: [0.5]
+    eps:
+    - 0.0001
+    max_iters:
+    - 100
+    should_run:
+    - true
+  svm:
+    # the norm used in penalization
+    penalty: ['l2']
+    # ‘hinge’ is the standard SVM loss (used e.g. by the SVC class) while ‘squared_hinge’ is the square of the hinge loss.
+    #loss: ['squared_hinge']
+    # inverse of regularization strength parameter
+    C: [1]
+    tol: [1e-04]
+    max_iters: [1000]
+    should_run: [True]
+  logistic_regression:
+    # the norm used in penalization
+    penalty: ['l2']
+    # inverse of regularization strength parameter
+    C: [1]
+    tol: [1e-04]
+    max_iters: [100]
+    should_run: [False]
+eval_settings:
+  cross_validation_folds: 5
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+  #early_prec: [0.1, 0.3]
+input_settings:
+  datasets:
+#  0 edges
+#  - exp_name: string-nets/neighborhood
+#    plot_exp_name: "neighborhood"
+#    net_settings:
+#      string_cutoff: 400
+#      string_nets: neighborhood
+#      weight_method: gmw
+#    net_version: networks/stringv11/400
+#    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+#    string_net_files:
+#    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/neighborhood_transferred
+    plot_exp_name: "neighborhood_transferred"
+    net_settings:
+      string_cutoff: 400
+      string_nets: neighborhood_transferred
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/fusion
+    plot_exp_name: "fusion"
+    net_settings:
+      string_cutoff: 400
+      string_nets: fusion
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/cooccurence
+    plot_exp_name: "cooccurence"
+    net_settings:
+      string_cutoff: 400
+      string_nets: cooccurence
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/homology
+    plot_exp_name: "homology"
+    net_settings:
+      string_cutoff: 400
+      string_nets: homology
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/coexpression
+    plot_exp_name: "coexpression"
+    net_settings:
+      string_cutoff: 400
+      string_nets: coexpression
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/coexpression_transferred
+    plot_exp_name: "coexpression_transferred"
+    net_settings:
+      string_cutoff: 400
+      string_nets: coexpression_transferred
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/experiments
+    plot_exp_name: "experiments"
+    net_settings:
+      string_cutoff: 400
+      string_nets: experiments
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/experiments_transferred
+    plot_exp_name: "experiments_transferred"
+    net_settings:
+      string_cutoff: 400
+      string_nets: experiments_transferred
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/database
+    plot_exp_name: "database"
+    net_settings:
+      string_cutoff: 400
+      string_nets: database
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+#  0 edges
+#  - exp_name: string-nets/database_transferred
+#    plot_exp_name: "database_transferred"
+#    net_settings:
+#      string_cutoff: 400
+#      string_nets: database_transferred
+#      weight_method: gmw
+#    net_version: networks/stringv11/400
+#    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+#    string_net_files:
+#    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/textmining
+    plot_exp_name: "textmining"
+    net_settings:
+      string_cutoff: 400
+      string_nets: textmining
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/textmining_transferred
+    plot_exp_name: "textmining_transferred"
+    net_settings:
+      string_cutoff: 400
+      string_nets: textmining_transferred
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "combined_score"
+    net_settings:
+      string_cutoff: 400
+      string_nets: combined_score
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: string-nets/all
+    plot_exp_name: "SWSN"
+    net_settings:
+      string_cutoff: 400
+      string_nets: all
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: fss_inputs
+output_settings:
+  output_dir: outputs/
+

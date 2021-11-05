@@ -1,3 +1,4 @@
+# Script to analyze the amount of score combing from non-neighboring nodes through network diffusion.
 # here's an example call to this script: 
 #python src/scripts/effective_diffusion_analysis.py --config fss_inputs/config_files/params-testing/400-cv5-nf5-nr100-ace2.yaml --cutoff 0.01 --k-to-test=332 --stat-sig-cutoff 0.05
 
@@ -21,13 +22,12 @@ import seaborn as sns
 
 # local imports
 from src import setup_datasets
-from src.FastSinkSource.src import main as run_eval_algs
-from src.FastSinkSource.src.utils import config_utils
-from src.FastSinkSource.src.algorithms import alg_utils
-from src.FastSinkSource.src.evaluate import stat_sig
-#from src.FastSinkSource.src.algorithms import rl_genemania_runner as gm_runner
-from src.FastSinkSource.src.algorithms import rl_genemania as gm
-from src.FastSinkSource.src.evaluate import stat_sig
+from src.annotation_prediction.src import main as run_eval_algs
+from src.annotation_prediction.src.utils import config_utils
+from src.annotation_prediction.src.algorithms import alg_utils
+from src.annotation_prediction.src.evaluate import stat_sig_node
+#from src.annotation_prediction.src.algorithms import rl_genemania_runner as gm_runner
+from src.annotation_prediction.src.algorithms import rl_genemania as gm
 
 
 def parse_args():
@@ -49,7 +49,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, required=True,
-                       help="Configuration file used when running FSS. ")
+                       help="Configuration file used when running annotation_prediction. ")
     #group.add_argument('--sarscov2-human-ppis', default='datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv',
     #                   help="Table of virus and human ppis. Default: datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv")
     #group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
@@ -217,7 +217,7 @@ def main(config_map, **kwargs):
         #print(df)
         print("median effective diffusion values:")
         print(df.median())
-        ylabel = 'Fraction Non-Nbr Diffusion'
+        ylabel = 'Effective Diffusion'
         plot_effective_diffusion(df, out_file, xlabel="Alpha", ylabel=ylabel, title="") 
 
         ## also make a scatterplot of the nodes rank with the effective diffusion

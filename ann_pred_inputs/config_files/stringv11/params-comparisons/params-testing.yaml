@@ -1,0 +1,115 @@
+plot_settings:
+    palette: "Set2"
+    svg: True
+algs:
+  rl:
+    #alpha: [0.01, 0.1, 1,2,4,6,8,10, 100]
+    alpha: [0.01, 0.1, 0.5, 1, 2, 10, 100]
+    should_run:
+    - True
+    tol:
+    - 1e-05
+  genemania:
+    alpha: [0.01, 0.1, 0.5, 1, 2, 10, 100]
+    should_run:
+    - True
+    tol:
+    - 1e-05
+  rwr:
+    alpha: [0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99]
+    eps:
+    - 0.0001
+    max_iters:
+    - 100
+    should_run:
+    - true
+  sinksourceplus:
+      #alpha: [0.99, 0.95, 0.9, 0.75, 0.5]
+    alpha: [1.0]
+    eps:
+    - 0
+    max_iters:
+    - 100
+    should_run:
+    - True
+    lambda: [0.01, 0.1, 0.5, 1, 2, 10, 100]
+  svm:
+    # the norm used in penalization
+    penalty: ['l2']
+    # ‘hinge’ is the standard SVM loss (used e.g. by the SVC class) while ‘squared_hinge’ is the square of the hinge loss.
+    #loss: ['squared_hinge']
+    # inverse of regularization strength parameter
+    #C: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
+    C: [1e-3, 1e-2, 0.1, 1, 10, 100, 1000]
+    tol: [1e-04]
+    max_iters: [1000]
+    should_run: [True]
+  logistic_regression:
+    # the norm used in penalization
+    penalty: ['l2']
+    # inverse of regularization strength parameter
+    #C: [1e-5, 1e-4, 1e-3, 1e-2, 0.1]
+    #C: [1, 10, 100, 1000, 1e+05]
+    C: [1e-3, 1e-2, 0.1, 1, 10, 100, 1000]
+    tol: [1e-04]
+    max_iters: [100]
+    should_run: [True]
+  deepnf:
+    # TODO RWR parameters:
+    #alpha: []
+    #K: []  # number of steps
+    #tol: [1e-04]
+    #max_iters: [100]
+    # embedding parameters: # just using the default values for now
+    # model architecture
+    #hidden_dims: [[1000, 500, 1000]]
+    hidden_dims: [[2500, 1200, 2500]]
+    # Number of epochs to train
+    epochs: [80]
+    batch_size: [64]
+    # factor for denoising the data
+    noise_factor: [0.5]
+    # linear SVM parameters
+    # the norm used in penalization
+    penalty: ['l2']
+    # these are the values tested in their work
+    # inverse of regularization strength parameter
+    C: [1e-3, 1e-2, 0.1, 1, 10, 100, 1000]
+    # a value of 0 for gamma will be a linear kernel
+    #gamma: [0, 1e-3, 1e-2, 0.1, 1]
+    gamma: [0]
+    should_run: [True]
+eval_settings:
+  cross_validation_folds: 5
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+  #early_prec: [0.1, 0.3]
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "STRING-400"
+    net_settings:
+      string_cutoff: 400
+      string_nets: combined_score
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+#  # keep this combination for DeepNF only, and uncomment for plotting
+#  - exp_name: 2020-03-sarscov2-human-ppi-ace2-all
+#    plot_exp_name: "STRING-all-400"
+#    multi_net: True
+#    net_settings:
+#      string_cutoff: 400
+#      string_nets: all
+#      weight_method: gmw
+#    net_version: networks/stringv11/400
+#    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+#    string_net_files:
+#    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/
+

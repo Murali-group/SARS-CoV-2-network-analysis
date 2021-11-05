@@ -240,17 +240,17 @@ dataset_settings:
 #            sep: "\t"
 
 # This section contains settings which will be used to create another config file
-# in order to run the FastSinkSource pipeline.
-# See https://github.com/jlaw9/FastSinkSource/tree/no-ontology for more info
-fastsinksource_pipeline_settings:
-    # Base directory where the inputs to the FastSinkSource pipeline will be placed
-    input_dir: "fss_inputs"
+# in order to run the annotation_prediction pipeline.
+# See https://github.com/jlaw9/annotation_prediction/tree/no-ontology for more info
+annotation_prediction_pipeline_settings:
+    # Base directory where the inputs to the annotation_prediction pipeline will be placed
+    input_dir: "ann_pred_inputs"
     exp_name: "2020-03-sarscov2-human-ppi-ace2" 
     pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt"
     # *name*: name of the corresponding downloaded network under "datasets_to_download"
     # *network_collection*: T/F use this flag to run all of the networks in the collection
     # *net_version*: if multiple network comparisons will be run, use this to distinguish between them
-    # *net_settings*: will be passed directly to the FSS pipeline. See that repo's config file for more info
+    # *net_settings*: will be passed directly to the ann_pred pipeline. See that repo's config file for more info
     networks_to_run:
       - names: ["stringv11"]
         file_name: "9606-uniprot-links-full-v11.txt.gz"
@@ -308,7 +308,7 @@ fastsinksource_pipeline_settings:
 #        net_version: "tissuenet-v2-drugbank/hpa-rnaseq"
 
         #    TODO finish implemented the genesets to test
-#    # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
+#    # This section contains the list of genesets for which to test the predictions from ann_pred algorithms for enrichment,
 #    # and corresponding options to pass to the script
 #    genesets_to_test:
 #    # *name*: name of the corresponding downloaded geneset under "datasets_to_download"
@@ -331,7 +331,7 @@ fastsinksource_pipeline_settings:
     # outputs/<net_version>/<exp_name>/<alg_name>/output_files
     output_dir: "outputs/"
 
-    # These settings will be passed to the FastSinkSource pipeline
+    # These settings will be passed to the annotation_prediction pipeline
     eval_settings: 
       # automatically generate the predictions for each method
       num_pred_to_write: -1
