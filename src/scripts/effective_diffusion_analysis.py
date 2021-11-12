@@ -27,7 +27,7 @@ from src.annotation_prediction.src.utils import config_utils
 from src.annotation_prediction.src.algorithms import alg_utils
 from src.annotation_prediction.src.evaluate import stat_sig_node
 #from src.annotation_prediction.src.algorithms import rl_genemania_runner as gm_runner
-from src.annotation_prediction.src.algorithms import rl_genemania as gm
+from src.annotation_prediction.src.algorithms import rl_genemania as rl
 
 
 def parse_args():
@@ -52,8 +52,6 @@ def setup_opts():
                        help="Configuration file used when running annotation_prediction. ")
     #group.add_argument('--sarscov2-human-ppis', default='datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv',
     #                   help="Table of virus and human ppis. Default: datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv")
-    #group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
-    #                   help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
     group.add_argument('--analysis-type', type=str, default="diffusion_analysis",
                        help="Type of network analysis to perform. Options: 'diffusion_analysis', 'shortest_paths', 'degrees'. Default: 'diffusion_analysis")
     #group.add_argument('--node', type=str, action="append",
@@ -136,12 +134,12 @@ def main(config_map, **kwargs):
 
         # load the top predictions
         alg_pred_files = config_utils.get_dataset_alg_prediction_files(
-            output_dir, dataset, alg_settings, ['genemaniaplus'], **kwargs)
+            output_dir, dataset, alg_settings, ['rl'], **kwargs)
 
         k = kwargs.get('k',332)
         cutoff = kwargs.get('cutoff', 0.01)
         # get the alpha values to use 
-        alphas = alg_settings['genemaniaplus']['alpha']
+        alphas = alg_settings['rl']['alpha']
         alpha_frac_main_contr_nonnbrs = {} 
         alpha_nodes_pos_nbr_dfsn = {} 
         alpha_dfs = {} 
@@ -174,10 +172,28 @@ def main(config_map, **kwargs):
             pred_scores[top_k_pred_idx] = df['score'].values
 
             sig_str = "-sig%s" % (str(sig_cutoff).replace('.','_')) if sig_cutoff else ""
-            out_pref = "outputs/viz/%s/%s/diffusion-analysis/cutoff%s-k%s-a%s%s" % (
-                dataset['net_version'], dataset['exp_name'], cutoff, k, alpha, sig_str)
+            out_pref = "outputs/viz/%s/%s/diffusion-analysis/k%s-a%s%s" % (
+                dataset['net_version'], dataset['exp_name'], k, alpha, sig_str)
+            os.makedirs(os.path.dirname(out_pref), exist_ok=True)
 
-            M_inv = gm.get_diffusion_matrix(net_obj.W, alpha=alpha, diff_mat_file=diff_mat_file)
+            M_inv = rl.get_diffusion_matrix(net_obj.W, alpha=alpha, diff_mat_file=diff_mat_file)
+
+            # first write the percentage contributed from the krogan proteins to the top predictions  
+            out_file = "%s-fraction-krogan-diffusion.tsv" % (out_pref)
+            # get the diffusion values from the positive nodes to the top predictions 
+            pos_to_top_dfsn = M_inv[top_k_pred_idx,:][:,krogan_nodes_idx]
+            # normalize by the column to get the fraction of diffusion from each pos node
+            pos_to_k_dfsn_norm = (pos_to_top_dfsn*np.divide(1,pos_to_top_dfsn.sum(axis=0)))
+            vir_host_ppi_nodes = [prots[idx] for idx in krogan_nodes_idx]
+            if kwargs.get('id_mapping_file'):
+                vir_host_ppi_nodes = [uniprot_to_gene[p] for p in vir_host_ppi_nodes]
+                top_k_pred = [uniprot_to_gene[p] for p in top_k_pred]
+            # map to gene names as well
+            df_dfsn = pd.DataFrame(pos_to_k_dfsn_norm, columns=vir_host_ppi_nodes, index=top_k_pred)
+            # sort the columns by gene names
+            df_dfsn = df_dfsn.T.sort_index().T
+            print("Writing %s" % (out_file))
+            df_dfsn.applymap(lambda x: "%0.2e"%x).to_csv(out_file, sep='\t')
 
             frac_main_contr_nonnbrs, nodes_pos_nbr_dfsn = get_effective_diffusion_score(
                 pred_scores, M_inv, net_obj, krogan_nodes_idx, alpha=alpha,
@@ -218,7 +234,7 @@ def main(config_map, **kwargs):
         print("median effective diffusion values:")
         print(df.median())
         ylabel = 'Effective Diffusion'
-        plot_effective_diffusion(df, out_file, xlabel="Alpha", ylabel=ylabel, title="") 
+        plot_effective_diffusion(df, out_file, xlabel=r"$\alpha$", ylabel=ylabel, title="") 
 
         ## also make a scatterplot of the nodes rank with the effective diffusion
         for alpha in alphas:
@@ -320,6 +336,7 @@ def plot_eff_diff_by_rank(df, alpha, out_file, xlabel="Alpha", ylabel="", title=
 
 
 def plot_effective_diffusion(df, out_file, xlabel="Alpha", ylabel="", title=""):
+    f, ax = plt.subplots(figsize=(6,3))
     ax = sns.boxplot(data=df)
 
     ax.set_xlabel(xlabel)
@@ -353,7 +370,7 @@ def get_effective_diffusion_score(
     #plot_file = "%s-dfsn-curves.pdf" % (out_pref)
     plot_file = None
 
-    main_contributors, fracs_top_nbrs, nodes_pos_nbr_dfsn = gm.get_pred_main_contributors(
+    main_contributors, fracs_top_nbrs, nodes_pos_nbr_dfsn = rl.get_pred_main_contributors(
         pred_scores, M_inv, krogan_nodes_idx, cutoff=kwargs.get('cutoff',0.05), k=k,
         W=W, plot_file=plot_file, alpha=alpha)
 
@@ -390,7 +407,7 @@ def dist_main_contributors(pred_scores, M_inv, pos_idx, k, W, prots, uniprot_to_
 
 
 def run_GM_get_top_pred(L, y, alpha, k=332):
-    f, process_time, wall_time, num_iters = gm.runGeneMANIA(L, y, alpha=alpha)
+    f, process_time, wall_time, num_iters = rl.runGeneMANIA(L, y, alpha=alpha)
 #     non_krogan_nodes = np.ones(L.shape[0])
 #     non_krogan_nodes[krogan_node_idx] = 0
     f[y.nonzero()[0]] = 0
