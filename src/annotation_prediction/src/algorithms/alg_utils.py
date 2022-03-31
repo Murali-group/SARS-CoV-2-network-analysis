@@ -1,5 +1,6 @@
 
 import os, sys
+import networkx as nx
 from scipy import sparse as sp
 from scipy.sparse import csr_matrix, csgraph, diags
 import numpy as np
@@ -39,7 +40,7 @@ def select_terms(only_functions_file=None, terms=None):
     return selected_terms
 
 
-def setup_sparse_network(network_file, node2idx_file=None, forced=False):
+def setup_sparse_network(network_file, node2idx_file=None, largest_cc_only=True, forced=False):
     """
     Takes a network file and converts it to a sparse matrix
     """
@@ -79,6 +80,20 @@ def setup_sparse_network(network_file, node2idx_file=None, forced=False):
         print("\tcreating sparse matrix")
         #print(i,j,w)
         W = sp.coo_matrix((w, (i, j)), shape=(len(prots), len(prots))).tocsr()
+
+        if largest_cc_only:
+            G = nx.from_scipy_sparse_matrix(W)
+            G = G.subgraph(max(nx.connected_components(G), key=len)).copy()
+            #print("\n Using only the largest weakly connected component:\n"+nx.info(G))
+            print("\n Using only the largest weakly connected component")
+            # update the indexes
+            idx2node = {i: n for i, n in enumerate(prots)}
+            new_prots = [n for n in prots if G.has_node(node2idx[n])]
+            nodelist = [node2idx[n] for n in new_prots]
+            W = nx.to_scipy_sparse_matrix(G, nodelist=sorted(nodelist))
+            W = W.astype(float) 
+            prots = new_prots
+
         # make sure it is symmetric
         if (W.T != W).nnz == 0:
             pass

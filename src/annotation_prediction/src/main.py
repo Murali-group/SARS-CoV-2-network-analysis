@@ -372,7 +372,7 @@ def run_algs(alg_runners, **kwargs):
     # now setup the inputs for the runners
     for run_obj in runners_to_run:
         # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
-        if 'plus' not in run_obj.name and run_obj.name not in ['lazy_rw', 'rwr'] and neg_factor is not None:
+        if 'plus' not in run_obj.name and run_obj.name not in ['rl', 'lazy_rw', 'rwr'] and neg_factor is not None:
             orig_ann_obj = run_obj.ann_obj
             # sample negative examples, repeat the method the given number of times,
             # and then average the resulting scores

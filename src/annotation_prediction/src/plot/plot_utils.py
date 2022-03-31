@@ -41,9 +41,10 @@ ALG_NAMES = {
     'sinksource': 'SS-', 'sinksourceplus': 'SS',
     'sinksource_bounds': 'SinkSource_Bounds',
     'fastsinksource': 'FSS', 'fastsinksourceplus': 'FSS+',
-    'genemania': 'GM', 'genemaniaplus': 'RL',
+    'genemania': 'GM', 'genemaniaplus': 'RL', 'rl': 'RL', 
     'logistic_regression': 'LogReg',
     'svm': 'SVM', 'deepnf': 'deepNF',
+    'rwr': 'RWR', 
     }
 
 measure_map = {'fmax': r'F$_{\mathrm{max}}$'}

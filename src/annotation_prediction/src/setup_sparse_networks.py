@@ -275,7 +275,11 @@ def create_sparse_net_file(
     else:
         print("\tcreating sparse nets and writing to %s" % (sparse_nets_file))
         sparse_networks, network_names, nodes = setup_sparse_networks(
-            net_files=net_files, string_net_files=string_net_files, string_nets=string_nets, string_cutoff=string_cutoff)
+            net_files=net_files, string_net_files=string_net_files,
+            string_nets=string_nets, string_cutoff=string_cutoff,
+            # TODO
+            #largest_cc_only=largest_cc_only,
+        )
 
         # now write them to a file
         write_sparse_net_file(
@@ -308,7 +312,10 @@ def write_sparse_net_file(
         out.write(''.join(["%s\n" % (n) for n in network_names]))
 
 
-def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], string_cutoff=None):
+def setup_sparse_networks(
+        net_files=[], string_net_files=[], string_nets=[], string_cutoff=None,
+        largest_cc_only=True,
+):
     """
     Function to setup networks as sparse matrices 
     *net_files*: list of networks for which to make into a sparse
@@ -370,6 +377,12 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
                 # the old attributes will still be retained
                 G.add_edge(u,v,**attr_dict)
     print("\t%d nodes and %d edges" % (G.number_of_nodes(), G.number_of_edges()))
+
+    if largest_cc_only:
+        ccs = nx.connected_components(G)
+        largest_cc = sorted(ccs, key=len, reverse=True)[0]
+        G = nx.Graph(G.subgraph(largest_cc))
+        print("\n Using only the largest connected component:\n"+str(nx.info(G)))
 
     print("\trelabeling node IDs with integers")
     G, node2idx, idx2node = convert_nodes_to_int(G)

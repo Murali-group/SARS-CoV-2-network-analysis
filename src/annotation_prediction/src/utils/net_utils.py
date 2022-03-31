@@ -4,16 +4,21 @@ import numpy as np
 import scipy.sparse as sp
 
 
+def get_num_nodes_edges(W):
+    # count the nodes with at least one edge
+    num_nodes = np.count_nonzero(W.sum(axis=0))
+    # since the network is symmetric, the number of undirected edges is the number of entries divided by 2
+    num_edges = (len(W.data) / 2)
+    return num_nodes, num_edges
+
+
 def print_net_stats(W, train_ann_mat, test_ann_mat=None, term_idx=None):
     """
     Get statistics about the # of connected components, and the number of left-out positive examples that are in a component without a positive example
     *term_idx*: indices of terms for which to limit the train and test annotations 
         e.g., current terms for a species
     """
-    # count the nodes with at least one edge
-    num_nodes = np.count_nonzero(W.sum(axis=0))
-    # since the network is symmetric, the number of undirected edges is the number of entries divided by 2
-    num_edges = (len(W.data) / 2)
+    num_nodes, num_edges = get_num_nodes_edges(W) 
     print("\t%s nodes, %s edges" % (num_nodes, num_edges))
     # get the number of connected components (ccs), as well as the nodes in each cc
     num_ccs, cc_labels = sp.csgraph.connected_components(W, directed=False, return_labels=True)
@@ -35,6 +40,29 @@ def print_net_stats(W, train_ann_mat, test_ann_mat=None, term_idx=None):
         print_cc_stats_for_train_test_pos(ccs, train_ann_mat, test_ann_mat, term_idx=term_idx) 
 
     return num_nodes, num_edges
+
+
+def get_ann_in_net(W, ann_mat, term_idx=None):
+    """
+    For a given network and annotation matrix, count how many of the annotated proteins
+    are in the network
+
+    *W*: scipy sparse matrix representing the network
+    *ann_mat*: sparse matrix containing the annotations. rows: prots, cols: terms
+
+    *returns*: # pos prots, # pos_prots_in_net
+    """
+    if term_idx is not None:
+        # get just the rows of the terms specified
+        ann_mat = ann_mat[term_idx]
+    # sum over the columns to get the prots with at least 1 positive example
+    pos_prots = np.ravel((ann_mat > 0).astype(int).sum(axis=0))
+    pos_prot_idx = set(list(pos_prots.nonzero()[0]))
+    pos_prots_in_net = 0
+    for p in pos_prot_idx:
+        if p in W:
+            pos_prots_in_net += 1
+    return len(pos_prots), pos_prots_in_net
 
 
 def print_cc_ann_stats(ccs, ann_mat, term_idx=None):

@@ -108,6 +108,12 @@ algs:
         alpha: [0.95]
         max_iters: [10]
 
+    rwr:
+        should_run: [True]
+        alpha: [0.5]
+        eps: [1e-4]
+        max_iters: [100]
+
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
     logistic_regression:
         should_run: [True]
