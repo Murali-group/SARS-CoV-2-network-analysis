@@ -1,0 +1,23 @@
+algs:
+  genemaniaplus:
+    alpha: [0.01, 0.1, 1,2,4,6,8,10, 100]
+    #alpha: [0.01, 0.1, 0.5, 1, 2, 10, 100]
+    should_run:
+    - True
+    tol:
+    - 1e-05
+eval_settings:
+  num_pred_to_write: -1
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    net_files:
+    - HI-union.tsv
+    net_version: networks/HI-union
+    plot_exp_name: HI-union
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/
+
+

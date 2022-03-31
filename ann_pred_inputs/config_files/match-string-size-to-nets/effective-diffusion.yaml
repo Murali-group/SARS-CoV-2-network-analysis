@@ -1,0 +1,54 @@
+algs:
+  genemaniaplus:
+    alpha: [0.01, 0.1, 1,2,4,6,8,10, 100]
+    #alpha: [0.01, 0.1, 0.5, 1, 2, 10, 100]
+    should_run:
+    - True
+    tol:
+    - 1e-05
+
+eval_settings:
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+  # TODO allow the config file to set early_prec
+  # for now, just pass --early-prec 0.3 when running the CV
+  #early_prec: [0.1, 0.3]
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "STRING-BioGRID"
+    net_settings:
+      string_cutoff: 629
+      string_nets: combined_score
+      weight_method: gmw
+      unweighted: True
+    net_version: networks/stringv11/biogrid-no-genetic-unw
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "STRING-BioGRID-Y2H"
+    net_settings:
+      string_cutoff: 935
+      string_nets: combined_score
+      weight_method: gmw
+      unweighted: True
+    net_version: networks/stringv11/biogrid-y2h-unw
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "STRING-HI-union"
+    net_settings:
+      string_cutoff: 951
+      string_nets: combined_score
+      weight_method: gmw
+      unweighted: True
+    net_version: networks/stringv11/hi-union-unw
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/

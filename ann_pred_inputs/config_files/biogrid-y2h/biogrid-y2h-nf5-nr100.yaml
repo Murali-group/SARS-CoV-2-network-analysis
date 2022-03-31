@@ -1,0 +1,87 @@
+algs:
+  genemania:
+    alpha:
+    - 10
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  genemaniaplus:
+    alpha:
+    - 3.4
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  localplus:
+    should_run:
+    - true
+  logistic_regression:
+    max_iters:
+    - 100
+    should_run:
+    - true
+  rwr:
+    alpha: [0.9]
+    eps:
+    - 0.0001
+    max_iters:
+    - 100
+    should_run:
+    - true
+  sinksourceplus:
+    alpha:
+    - 1.0
+    eps:
+    - 0
+    lambda:
+    - 1
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  deepnf:
+    # TODO RWR parameters:
+    #alpha: []
+    #K: []  # number of steps
+    #tol: [1e-04]
+    #max_iters: [100]
+    # embedding parameters: # just using the default values for now
+    # model architecture
+    #hidden_dims: [[1000, 500, 1000]]
+    hidden_dims: [[2500, 1200, 2500]]
+    # Number of epochs to train
+    epochs: [80]
+    batch_size: [64]
+    # factor for denoising the data
+    noise_factor: [0.5]
+    # SVM parameters
+    # the norm used in penalization
+    penalty: ['l2']
+    # inverse of regularization strength parameter
+    C: [0.1]
+    # a value of 0 for gamma will be a linear kernel
+    gamma: [0]
+    should_run: [False]
+
+eval_settings:
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    net_files:
+    - biogrid-9606-two-hybrid.tab
+    net_version: networks/biogrid-y2h
+    plot_exp_name: BioGRID-Y2H
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    largest_cc: True
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/
