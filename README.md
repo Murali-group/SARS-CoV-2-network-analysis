@@ -28,7 +28,7 @@ python src/masterscript.py --config config-files/master-config.yaml --download-o
 python src/masterscript.py --config config-files/biogrid.yaml --download-only
 python src/masterscript.py --config config-files/huri.yaml --download-only
 ```
-I was unable to automatically download the BioGRID files, so I added them to this repo here: [biogrid folder](https://github.com/Murali-group/SARS-CoV-2-network-analysis/tree/use_annotation_prediction/datasets/networks/biogrid). Run `gunzip datasets/networks/biogrid/biogrid-9606.tab.gz` and `gunzip datasets/networks/biogrid-y2h/biogrid-9606-two-hybrid.tab.gz` before running the masterscript.
+> I was unable to automatically download the BioGRID files, so I added them to this repo here: [biogrid folder](https://github.com/Murali-group/SARS-CoV-2-network-analysis/tree/use_annotation_prediction/datasets/networks/biogrid). Run `gunzip datasets/networks/biogrid/biogrid-9606.tab.gz` and `gunzip datasets/networks/biogrid-y2h/biogrid-9606-two-hybrid.tab.gz` before running the masterscript.
 
 The YAML config file contains the list of datasets to download and is self-documented. The following types of datasets are supported:
   - Networks
