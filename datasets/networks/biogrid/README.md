@@ -3,7 +3,7 @@
 Download from here: 
 https://downloads.thebiogrid.org/File/BioGRID/Release-Archive/BIOGRID-4.4.197/BIOGRID-ORGANISM-4.4.197.tab3.zip
 
-For some reason, I am not able to download this file from the command line.
+For some reason, I am not able to download this file from the command line. After downloading, unzip with:
 
 ```
 unzip BIOGRID-ORGANISM-4.4.197.tab3.zip
