@@ -241,7 +241,7 @@ dataset_settings:
 
 # This section contains settings which will be used to create another config file
 # in order to run the annotation_prediction pipeline.
-# See https://github.com/jlaw9/annotation_prediction/tree/no-ontology for more info
+# See https://github.com/Murali-group/annotation_prediction/tree/no-ontology for more info
 annotation_prediction_pipeline_settings:
     # Base directory where the inputs to the annotation_prediction pipeline will be placed
     input_dir: "ann_pred_inputs"

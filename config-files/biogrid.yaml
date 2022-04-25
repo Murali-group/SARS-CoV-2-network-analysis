@@ -1,0 +1,213 @@
+
+dataset_settings:
+
+    # Base directory where datasets will be placed
+    datasets_dir: "datasets"
+    # list of mapping files, one per species. Will be placed in datasets/mapping/species/
+    mappings:
+      #### Mapping options:
+      # *mapping_file*: path to file. Can be gzipped
+      # *species*: the name of the species 
+      # *url*: the url of the file to download
+      # *file_type*: type of mapping file. Current can be: 
+      #     'list': a list of mappings (i.e., many-to-many) where the first column is a uniprot ID, second is the namespace, and third is the ID of the other namespace
+      #     'table': a table of 1-to-1 mappings.
+      # *namespaces*: namespaces to keep from the file. If 'all' is given, then keep all of the mappings. If *file_type* is table, should be the column names. 
+          - mapping_file: "HUMAN_9606_idmapping.dat.gz"
+            species: "human"
+            url: "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/by_organism/HUMAN_9606_idmapping.dat.gz"
+            type: "list"
+            #namespaces: ["all"]
+            namespaces: ["ensembl", "gene_name", "string", "biogrid", "pharmgkb"]
+
+          - mapping_file: "uniprot-reviewed-status.tab.gz"
+            species: "human"
+            url: "https://www.uniprot.org/uniprot/?query=*&format=tab&force=true&columns=id,reviewed,genes,protein%20names,organism-id&fil=organism:9606&compress=yes"
+            type: "table"
+            namespaces: ["Status"]
+
+    # Download and parse *gene_sets*, *networks*, *drug targets*, etc.
+    datasets_to_download:
+
+      #### Network options:
+      # *name*: name of this network. Will be used as the directory
+      # *file_name*: the name of the file to download
+      # *network_collection*: T/F. Specifies if the downloaded file is an archive containing many networks
+      # *collection_settings*: settings to apply to each of the individual networks.
+      # *weighted*: T/F. If False, a column of all 1s (i.e., unweighted) will be added after the first two columns. 
+      #     If True, the first column in *columns_to_keep* should be the weights
+      # *unpack_command*: The command to run to unpackage the file/archive. (e.g., unzip, gzip, tar -xvf)
+      # *namespace*: the namespace of the nodes in the networks
+      # *url*: the url of the file to download
+      # *taxon*: the NCBI taxonomy ID of the species to which this network belongs. Currently not used.
+      # *species*: the name of the species (i.e., human, mouse). TODO should be used to line up with the mapping
+      # *prefer_reviewed*: when mapping, if any of the alternate IDs map to a reviewed UniProt ID, keeping only that one. Otherwise keep all UniProt IDs
+      # *gzip_files*: gzip the individual files
+      # *remove_filename_spaces*: if there are spaces in the file names, remove them
+      # *columns_to_keep*: a list of indexes of columns to keep in the new file. Should be >= 2 (first two columns should be the tail and head of the edge) 
+      #     If not specified, all columns will be kept
+      # *sep*: the delimiter of columns in the files
+        networks:
+#          - name: "stringv11"
+#            file_name: "9606-uniprot-links-full-v11.txt.gz"
+#            # This flag indicates the downloaded file has all string channels (i.e., "full")
+#            string_networks: True
+#            network_collection: False
+#            weighted: True
+#            #unpack_command: "gunzip"
+#            namespace: "string"
+#            url: "https://stringdb-static.org/download/protein.links.full.v11.0/9606.protein.links.full.v11.0.txt.gz"
+#            taxon: 9606
+#            species: "human"
+#            mapping_settings:
+#              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+#              prefer_reviewed: True
+#            # keep all of the columns
+#            #columns_to_keep: []
+#            sep: " "
+
+          - name: "biogrid"
+            file_name: "biogrid-9606.tab"
+            network_collection: False
+            weighted: False
+            #unpack_command: "gunzip"
+            namespace: "biogrid"
+            url: "biogrid-9606.tab"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            sep: "\t"
+
+          - name: "biogrid-y2h"
+            file_name: "biogrid-9606-two-hybrid.tab"
+            network_collection: False
+            weighted: False
+            #unpack_command: "gunzip"
+            namespace: "biogrid"
+            url: "biogrid-9606-two-hybrid.tab"
+            taxon: 9606
+            species: "human"
+            mapping_settings:
+              # if there are multiple mappings to UniProt IDs, use only the 'reviewed' one(s) 
+              prefer_reviewed: True
+            sep: "\t"
+
+# This section contains settings which will be used to create another config file
+# in order to run the annotation_prediction pipeline.
+# See https://github.com/Murali-group/annotation_prediction/tree/no-ontology for more info
+annotation_prediction_pipeline_settings:
+    # Base directory where the inputs to the annotation_prediction pipeline will be placed
+    input_dir: "ann_pred_inputs"
+    exp_name: "2020-03-sarscov2-human-ppi-ace2" 
+    pos_neg_file: "pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt"
+    # *name*: name of the corresponding downloaded network under "datasets_to_download"
+    # *network_collection*: T/F use this flag to run all of the networks in the collection
+    # *net_version*: if multiple network comparisons will be run, use this to distinguish between them
+    # *net_settings*: will be passed directly to the ann_pred pipeline. See that repo's config file for more info
+    networks_to_run:
+
+      - names: ["biogrid"]
+        file_name: "biogrid-9606.tab"
+        plot_exp_name: "BioGRID"
+        net_version: "biogrid"
+        multi_net: False
+
+      - names: ["biogrid-y2h"]
+        file_name: "biogrid-9606-two-hybrid.tab"
+        plot_exp_name: "BioGRID-Y2H"
+        net_version: "biogrid-y2h"
+        multi_net: False
+
+#    # This section contains the list of genesets for which to test the predictions from fastsinksource for enrichment,
+#    # and corresponding options to pass to the script
+#    genesets_to_test:
+#    # *name*: name of the corresponding downloaded geneset under "datasets_to_download"
+#    # *k_to_test*: list of k-values to get the top-k predictions to test. 
+#    # *range_k_to_test*: list of 3 integers: starting k, ending k, and step size
+#    # *pval_corr*: Method to use for multiple hypothesis testing correction.
+#    #              options: "BF" (Bonferroni), "BH" (Benjamini-Hochberg)
+#      - name: "covid19-crowd"
+#        data_type: "genesets"
+#        #k_to_test: [20, 50, 100]
+#        range_k_to_test: [10, 100, 10]
+#        pval_corr: "BF"
+#      - name: "pharmgkb"
+#        data_type: "drug-targets"
+#        #k_to_test: [20, 50, 100]
+#        range_k_to_test: [10, 100, 10]
+#        pval_corr: "BF"
+
+    # the outputs will follow this structure:
+    # outputs/<net_version>/<exp_name>/<alg_name>/output_files
+    output_dir: "outputs/"
+
+    # These settings will be passed to the annotation_prediction pipeline
+    eval_settings: 
+      # automatically generate the predictions for each method
+      num_pred_to_write: -1
+      # for the methods that need negative examples, randomly sample negatives equal to a ratio of 5:1 Neg:Pos
+      sample_neg_examples_factor: 5
+      # 100 repetitions 
+      num_reps: 100  
+      # uncomment this setting to run cross validation
+      #cross_validation_folds: 5
+      #cv_seed: 1
+
+    # Algorithms to run along with their settings.
+    # All combinations of parameters will be run. 
+    algs: 
+        # local has no parameters
+        local:
+            should_run: [True]
+        localplus:
+            should_run: [True]
+
+        genemaniaplus:
+            should_run: [True]
+            alpha: [1.0]
+            tol: [1e-05]
+
+        genemania:
+            should_run: [True]
+            alpha: [1.0]
+            tol: [1e-05]
+
+        fastsinksourceplus:
+            should_run: [True]
+            alpha: [0.99]
+            eps: [0]
+            max_iters: [10]
+            # this option isn't needed if alpha is < 1
+            #sinksourceplus_lambda: [0]
+
+        fastsinksource:
+            should_run: [True]
+            alpha: [0.99]
+            eps: [0]
+            max_iters: [10]
+
+        sinksourceplus:
+            should_run: [True]
+            alpha: [1.0]
+            eps: [0]
+            max_iters: [1000]
+            # the ss+ lambda option isn't needed if alpha is < 1
+            lambda: [10]
+
+        sinksource:
+            should_run: [True]
+            alpha: [1.0]
+            eps: [1e-4]
+            max_iters: [1000]
+
+        logistic_regression:
+            should_run: [True]
+            max_iters: [100]
+
+        svm:
+            should_run: [True]
+            max_iters: [1000]
+
+
