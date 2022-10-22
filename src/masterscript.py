@@ -16,7 +16,7 @@ import pandas as pd
 sys.path.insert(0,"")
 from src.setup_datasets import setup_dataset_files
 from src.utils.parse_utils import run_command
-from src.FastSinkSource.src.utils.config_utils import get_algs_to_run
+from src.annotation_prediction.src.utils.config_utils import get_algs_to_run
 
 
 def parse_args():
@@ -33,7 +33,7 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to download and parse input files, and (TODO) run the FastSinkSource pipeline using them.")
+    parser = argparse.ArgumentParser(description="Script to download and parse input files, and run the annotation_prediction pipeline using them.")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
@@ -44,15 +44,15 @@ def setup_opts():
     group.add_argument('--force-download', action='store_true', default=False,
                        help="Force re-downloading and parsing of the input files")
 
-    group = parser.add_argument_group('FastSinkSource Pipeline Options')
+    group = parser.add_argument_group('annotation_prediction Pipeline Options')
     group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
                        help="Algorithms for which to get results. Must be in the config file. " +
                        "If not specified, will get the list of algs with 'should_run' set to True in the config file")
     group.add_argument('--stats-only', action='store_true', default=False,
-                       help="Rather than run the entire FSS pipeline, just print out statistics about the network size and such. " +
+                       help="Rather than run the entire ann_pred pipeline, just print out statistics about the network size and such. " +
                        "Useful to parse the networks and setup the sparse matrices")
     group.add_argument('--force-run', action='store_true', default=False,
-                       help="Force re-running the FSS pipeline, and re-writing the associated config files")
+                       help="Force re-running the ann_pred pipeline, and re-writing the associated config files")
 
 #    # additional parameters
 #    group = parser.add_argument_group('Additional options')
@@ -82,27 +82,27 @@ def main(config_map, **kwargs):
     if kwargs.get('download_only'):
         return
 
-    # Now setup the config file to run the FastSinkSource pipeline using the specified networks
+    # Now setup the config file to run the annotation_prediction pipeline using the specified networks
     # For now I will assume some of the essential structure is already setup (i.e., committed to the repo) 
-    # TODO setup the pos-neg file(s) automatically (the file containing the positive and negative examples for which to use when running FSS)
-    fss_settings = config_map['fastsinksource_pipeline_settings']
+    # TODO setup the pos-neg file(s) automatically (the file containing the positive and negative examples for which to use when running ann_pred)
+    ann_pred_settings = config_map['annotation_prediction_pipeline_settings']
     # Before writing the config file, setup the geneset files and their settings for the config file 
-    geneset_settings = fss_settings.get('genesets_to_test')
+    geneset_settings = ann_pred_settings.get('genesets_to_test')
     if geneset_settings is not None:
-        fss_settings['genesets_to_test'] = setup_geneset_config(
+        ann_pred_settings['genesets_to_test'] = setup_geneset_config(
             datasets_dir, dataset_settings['datasets_to_download'], geneset_settings,
-            fss_settings, **kwargs)
+            ann_pred_settings, **kwargs)
 
-    config_files = setup_fss_config(datasets_dir, dataset_settings['datasets_to_download'], fss_settings, **kwargs) 
+    config_files = setup_ann_pred_config(datasets_dir, dataset_settings['datasets_to_download'], ann_pred_settings, **kwargs) 
 
-    # Now run FSS on each of the config files
+    # Now run ann_pred on each of the config files
     # TODO allow for parallelization of multiple networks / algorithms
-    print("\nRunning the FastSinkSource pipeline on %d config files" % (len(config_files)))
+    print("\nRunning the annotation_prediction pipeline on %d config files" % (len(config_files)))
     if len(config_files) > 0:
         print("\tsee the respective log files for more details")
     for config_file in config_files:
         log_file = config_file.replace('.yaml', '.log')
-        command = "python -u src/FastSinkSource/run_eval_algs.py "  + \
+        command = "python -u src/ann_pred/run_eval_algs.py "  + \
                   " --config %s " % (config_file) + \
                   " %s " % ("--forcealg" if kwargs.get('force_run') else "") + \
                   " %s " % ("--stats-only" if kwargs.get('stats_only') else "") + \
@@ -125,10 +125,10 @@ def main(config_map, **kwargs):
 
 def setup_geneset_config(
         datasets_dir, dataset_settings, genesets_to_run,
-        fss_settings, **kwargs):
+        ann_pred_settings, **kwargs):
     """
-    Setup the config options to test for enrichment of FastSinkSource algorithm predictions 
-        with the specified genesets
+    Setup the config options to test for enrichment with the specified genesets
+        among the algorithm predictions from the annotation_prediction pipeline 
     *returns*: an updated geneset_settings list with dictionaries of names, 
         file paths to the gene sets, and other settings
     """
@@ -152,7 +152,7 @@ def setup_geneset_config(
             file_name = download_genesets_settings[name]['file_name'] 
         gmt_file = "%s/%s/%s/%s" % (datasets_dir, data_type, name, file_name) 
         print(name, file_name)
-        new_gmt_file = "%s/genesets/%s/%s" % (fss_settings['input_dir'], name, file_name) 
+        new_gmt_file = "%s/genesets/%s/%s" % (ann_pred_settings['input_dir'], name, file_name) 
         # TODO allow to filter out some gene sets
         # don't need to do anything if it already exists since this is just a symlink
         if not os.path.isfile(new_gmt_file):
@@ -163,7 +163,7 @@ def setup_geneset_config(
             os.makedirs(os.path.dirname(new_gmt_file), exist_ok=True)
             os.symlink(os.path.abspath(gmt_file), new_gmt_file)
         # now setup the settings
-        ## remove the fss_inputs dir since that is specified as a variable in the config file
+        ## remove the ann_pred_inputs dir since that is specified as a variable in the config file
         #new_gmt_file = '/'.join(new_gmt_file.split('/')[1:])
         geneset['gmt_file'] = os.path.basename(new_gmt_file)
         new_genesets_settings.append(geneset)
@@ -171,34 +171,34 @@ def setup_geneset_config(
     return new_genesets_settings
 
 
-def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
+def setup_ann_pred_config(datasets_dir, dataset_settings, ann_pred_settings, **kwargs):
     """
-    Setup the config file(s) to run the FastSinkSource pipeline
+    Setup the config file(s) to run the annotation_prediction pipeline
 
-    *returns*: a list of config files that are ready to be used to run FSS
+    *returns*: a list of config files that are ready to be used to run ann_pred
     """
 
-    fss_dir = fss_settings['input_dir']
-    config_dir = "%s/config_files" % (fss_dir)
+    ann_pred_dir = ann_pred_settings['input_dir']
+    config_dir = "%s/config_files" % (ann_pred_dir)
     # start setting up the config map settings that will remain the same for all datasets
-    algs = get_algs_to_run(fss_settings['algs'], **kwargs)
+    algs = get_algs_to_run(ann_pred_settings['algs'], **kwargs)
     # make sure should_run is set to True
     for alg in algs:
-        fss_settings['algs']['should_run'] = [True]
+        ann_pred_settings['algs']['should_run'] = [True]
     config_map = {
-        'input_settings': {'input_dir': fss_dir,
+        'input_settings': {'input_dir': ann_pred_dir,
             'datasets': [],},
-        'output_settings': {'output_dir': fss_settings['output_dir']},
+        'output_settings': {'output_dir': ann_pred_settings['output_dir']},
         # only keep the specified algorithms in the config file
-        'algs': {alg: fss_settings['algs'][alg] for alg in algs},
+        'algs': {alg: ann_pred_settings['algs'][alg] for alg in algs},
     }
-    if 'genesets_to_test' in fss_settings:
-        config_map['genesets_to_test'] = fss_settings['genesets_to_test']
+    if 'genesets_to_test' in ann_pred_settings:
+        config_map['genesets_to_test'] = ann_pred_settings['genesets_to_test']
     eval_str = ""
-    if fss_settings.get('eval_settings'):
+    if ann_pred_settings.get('eval_settings'):
         # append a string of the evaluation settings specified to the yaml file so you can run multiple in parallel.
         # TODO also add a postfix parameter
-        eval_s = fss_settings.get('eval_settings')
+        eval_s = ann_pred_settings.get('eval_settings')
         config_map['eval_settings'] = eval_s
         eval_str = "%s%s%s%s" % (
             "-cv%s" % eval_s['cross_validation_folds'] if 'cross_validation_folds' in eval_s else "",
@@ -208,13 +208,13 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
             )
     # for now, use the same pos_neg_file and base experiment name for every network 
     base_dataset_settings = {
-        'exp_name': fss_settings['exp_name'],
-        'pos_neg_file': fss_settings['pos_neg_file'],
+        'exp_name': ann_pred_settings['exp_name'],
+        'pos_neg_file': ann_pred_settings['pos_neg_file'],
         'net_files': [],
         'string_net_files': [],
     }
 
-    pos_neg_file = "%s/%s" % (fss_dir, fss_settings['pos_neg_file'])
+    pos_neg_file = "%s/%s" % (ann_pred_dir, ann_pred_settings['pos_neg_file'])
     print("Reading %s" % (pos_neg_file))
     krogan_nodes = pd.read_csv(pos_neg_file, sep='\t', index_col=None, header=0)['prots']
     print("\t%d 'krogan' nodes" % (len(krogan_nodes)))
@@ -224,7 +224,7 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
     download_drug_target_settings = {dt['name']: dt for dt in dataset_settings.get('drug-targets',{})}
     # now make the config files, and then call run_eval_algs.py
     config_files = []
-    for net in fss_settings['networks_to_run']:
+    for net in ann_pred_settings['networks_to_run']:
         net_config_map = copy.deepcopy(config_map)
         names = net['names']
         # extract the dataset settings to get the file paths to given networks specified
@@ -257,11 +257,11 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 net_version = name+'/'+file_name
                 if drug_targets is not None:
                     setup_drug_target_nets(
-                        fss_dir, net_version, drug_target_files,
+                        ann_pred_dir, net_version, drug_target_files,
                         curr_net_files+dataset_string_files, nodes_to_remove=krogan_nodes)
                     curr_net_files += drug_target_files 
                 curr_settings = setup_net_settings(
-                    fss_dir, copy.deepcopy(base_dataset_settings), net_version,
+                    ann_pred_dir, copy.deepcopy(base_dataset_settings), net_version,
                     net_files=curr_net_files, dataset_net_settings=net_settings)
                 curr_settings['exp_name'] += "-%s" % (os.path.basename(net_file).split('.')[0])
                 net_config_map['input_settings']['datasets'].append(curr_settings) 
@@ -269,13 +269,13 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
             if drug_targets is not None:
                 # for drug target files, only include the edges where the target is in the network
                 setup_drug_target_nets(
-                    fss_dir, name, drug_target_files, dataset_net_files+dataset_string_files,
+                    ann_pred_dir, name, drug_target_files, dataset_net_files+dataset_string_files,
                     nodes_to_remove=krogan_nodes)
                 dataset_net_files += drug_target_files
             curr_settings = setup_net_settings(
-                fss_dir, copy.deepcopy(base_dataset_settings), name,
+                ann_pred_dir, copy.deepcopy(base_dataset_settings), name,
                 net_files=dataset_net_files, string_net_files=dataset_string_files,
-                dataset_net_settings=net_settings, plot_exp_name=net_settings.get('plot_exp_name'))
+                dataset_net_settings=net_settings, plot_exp_name=net.get('plot_exp_name'))
             net_config_map['input_settings']['datasets'].append(curr_settings) 
         # now write the config file 
         config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
@@ -410,7 +410,7 @@ def setup_net_settings(
                 os.symlink(os.path.abspath(net_file), new_net_file)
             dataset_settings['net_version'] = "networks/"+net_version
 
-            # The FSS pipeline uses this to distinguish the file with all individual string channels
+            # The ann_pred pipeline uses this to distinguish the file with all individual string channels
             if net_type == 'string':
                 dataset_settings['string_net_files'].append(file_name)
             else:

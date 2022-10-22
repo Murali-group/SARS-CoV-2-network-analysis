@@ -1,6 +1,0 @@
-# add a double border to the nodes that are discussed in the text
-border-style	double	DB01394|Q9BSJ2|Q96CW5|Q71U36|P68366|P07437|P23258|P68371	-
-# make the color red/orange
-border-color	"#fc5817"	DB01394|Q9BSJ2|Q96CW5|Q71U36|P68366|P07437|P23258|P68371	-
-border-width	12px	DB01394|Q9BSJ2|Q96CW5|Q71U36|P68366|P07437|P23258|P68371	-
-

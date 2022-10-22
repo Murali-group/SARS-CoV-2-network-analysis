@@ -1,0 +1,79 @@
+algs:
+  rl:
+    alpha: [3.4]
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  rwr:
+    alpha: [0.5]
+    eps:
+    - 0.0001
+    max_iters:
+    - 100
+    should_run:
+    - true
+  genemania:
+    alpha:
+    - 0.1
+    should_run:
+    - false
+    tol:
+    - 1e-05
+  sinksourceplus:
+    alpha:
+    - 1.0
+    eps:
+    - 0
+    lambda:
+    - 100
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    # the norm used in penalization
+    penalty: ['l2']
+    # inverse of regularization strength parameter
+    #C: [10]
+    C: [1]
+    tol: [1e-04]
+    max_iters: [1000]
+    should_run:
+    - false
+  logistic_regression:
+    # the norm used in penalization
+    penalty: ['l2']
+    # inverse of regularization strength parameter
+    #C: [1000]
+    C: [1]
+    tol: [1e-04]
+    max_iters: [100]
+    should_run:
+    - false
+  localplus:
+    should_run:
+    - true
+
+eval_settings:
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+  # TODO allow the config file to set early_prec
+  # for now, just pass --early-prec 0.3 when running the CV
+  #early_prec: [0.1, 0.3]
+input_settings:
+  datasets:
+  - exp_name: 2020-03-sarscov2-human-ppi-ace2
+    plot_exp_name: "STRING"
+    net_settings:
+      string_cutoff: 400
+      string_nets: combined_score
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/2020-03-sarscov2-human-ppi-ace2/pos.txt
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/

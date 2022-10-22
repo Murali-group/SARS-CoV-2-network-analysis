@@ -1,0 +1,87 @@
+algs:
+  fastsinksource:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  fastsinksourceplus:
+    alpha:
+    - 0.99
+    eps:
+    - 0
+    max_iters:
+    - 10
+    should_run:
+    - true
+  genemania:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  genemaniaplus:
+    alpha:
+    - 1.0
+    should_run:
+    - true
+    tol:
+    - 1e-05
+  local:
+    should_run:
+    - true
+  localplus:
+    should_run:
+    - true
+  logistic_regression:
+    max_iters:
+    - 100
+    should_run:
+    - true
+  sinksource:
+    alpha:
+    - 1.0
+    eps:
+    - 1e-4
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  sinksourceplus:
+    alpha:
+    - 1.0
+    eps:
+    - 0
+    lambda:
+    - 10
+    max_iters:
+    - 1000
+    should_run:
+    - true
+  svm:
+    max_iters:
+    - 1000
+    should_run:
+    - true
+eval_settings:
+  num_pred_to_write: -1
+  num_reps: 100
+  sample_neg_examples_factor: 5
+input_settings:
+  datasets:
+  - exp_name: SARS-CoV
+    net_settings:
+      string_cutoff: 400
+      string_nets: combined_score
+      weight_method: gmw
+    net_version: networks/stringv11/400
+    pos_neg_file: pos-neg/virhostnet-sarscov-human-ppi/pos.txt 
+    string_net_files:
+    - 9606-uniprot-links-full-v11.txt.gz
+  input_dir: ann_pred_inputs
+output_settings:
+  output_dir: outputs/

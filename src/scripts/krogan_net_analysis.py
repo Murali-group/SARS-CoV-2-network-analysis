@@ -49,12 +49,12 @@ def parse_args():
 
 def setup_opts():
     ## Parse command line args.
-    parser = argparse.ArgumentParser(description="Script to test for enrichment of the top predictions among given genesets")
+    parser = argparse.ArgumentParser(description="")
 
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, required=True,
-                       help="Configuration file used when running FSS. ")
+                       help="Configuration file used when running the ann_pred scripts. ")
     group.add_argument('--sarscov2-human-ppis', default='datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv',
                        help="Table of virus and human ppis. Default: datasets/protein-networks/2020-03-biorxiv-krogan-sars-cov-2-human-ppi-ace2.tsv")
     group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
@@ -180,7 +180,7 @@ def eval_diffusion(dataset, net_obj, krogan_nodes_idx, **kwargs):
         nodes = list(range(len(net_obj.nodes)))
         random_sets = [np.random.choice(nodes, size=len(krogan_nodes_idx), replace=False) for i in range(num_random_sets)]
 
-    print("getting the diffusion from in %d random sets" % (num_random_sets))
+    print("getting the diffusion in %d random sets" % (num_random_sets))
     rand_diffusions = []
     rand_pvals = []
     for i, rand_idx in enumerate(tqdm(random_sets)):                           

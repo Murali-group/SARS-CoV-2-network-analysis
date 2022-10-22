@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:jlaw9/deepNF.git
+	branch = master
+	commit = 401dd28cf7bf5c633431fbef924a8bffdd0f5eff
+	parent = 4c522e57978eed8331f09a45ed0d3c16dc1672d5
+	method = merge
+	cmdver = 0.4.1

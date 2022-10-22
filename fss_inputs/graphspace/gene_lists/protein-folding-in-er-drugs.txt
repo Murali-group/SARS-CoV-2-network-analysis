@@ -1,5 +1,0 @@
-# this is the list of drugs to include that are anti-coagulation
-DB00031
-DB06245
-DB00945
-DB01593

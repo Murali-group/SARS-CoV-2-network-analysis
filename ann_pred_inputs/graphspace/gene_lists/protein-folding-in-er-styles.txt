@@ -1,0 +1,5 @@
+# add a double border to the nodes that are discussed in the text
+border-style	double	P11021|P27824|P27797|Q9Y4L1|P14625|DB00945|DB01593	-
+# make the color red/orange
+border-color	"#fc5817"	P11021|P27824|P27797|Q9Y4L1|P14625|DB00945|DB01593	-
+border-width	12px	P11021|P27824|P27797|Q9Y4L1|P14625|DB00945|DB01593	-
