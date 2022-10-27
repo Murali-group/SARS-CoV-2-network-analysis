@@ -12,17 +12,18 @@ import time
 import pandas as pd
 #import subprocess
 
-# packages in this repo
-sys.path.insert(0,"")
-from src.setup_datasets import setup_dataset_files
-from src.utils.parse_utils import run_command
-from src.FastSinkSource.src.utils.config_utils import get_algs_to_run
 
+# packages in this repo
+sys.path.insert(0,"/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/")
+from setup_datasets import setup_dataset_files
+from utils.parse_utils import run_command
+from FastSinkSource.src.utils.config_utils import get_algs_to_run
 
 def parse_args():
     parser = setup_opts()
     args = parser.parse_args()
     kwargs = vars(args)
+
     with open(args.config, 'r') as conf:
         #config_map = yaml.load(conf, Loader=yaml.FullLoader)
         config_map = yaml.load(conf)
@@ -277,7 +278,7 @@ def setup_fss_config(datasets_dir, dataset_settings, fss_settings, **kwargs):
                 net_files=dataset_net_files, string_net_files=dataset_string_files,
                 dataset_net_settings=net_settings, plot_exp_name=net_settings.get('plot_exp_name'))
             net_config_map['input_settings']['datasets'].append(curr_settings) 
-        # now write the config file 
+        # now write the config file
         config_file = "%s/%s%s.yaml" % (config_dir, name, eval_str)
         if kwargs.get('force_run') is not True and os.path.isfile(config_file):
             print("'%s' already exists. Use --force-run to overwite and run 'run_eval_algs.py'." % (config_file))

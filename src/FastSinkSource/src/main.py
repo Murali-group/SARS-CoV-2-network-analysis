@@ -49,7 +49,8 @@ def setup_opts():
 
     # general parameters
     group = parser.add_argument_group('Main Options')
-    group.add_argument('--config', type=str, default="config-files/config.yaml",
+    group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
+                                                     "fss_inputs/config_files/provenance/provenance_biogrid_y2h_go.yaml",
             help="Configuration file")
     group.add_argument('--term', '-T', type=str, action="append",
             help="Specify the terms to use. Can use this option multiple times")
@@ -79,7 +80,8 @@ def setup_opts():
     group.add_argument('--early-prec', '-E', type=str, action="append", default=["k1", "0.1"],
             help="Report the precision at the specified recall value (between 0 and 1). " + \
             "If prefixed with 'k', for a given term, the precision at (k * # ann) # of nodes is given. Default: k1, 0.1")
-    group.add_argument('--eval-stat-sig-nodes', type=int,
+    #TODO: remove default=2
+    group.add_argument('--eval-stat-sig-nodes', type=int, default=0,
             help="Evaluate the node statistical significance by repeating predictions with multiple subsets. " +
             "Specify the # repetitions.")
     group.add_argument('--num-bins', type=int, default=10,
@@ -216,7 +218,7 @@ def setup_net(input_dir, dataset, **kwargs):
                 string_cutoff = dataset['net_settings'].get('string_cutoff', 150) 
             out_pref = "%s/sparse-nets/%s" % (net_dir, "c%d-"%string_cutoff if string_net_files else "")
             utils.checkDir(os.path.dirname(out_pref))
-            sparse_nets, net_names, prots = setup.create_sparse_net_file(
+            sparse_nets, net_names, prots, netx_graphs = setup.create_sparse_net_file(
                     out_pref, net_files=net_files, string_net_files=string_net_files, 
                     string_nets=string_nets,
                     string_cutoff=string_cutoff,
@@ -234,13 +236,13 @@ def setup_net(input_dir, dataset, **kwargs):
             weight_method = dataset['net_settings']['weight_method'].lower()
         net_obj = setup.Sparse_Networks(
             sparse_nets, prots, net_names=net_names, weight_method=weight_method,
-            unweighted=unweighted, verbose=kwargs.get('verbose',False)
+            unweighted=unweighted, netx_graphs=netx_graphs, verbose=kwargs.get('verbose',False)
         )
     else:
         if net_files is None:
             print("ERROR: no net files specified in the config file. Must provide either 'net_files', or 'string_net_files'")
             sys.exit()
-        W, prots = alg_utils.setup_sparse_network(net_files[0], forced=kwargs.get('forcenet',False))
+        W, prots = alg_utils.setup_sparse_network(net_files[0], forced=kwargs.get('forcenet', False))
         net_obj = setup.Sparse_Networks(
             W, prots, unweighted=unweighted, verbose=kwargs.get('verbose',False))
     # store the output prefix of the network to use later
@@ -271,6 +273,8 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
         input_dir, dataset['net_version'], net_files_str, pos_neg_str)
     # now build the annotation matrix
     pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
+
+    print("\n\nGoing into create Sparse ann: ", sparse_ann_file)
     ann_obj = setup.create_sparse_ann_and_align_to_net(
             pos_neg_file, sparse_ann_file, prots, **kwargs)
 
@@ -335,7 +339,7 @@ def setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs):
     return alg_runners
 
 
-def run_algs(alg_runners, **kwargs):
+def run_algs(alg_runners, save = True, **kwargs):
     """
     Runs all of the specified algorithms with the given network and annotations.
     Each runner should return the GO term prediction scores for each node in a sparse matrix.
@@ -365,7 +369,8 @@ def run_algs(alg_runners, **kwargs):
     # now setup the inputs for the runners
     for run_obj in runners_to_run:
         # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
-        if 'plus' not in run_obj.name and neg_factor is not None:
+        if 'plus' not in run_obj.name and 'rwr' not in run_obj.name and neg_factor is not None:
+            print('run obj name:', run_obj.name,'\n\n')
             orig_ann_obj = run_obj.ann_obj
             # sample negative examples, repeat the method the given number of times,
             # and then average the resulting scores
@@ -389,23 +394,25 @@ def run_algs(alg_runners, **kwargs):
             params_results.update(run_obj.params_results)
 
     # parse the outputs. Only needed for the algs that write output files
-    for run_obj in runners_to_run:
-        run_obj.setupOutputs()
+    if save:
+        for run_obj in runners_to_run:
+            run_obj.setupOutputs()
 
-        # write to file if specified
-        num_pred_to_write = kwargs.get('num_pred_to_write',10)
-        if kwargs.get('factor_pred_to_write') is not None:
-            # make a dictionary with the # ann*factor for each term
-            num_pred_to_write = {} 
-            for i in range(run_obj.ann_matrix.shape[0]):
-                y = run_obj.ann_matrix[i,:]
-                positives = (y > 0).nonzero()[1]
-                num_pred_to_write[run_obj.terms[i]] = len(positives) * kwargs['factor_pred_to_write']
-        if num_pred_to_write != 0:
-            utils.checkDir(os.path.dirname(run_obj.out_file)) 
-            alg_utils.write_output(run_obj.term_scores, run_obj.ann_obj.terms, run_obj.ann_obj.prots,
-                         run_obj.out_file, num_pred_to_write=num_pred_to_write)
+            # print('stop 1\n')
+            # write to file if specified
+            num_pred_to_write = kwargs.get('num_pred_to_write',10)
+            if kwargs.get('factor_pred_to_write') is not None:
+                # make a dictionary with the # ann*factor for each term
+                num_pred_to_write = {}
+                for i in range(run_obj.ann_matrix.shape[0]):
+                    y = run_obj.ann_matrix[i,:]
+                    positives = (y > 0).nonzero()[1]
+                    num_pred_to_write[run_obj.terms[i]] = len(positives) * kwargs['factor_pred_to_write']
+            if num_pred_to_write != 0:
+                utils.checkDir(os.path.dirname(run_obj.out_file))
+                alg_utils.write_output(run_obj.term_scores, run_obj.ann_obj.terms, run_obj.ann_obj.prots,
+                             run_obj.out_file, num_pred_to_write=num_pred_to_write)
 
-    #eval_loso.write_stats_file(runners_to_run, params_results)
-    #print(params_results)
+        #eval_loso.write_stats_file(runners_to_run, params_results)
+        #print(params_results)
     return runners_to_run

@@ -1,0 +1,51 @@
+****************************************************** Prediction ****************************************************
+
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net
+
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_go.yaml --num-pred-to-write -1  --forcealg --eval-stat-sig-nodes 1000
+
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_string_s12.yaml  --eval-stat-sig-nodes 1000
+
+****************************************************** Prediction on GO ****************************************************
+First prepare the go-terms as positive-neg example and then run run_eval_algs.py such that each GO term is considered as a pos source set.
+You can delete fss_inputs/go to make sure that all the files are created and nothing old lingers.
+
+python src/FastSinkSource/src/utils/go_prep_utils.py
+
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_go.yaml --num-pred-to-write -1 --forcealg
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_go.yaml --num-pred-to-write -1 --forcealg
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_go.yaml --num-pred-to-write -1 --forcealg
+python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_hi_union_go.yaml --num-pred-to-write -1 --forcealg
+
+
+
+
+******************************************* Compute Shortest Paths Eppsteins: ********************************************
+
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net
+
+python src/scripts/diffusion/path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_s12.yaml --k 332 --m 20 --n-sp 200 --max-len 100
+
+
+
+******************************************* Plot and Analysis on Predictions and Shortest paths ****************************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net
+
+
+python src/scripts/diffusion/plot_path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332 --m 20 --n-sp 200
+
+python src/scripts/diffusion/node_based_effective_diffusion.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332
+
+
+
+******************************************** Old as of Oct 2, 2022 **********************************************************
+
+Node based effective 
+python src/scripts/effective_diffusion_analysis.py --config fss_inputs/config_files/provenance/provenance_string_s12.yaml --cutoff 0.01 --k  332 --k  500 --k 1000 --stat-sig-cutoff 0.05
+
+python src/scripts/diffusion_path_analysis.py --config fss_inputs/config_files/provenance/provenance_biogrid_s12.yaml --k  332 --run-algs 'genemaniaplus'
+ 
+python -m cProfile -o src/scripts/profile_diffusion_path_analysis.txt -m module | diffusion_path_analysis.py

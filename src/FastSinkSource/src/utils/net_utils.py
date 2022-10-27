@@ -57,6 +57,10 @@ def print_cc_ann_stats(ccs, ann_mat, term_idx=None):
     for p in pos_prot_idx:
         if p in ccs[largest_cc]:
             pos_prots_in_largest_cc += 1
+    # print('prots outside largest cc: ', set(pos_prot_idx).difference(set(ccs[largest_cc])))
+    # for cc, nodes in ccs.items():
+    #     if cc!=largest_cc:
+    #         print(len(nodes),':', nodes,'\n')
     print("%d/%d (%0.2f%%) pos prots are in the largest cc" % (
         pos_prots_in_largest_cc, len(pos_prot_idx),
         (float(pos_prots_in_largest_cc) / len(pos_prot_idx))*100))

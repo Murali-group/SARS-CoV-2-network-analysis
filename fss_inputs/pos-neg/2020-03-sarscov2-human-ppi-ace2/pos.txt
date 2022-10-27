@@ -1,4 +1,4 @@
-prots	2020-03-sarscov2-human-ppi
+prots	2020-03-sarscov2-human-ppi-ace2
 O00203	1
 O60885	1
 P25440	1

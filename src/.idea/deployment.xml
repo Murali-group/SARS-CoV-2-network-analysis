@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="tasnina@bioinformatics.cs.vt.edu:22" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
+    <serverData>
+      <paths name="tasnina@bioinformatics.cs.vt.edu:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/tasnina/Projects/SARS-CoV-2-Provenance/SARS-CoV-2-network-analysis/src" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

@@ -2,7 +2,7 @@
 import os
 import sys
 import gzip
-import json
+from zipfile import ZipFile
 import wget
 import requests
 import shutil
@@ -26,8 +26,6 @@ def parse_drugbank_csv(csv, **kwargs):
         .melt(id_vars=orig_cols, value_name=new_col) \
         .drop("variable", axis=1) \
         .dropna(subset=[new_col])
-
-    #print(df2.head())
     return df2
 
 

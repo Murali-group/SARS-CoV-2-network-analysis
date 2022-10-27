@@ -44,6 +44,7 @@ ALG_NAMES = {
     'genemania': 'GM', 'genemaniaplus': 'RL',
     'logistic_regression': 'LogReg',
     'svm': 'SVM',
+    'rwr': 'RWR'
     }
 
 measure_map = {'fmax': r'F$_{\mathrm{max}}$'}
@@ -1011,6 +1012,7 @@ def load_alg_results(
     for param_combo in combos:
         # first get the parameter string for this runner
         params_str = runner.get_runner_params_str(alg, param_combo, dataset=dataset)
+        # if kwargs.get('cross_validation_folds'):
         cv_file = "%s/%s/%s%s%s%s.txt" % (out_dir, alg, eval_type, params_str, postfix, prec_rec_str)
         if not os.path.isfile(cv_file):
             print("\tnot found %s - skipping" % (cv_file))
@@ -1018,6 +1020,12 @@ def load_alg_results(
         if kwargs.get('verbose'):
             print("\treading %s" % (cv_file))
         df = pd.read_csv(cv_file, sep='\t')
+    # else:
+        #     pred_file = "%s/%s/%s%s%s%s.txt" % (out_dir, alg, 'pred-scores', params_str, postfix, prec_rec_str)
+        #     if not os.path.isfile(pred_file):
+        #         print("\tnot found %s - skipping" % (pred_file))
+        #
+        #     df = pd.read_csv(pred_file, sep='\t')
         # remove any duplicate rows
         df.drop_duplicates(inplace=True)
         # hack to get the script to plot just the parameter value

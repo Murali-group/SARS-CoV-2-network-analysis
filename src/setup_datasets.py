@@ -482,6 +482,8 @@ def setup_network(
 
     *returns*: a dictionary of mapping statistics
     """
+    mapping_stats = None
+
     # read in the file
     # the edges should be the first two columns
     edges = []
@@ -503,7 +505,7 @@ def setup_network(
                 extra_cols.append(line[2:] if len(line) > 2 else [])
     # map to uniprot if its in a different namespace
     new_edges, new_extra_cols = edges, extra_cols
-    mapping_stats = None
+
     if namespace is not None and namespace.lower() not in ['uniprot', 'uniprotkb']:
         if namespace_mappings is None:
             print("WARNING: mappings not supplied. Unable to map from '%s' to UniProt IDs." % (namespace))
@@ -520,6 +522,7 @@ def setup_network(
                 # if weighted is True, then the first column in new_extra_cols should be the weight
                 '\t'.join(new_extra_cols[i]))
             out.write(new_line.encode() if '.gz' in new_file else new_line)
+
     # keep track of the mapping statistics
     return mapping_stats
 

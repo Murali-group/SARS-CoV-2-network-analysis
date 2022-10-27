@@ -8,18 +8,27 @@ import numpy as np
 from scipy.linalg import inv
 from scipy.sparse import eye, diags
 from scipy.sparse.linalg import spsolve, cg, spilu, LinearOperator
-
 from . import alg_utils
+
+import numpy as np
+from numpy.linalg import norm
+
+def check_symmetric(a):
+    return np.allclose(a, a.T, rtol=1e-05, atol=1e-08)
 
 
 def setup_laplacian(W):
     # first normalize the network
     P = alg_utils._net_normalize(W)
-    # take the column sum and set them as the diagonals of a matrix
+    # take the row sum and set them as the diagonals of a matrix
     deg = np.asarray(P.sum(axis=0)).flatten()
     deg[np.isinf(deg)] = 0
     D = diags(deg)
     L = D - P
+    # print('W symmetric: ', check_symmetric(W.todense()))
+    # print('P symmetric: ',check_symmetric(P.todense()))
+    # print('D symmetric: ', check_symmetric(D.todense()))
+    # print('L symmetric: ', check_symmetric(L.todense()))
     return L
 
 
@@ -41,7 +50,7 @@ def runGeneMANIA(L, y, alpha=1, tol=1e-05, Milu=None, verbose=False):
     num_neg = len(np.where(y == -1)[0])
     if num_pos == 0:
         print("WARNING: No positive examples given. Skipping.")
-        return np.zeros(len(y)), 0,0,0
+        return np.zeros(len(y)), 0, 0, 0
     # if there are no negative examples, 
     # then leave the unknown examples at 0
     if num_neg == 0:
@@ -59,25 +68,52 @@ def runGeneMANIA(L, y, alpha=1, tol=1e-05, Milu=None, verbose=False):
     start_wall_time = time.time()
     M = eye(L.shape[0]) + alpha*L
 
+    # print('M symmetric: ', check_symmetric(M.todense()))
     # keep track of the number of iterations
     num_iters = 0
     def callback(xk):
         # keep the reference to the variable within the callback function (Python 3)
         nonlocal num_iters
         num_iters += 1
-
     # use scipy's conjugate gradient solver
+
+    #Jeff's
     f, info = cg(M, y, tol=tol, M=Milu, callback=callback)
+    assert (info == 0), print('cg not converging in RL')
+    # print('NUMPY conjugate info EXIT code: ', info)
     process_time = time.process_time() - start_process_time
     wall_time = time.time() - start_wall_time
     if verbose:
         print("Solved GeneMANIA using conjugate gradient (%0.2f sec, %0.2f sec process_time). Info: %s, k=%0.6f, iters=%d" % (
             wall_time, process_time, str(info), k, num_iters))
 
+
+    #Nure's
+    # M_full = M.A
+    # M_inv = inv(M_full)
+    # f = np.matmul(M_inv, y)
+    # process_time = time.process_time() - start_process_time
+    # wall_time = time.time() - start_wall_time
+
     return f, process_time, wall_time, num_iters
 
 
-def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
+def compute_two_loss_terms(y_true, y_pred, alpha, W):
+    # first term in quadratic loss function in RL = 1/(1+alpha)*(||y_pred-y_true||^2)
+    loss_term1 = (1/(1.0+alpha))*norm((y_true-y_pred), ord=2)**2
+
+    # second term in quadratic loss function of RL = alpha/(1+alpha)*(y_pred*L*y_pred_transpose)
+    y_pred = y_pred.reshape(-1, len(y_pred)) #convert y_pred from 1D to 2D array of size (1 x num_nodes)
+    L = setup_laplacian(W)
+
+    L = L.toarray()
+
+    loss_term2 = (alpha/(1.0+alpha))* np.matmul(np.matmul(y_pred, L), y_pred.transpose())[0,0]
+
+    return loss_term1, loss_term2
+
+
+def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None, force_run=False):
     """
     Generate the diffusion/propagation matrix of a network by taking the inverse of the laplaciain,
     also known as the Regularized Laplacian (RL)
@@ -85,9 +121,10 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
 
     *W*: scipy sparse matrix representation of a network
     *alpha*: value of alpha for propagation
-    *diff_mat_file*: path/to/file to store the RL (example: "%sdiffusion-mat-a%s.npy" % (net_obj.out_pref, str(alpha).replace('.','_')))
+    *diff_mat_file*: path/to/file to store the RL (example: "%sdiffusion-mat-a%s.npy" % (net_obj.out_pref,
+     str(alpha).replace('.','_')))
     """
-    if diff_mat_file is not None and os.path.isfile(diff_mat_file):
+    if diff_mat_file is not None and os.path.isfile(diff_mat_file) and force_run==False:
         # read in the diffusion mat file
         print("Reading %s" % (diff_mat_file))
         return np.load(diff_mat_file)
@@ -98,18 +135,90 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None):
     # we want to solve for (I + a*L)^-1
     M = eye(L.shape[0]) + alpha*L 
     print("computing the inverse of (I + a*L) as the diffusion matrix, for alpha=%s" % (alpha))
-    # first convert the scipy sparse matrix to a numpy matrix
+
+    # first convert the scipy sparse matrix to a numpy matrix and then take inverse
     M_full = M.A
-    # now take the inverse
     M_inv = inv(M_full)
+
+    #take inverse of spase matrix directly
+    # M_inv = inv(M)
+    print('M_inv done')
 
     # write to file so this doesn't have to be recomputed
     if diff_mat_file is not None:
         print("Writing to %s" % (diff_mat_file))
+        os.makedirs(os.path.dirname(diff_mat_file), exist_ok=True)
         np.save(diff_mat_file, M_inv)
 
     return M_inv
 
+
+def get_fluid_flow_matrix(W, alpha=1.0, fluid_flow_mat_file_M=None, fluid_flow_mat_file_R=None, force_run=False):
+    """
+    Generate the diffusion/propagation matrix of a network by taking the inverse of the laplaciain,
+    also known as the Regularized Laplacian (RL)
+    *Note that the result is a dense matrix*
+
+    *W*: scipy sparse matrix representation of a network
+    *alpha*: value of alpha for propagation
+    *diff_mat_file*: path/to/file to store the RL (example: "%sdiffusion-mat-a%s.npy" % (net_obj.out_pref, str(alpha)
+    .replace('.','_')))
+    """
+    if os.path.isfile(fluid_flow_mat_file_M) and os.path.isfile(fluid_flow_mat_file_R) and (force_run==False):
+        # read in the diffusion mat file
+        print("Reading %s" % (fluid_flow_mat_file_M))
+        M_log = np.load(fluid_flow_mat_file_M)
+
+        print("Reading %s" % (fluid_flow_mat_file_R))
+        R = np.load(fluid_flow_mat_file_R)
+
+    else:
+        W_norm = alg_utils._net_normalize(W)
+        # take the column sum and set them as the diagonals of a matrix
+        deg = np.asarray(W_norm.sum(axis=0)).flatten() #check
+        deg[np.isinf(deg)] = 0
+        D_norm = diags(deg)
+
+        # the equation for final M is W_norm*a(I + a*D_norm)^-1
+        #first compute Q_inv = (I + a*D_norm)^-1
+        Q = eye(D_norm.shape[0]) + alpha*D_norm
+        Q = Q.A
+        Q_inv = inv(Q)
+
+        W_norm = W_norm.A
+        #now to get final M, compute M=W_norm*a*Q_inv
+        W_norm= W_norm*alpha
+        M = np.matmul(W_norm, Q_inv)
+
+        #R=(I-M)^-1
+        R = eye(M.shape[0]) - M
+        R = inv(R)
+
+        del W_norm, Q
+        # now take absolute value of logarithm of each element/weight in M so that while calculating
+        # shortest path we can add the weights to compute the cost of a path. Initially,( without
+        # logarithm)from Mark's derivation the cost of a path l->k->j->i is M_ij*M_jk*M_kl*b_l where
+        # l is a source and b_l = 1 for genemaniaplus
+
+        assert np.all(M<1), print('sum of weight greater than 1')
+        M_log = np.absolute(np.log10(M))
+
+        # log converts 0 elements into infinity. infinity weight==no edge.
+        # so effectively we can convert infinity -> 0 and then convert this array into networkx Graph
+        # thus the edges with infinity weight will won't appear in netx graph
+        # this way conversion to netx will be time efficient
+        M_log[np.isinf(M_log)] = 0
+
+
+        print("Writing to %s" % (fluid_flow_mat_file_M))
+        os.makedirs(os.path.dirname(fluid_flow_mat_file_M), exist_ok=True)
+        np.save(fluid_flow_mat_file_M, M_log)
+
+        print("Writing to %s" % (fluid_flow_mat_file_R))
+        os.makedirs(os.path.dirname(fluid_flow_mat_file_R), exist_ok=True)
+        np.save(fluid_flow_mat_file_R, R)
+
+    return M_log, R
 
 def get_pred_main_contributors(
         pred_scores, M_inv, pos_idx,

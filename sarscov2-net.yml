@@ -1,0 +1,9 @@
+name: sarscov2-net
+channels:
+  - defaults
+dependencies:
+  - python=3.7
+  - rpy2
+  - obonet
+prefix: /home/tasnina/anaconda3/envs/sarscov2-net
+

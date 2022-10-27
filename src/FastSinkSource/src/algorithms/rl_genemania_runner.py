@@ -76,6 +76,7 @@ def run(run_obj):
 
     # run GeneMANIA on each term individually
     for term in run_obj.terms_to_run:
+        # print('term to run: ', term)
         idx = run_obj.ann_obj.term2idx[term]
         # get the row corresponding to the current terms annotations 
         y = run_obj.ann_matrix[idx,:].toarray()[0]

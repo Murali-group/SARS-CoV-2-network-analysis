@@ -1,4 +1,3 @@
-
 import sys
 from collections import defaultdict
 import numpy as np
@@ -9,6 +8,11 @@ from . import fastsinksource_runner as fastsinksource
 from . import sinksource_bounds_runner as ss_bounds
 from . import rl_genemania_runner as genemania
 from . import logistic_regression_runner as logistic_regression
+
+# from . import rwr_runner_nure as rwr
+from . import rwr_runner_blessy as rwr
+# from . import rwr_runner_pagerank as rwr
+# from . import rwr_runner as rwr
 
 
 LibMapper = {
@@ -25,6 +29,7 @@ LibMapper = {
     'rl': genemania,
     'svm': logistic_regression,
     'logistic_regression': logistic_regression,
+    'rwr': rwr
 }
 
 
@@ -100,7 +105,7 @@ def get_eval_str(name, **kwargs):
     num_reps = kwargs.get('num_reps', 1)
     eval_str = "" 
     # TODO make a better way of indicating an alg needs negative examples than just having 'plus' in the name
-    if 'plus' not in name and neg_factor is not None:
+    if 'plus' not in name and 'rwr' not in name and  neg_factor is not None:
         # make sure its treated as an integer if it is one
         neg_factor = int(neg_factor) if int(neg_factor) == neg_factor else neg_factor
         eval_str = "-rep%s-nf%s" % (num_reps, neg_factor)

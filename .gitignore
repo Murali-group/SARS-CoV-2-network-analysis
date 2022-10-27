@@ -1,17 +1,17 @@
 # don't add the outputs or temporary/test files
 outputs*/
-*test*
 datasets/
 fss_inputs/
 doc/
 config-files/
+*test*
 # python
 *.pyc
 __pycache__
 
 # vim backup files
 .*.sw* 
-
+*.idea*
 # emacs backup files
 *~
 *#

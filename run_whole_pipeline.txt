@@ -1,0 +1,67 @@
+For running the whole pipeline:
+
+1. For downloading necessary files run:
+	>> python src/masterscript.py --config config-files/master-config.yaml --download-only
+
+2. To get protein prediction list for particular positive protein set:
+	
+	a. put the positive protein's filename in fss_inputs/config_files/stringv11-wace2/string.yaml file's 'exp_name' and 'pos_neg_file' field.
+	Snippet for example: in 'fss_inputs/config_files/stringv11-wace2/string.yaml' file if you want to run the pipeline considering the li-et-al dataset as positive examples.
+	input_settings:
+	  datasets:
+	  - exp_name: li-et-al-ppi
+	    plot_exp_name: "STRING-400"
+	    net_settings:
+	      string_cutoff: 400
+	      string_nets: combined_score
+	      weight_method: add
+	    net_version: networks/stringv11/400
+	    pos_neg_file: pos-neg/li-et-al-ppi/pos.txt
+
+2.  run the command where string-li.yaml contains multiple parameters for each algorithms. 
+
+	i) on 10/22/2020 I used the following command where config file is in <fss_inputs/config_files/stringv11-wace2/string-li.yaml>
+		>> python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/stringv11-wace2/string-li.yaml --sample-neg-examples-factor 1 --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/cv/nf_1
+
+		python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/stringv11-wace2/string-li.yaml --sample-neg-examples-factor 5 --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/cv/nf_5
+
+		python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/stringv11-wace2/string-li.yaml --sample-neg-examples-factor 10 --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/cv/nf_10
+
+	ii) On 10/23/2020
+		I have copied all config files to /data/tasnina e.g. li config file to </data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-li.yaml>
+		So next time use this path for config file.
+
+3. For genemaniaplus only: Pvalue
+	
+	If you want pvalues i.e. significant score for the prediction scores then run: (in config file keep only genemaniaplus to be true)
+	
+	On 10/23/2020:
+	Use the following commands. In this config_file for only genemaniaplus 'should_run' is true. Infact I removed all other algorithms from here.
+	>> python src/FastSinkSource/run_eval_algs.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-li-pval.yaml  --eval-stat-sig-nodes 1000  --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/pvalue
+
+	>> python src/FastSinkSource/run_eval_algs.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-stukalov-pval.yaml  --eval-stat-sig-nodes 1000  --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/pvalue
+
+	>> python src/FastSinkSource/run_eval_algs.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-samavarchi-pval.yaml  --eval-stat-sig-nodes 1000  --output-dir /data/tasnina/SARS-CoV-2-network-analysis/outputs-diff-pos-neg-dataset/pvalue
+
+	Note 2:If I run the above mentioned command  (without cross validation)  only for genemaniaplus then the value of sample_neg_examples_factor will not be used in the code. So any value of sample_neg_examples_factor in the config file is okay. 
+ 
+
+4. For genemaniaplus only: Effective diffusion
+	
+	To get effective diffusion values and plots run: (I will be plotting this only for genemaniaplus. The code only considers genemaniaplus. This will use the prediction files with pvals for genemaniaplus which does not contain any 'nfx'(negative factor value =x) type substring in it. so value of sample_neg_examples_factor in the config_file does not matter, it can be anything.)
+	
+	old(10/15/2020):
+	>> python src/scripts/effective_diffusion_analysis.py --config fss_inputs/config_files/stringv11-wace2/string-li.yaml --cutoff 0.01 --k-to-test=500
+		--stat-sig-cutoff 0.05
+
+	On 10/23/2020:
+	Use the following command:
+
+	>> python src/scripts/effective_diffusion_analysis.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-li-pval.yaml  --cutoff 0.01 --k-to-test=332 --stat-sig-cutoff 0.05
+
+	>> python src/scripts/effective_diffusion_analysis.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-stukalov-pval.yaml  --cutoff 0.01 --k-to-test=332 --stat-sig-cutoff 0.05
+
+	>> python src/scripts/effective_diffusion_analysis.py --config /data/tasnina/SARS-CoV-2-network-analysis/fss_inputs/config_files/stringv11-wace2/string-samavarchi-pval.yaml  --cutoff 0.01 --k-to-test=332 --stat-sig-cutoff 0.05
+
+	
+

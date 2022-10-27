@@ -11,6 +11,10 @@ from scipy.sparse import csr_matrix
 from . import alg_utils
 #import src.evaluate.eval_utils as eval_utils
 
+from scipy.linalg import inv
+from scipy.sparse import eye, diags
+import os
+from . import alg_utils
 
 class SinkSourceBounds:
 
@@ -280,3 +284,159 @@ class SinkSourceBounds:
         return not_fixed_nodes, max_unranked_stretch
 
 
+
+#Nure
+
+def get_diffusion_matrix(W, positives , alpha= 1.0, ss_lambda = None, diff_mat_file=None):
+    """
+    Generate the diffusion/propagation matrix of a network by taking the inverse of the laplaciain,
+    also known as the Regularized Laplacian (RL)
+    *Note that the result is a dense matrix*
+
+    *W*: scipy sparse matrix representation of a network
+    *alpha*: value of alpha for propagation
+    *diff_mat_file*: path/to/file to store the RL (example: "%sdiffusion-mat-a%s.npy" % (net_obj.out_pref, str(alpha).replace('.','_')))
+    """
+    if diff_mat_file is not None and os.path.isfile(diff_mat_file):
+        # read in the diffusion mat file
+        print("Reading %s" % (diff_mat_file))
+        return np.load(diff_mat_file)
+
+    #W_norm  = D^{-1}*W
+    W_norm = alg_utils.normalizeGraphEdgeWeights(W, ss_lambda= ss_lambda)
+    #keep only the rows for unlabeled matrix
+    mask = np.ones(W_norm.shape[0], dtype=bool)
+    mask[positives] = False
+
+    # P = W_norm_unlabeled_to_all)
+    print('norm finished')
+    P = W_norm[mask, :]
+
+    # M = W_norm_unlabeled_to_unlabeled)
+    M = W_norm[mask, :][:, mask]
+    X = eye(M.shape[0])-M
+    X_full = X.A
+    X_inv = inv(X_full)
+    print('inverse finished')
+
+    diff_mat = X_inv*P   #dim(X_inv) = unlabeled*unlabeled ; dim(P) = unlabeled*all, dim(diff_mat) = unlabeled*all
+
+    #convert diff_mat to dim = all*all by inserting zero rows in positive cols
+    for idx in positives:
+        diff_mat = np.insert(diff_mat, idx, np.zeros(diff_mat.shape[1]), axis=0)
+
+    #take transpose as same function in genemania outputs this matrix such that each column correspond to a node and the
+    #rows are the contribution from each neighbour
+    diff_mat = diff_mat.T
+    # write to file so this doesn't have to be recomputed
+    if diff_mat_file is not None:
+        print("Writing to %s" % (diff_mat_file))
+        np.save(diff_mat_file, diff_mat)
+
+    return diff_mat
+
+
+# def get_pred_main_contributors(
+#         pred_scores, M_inv, pos_idx,
+#         cutoff=0.001, k=332, W=None, **kwargs):  #clustering=False):
+#     """
+#     Get the main contributors for each top prediction.
+#     Now normalize each row, and get all nodes with a value > some cutoff
+#     *pred_scores*: prediction scores from running RL / GeneMANIA
+#     *M_inv*: Diffusion matrix for sinksource of size unlabeled*all
+#     *pos_idx*: indexes of positive examples
+#     *cutoff*: if a positive example contributes to the fraction of propagation score of a given node > *cutoff*,
+#         it will be a main contributor for that node
+#     *k*: number of top predictions to consider
+#     *W*: original network. If passed in, will compute the fraction of top contributing nodes that are neighbors
+#         and return a list along with the top contributing pos nodes for each prediction
+#
+#     *returns*: dictionary with node idx as keys, and an array of main contributors as the values
+#     """
+#     #
+#     pred_scores[pos_idx] = 0
+#
+#     #Nure: see that correct dim i.e. row/col is used here
+#     top_k_pred_idx = np.argsort(pred_scores)[::-1][:k]
+#     # get the diffusion values from the positive nodes to the top predictions
+#     pos_to_top_dfsn = M_inv[pos_idx,:][:,top_k_pred_idx]
+#     # normalize by the column to get the fraction of diffusion from each pos node
+#     pos_to_k_dfsn_norm = (pos_to_top_dfsn*np.divide(1,pos_to_top_dfsn.sum(axis=0)))
+#
+#     # plot those values if specified
+#     if kwargs.get('plot_file'):
+#         plot_frac_dfsn_from_pos(top_k_pred_idx, pos_to_k_dfsn_norm, kwargs['plot_file'], cutoff=cutoff, **kwargs)
+#
+#     main_contributors = {}
+#     fracs_top_nbrs = {}
+#     nodes_pos_nbr_dfsn = {}
+#     for i, n in enumerate(top_k_pred_idx):
+#         # get the diffusion values from pos nodes for this node
+#         # if not clustering:
+#         pos_above_cutoff = np.where(pos_to_k_dfsn_norm[:,i] > cutoff)[0]
+#         # else:
+#         #     s1 = pd.Series(pos_to_k_dfsn_norm[:][:,i])
+#         #     s1 = s1.sort_values(ascending=False).reset_index()
+#         #     kmeans = KMeans(n_clusters=2, random_state=0).fit(s1[0].values.reshape(-1,1))
+#         #     split_point = [i for i, x in enumerate(kmeans.labels_) if x == 1][-1]
+#         #     split_point2 = [i for i, x in enumerate(kmeans.labels_) if x == 0][-1]
+#         #     split_point = min([split_point, split_point2])
+#         #     pos_above_cutoff = s1['index'][:split_point]
+#         main_contributors[n] = pos_above_cutoff
+#
+#         if W is not None:
+#             # now get the edges of this node and see if they overlap with the top pos node influencers
+#             # extract the row of network to get the neighbors
+#             row = W[n,:]
+#             nbrs = (row > 0).nonzero()[1]
+#             top_pos_node_idx = [pos_idx[k] for k in pos_above_cutoff]
+#             if len(top_pos_node_idx) == 0:
+#                 #frac_top_nbr = -1
+#                 frac_top_nbr = 2
+#             else:
+#                 # measure the fraction of top pos nodes that are also neighbors
+#                 frac_top_nbr = len(set(top_pos_node_idx) & set(nbrs)) / len(top_pos_node_idx)
+#             fracs_top_nbrs[n] = frac_top_nbr
+#
+#             # get the neighbors that are pos nodes
+#             # convert to the current indexes
+#             nbrs = set(nbrs)
+#             pos_nbrs = [j for j, kn in enumerate(pos_idx) if kn in nbrs]
+#             # and measure the fraction of diffusion that comes from the pos nodes
+#             # get the diffusion values from pos nodes for this node
+#             pos_nbr_dfsn = pos_to_k_dfsn_norm[pos_nbrs,:][:,i].sum()
+#             nodes_pos_nbr_dfsn[n] = pos_nbr_dfsn
+#
+#     if W is not None:
+#         return main_contributors, fracs_top_nbrs, nodes_pos_nbr_dfsn
+#     else:
+#         return main_contributors
+#
+#
+# def plot_frac_dfsn_from_pos(top_k_pred_idx, pos_to_k_dfsn_norm, out_file, cutoff=0.01, **kwargs):
+#     import pandas as pd
+#     import matplotlib
+#     # Use this to save files remotely.
+#     matplotlib.use('Agg')
+#     import matplotlib.pyplot as plt
+#
+#     for i in range(len(top_k_pred_idx)):
+#         #s1 = pd.Series(np.log10(pos_to_k_dfsn_norm[:][:,i]))
+#         # try just the top 50 pos
+#         s1 = pd.Series(np.log10(pos_to_k_dfsn_norm[:50][:,i]))
+#         s1 = s1.sort_values(ascending=False).reset_index()[0]
+#     #     kmeans = KMeans(n_clusters=2, random_state=0).fit(s1.values.reshape(-1,1))
+#     #     split_point = [i for i, x in enumerate(kmeans.labels_) if x == 1][-1]
+#         ax = s1.plot(alpha=0.2)
+#     #     ax.axvline(split_point, linestyle='--', alpha=0.2)
+#     #     break
+#
+#     ax.axhline(np.log10(cutoff), linestyle='--')
+#
+#     plt.ylabel("log normalized diffusion value")
+#     plt.xlabel("node # (sorted by diffusion value)")
+#     if kwargs.get('alpha'):
+#         plt.title("alpha=%s"%kwargs['alpha'])
+#     print("writing diffusion score curves to %s" % (out_file))
+#     plt.savefig(out_file)
+#     plt.close()

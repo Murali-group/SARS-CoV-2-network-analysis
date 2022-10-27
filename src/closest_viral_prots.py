@@ -18,7 +18,6 @@ from src.FastSinkSource.src.plot import plot_utils
 from src.FastSinkSource.src.algorithms import runner
 from src.setup_datasets import parse_mapping_file
 
-
 def parse_args():
     parser = setup_opts()
     args = parser.parse_args()
@@ -31,7 +30,6 @@ def parse_args():
             config_maps.append(config_map)
 
     return config_maps, kwargs
-
 
 def setup_opts():
     ## Parse command line args.
