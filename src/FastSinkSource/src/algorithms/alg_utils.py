@@ -471,7 +471,7 @@ def write_scores_to_file(scores, term='', out_file=None, file_handle=None,
     elif file_handle is None:
         print("Warning: out_file and file_handle are None. Not writing scores to a file")
         return 
-
+    #SORTING THE SCORES WHILE WRITING TO FILE
     # write the scores to a file, up to the specified number of nodes (num_pred_to_write)
     file_handle.write(header)
     for n in sorted(scores, key=scores.get, reverse=True)[:num_pred_to_write]:

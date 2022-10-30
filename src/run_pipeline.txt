@@ -44,6 +44,9 @@ python src/scripts/diffusion/node_based_effective_diffusion.py --config fss_inpu
 cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
 conda activate sarscov2-net
 
+python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_s12.yaml
+python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_hi_union_s12.yaml
+
 python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_s12.yaml
 python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml
 

@@ -106,6 +106,12 @@ def setup_opts():
     group.add_argument('--verbose', action="store_true",
             help="Print additional info about running times and such")
 
+    group.add_argument('--alpha-param-select', action="store_true",
+            help="This will cause the algorithm to first run with min and max alpha values\
+            given in config file and then do binary search in between to find an alpha\
+            that balances the two loss terms in quadractic loss function in RL (also RWR)")
+
+
     return parser
 
 
@@ -140,9 +146,11 @@ def run(config_map, **kwargs):
             # set the CV flag to None so that the output file will have the "neg factor" and "num reps" set correctly
             cv_folds = kwargs.get('cross_validation_folds')
             kwargs['cross_validation_folds'] = None
+            # if kwargs.get('alpha_param_select') is False:
             alg_runners = setup_runners(alg_settings, net_obj, ann_obj, out_dir, **kwargs)
-            # run algorithms in "prediction" mode 
-            run_algs(alg_runners, **kwargs) 
+            # run algorithms in "prediction" mode
+            run_algs(alg_runners, **kwargs)
+
             kwargs['cross_validation_folds'] = cv_folds
             # if specified, write the SWSN combined network to a file
             save_net = dataset['net_settings'].get('save_net', None) if 'net_settings' in dataset else None
