@@ -39,8 +39,8 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/provenance_hi_union_go.yaml"
-                       ,help="Configuration file used when running FSS. ")
+                        "fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml"
+                       ,help="Configuration file used when running FSS.")
 
     # group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
     #                     "fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_s12.yaml"

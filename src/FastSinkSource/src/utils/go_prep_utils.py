@@ -298,6 +298,7 @@ def parse_gaf_file(gaf_file, pos_neg_ec=[], rem_neg_ec=[], ignore_ec=[]):
     print("\t%d \"ignore_ec\" annotations" % (num_ignored_ann))
     print("\t%d proteins have 1 or more BP annotations" % (len(prot_goids_by_c["P"])))
     print("\t%d proteins have 1 or more MF annotations" % (len(prot_goids_by_c["F"])))
+    print("\t%d proteins have 1 or more CC annotations" % (len(prot_goids_by_c["C"])))
 
     return prot_goids_by_c, goid_prots, goid_rem_neg_prots, all_prots
 
@@ -371,16 +372,29 @@ def extract_high_freq_goterms(G, goids, annotated_prots, cutoff=1000):
     *G*: GO DAG (networkx DiGraph) with prot->goid edges for each protein's annotations
     returns a set of GO terms with >= cutoff proteins annotated to it
     """
+    global id_to_name
     high_freq_go_terms = set()
+    n_annotated_prots_per_goid = {}
+    child_goids_per_goid = {}
+
+
     for goid in tqdm(goids):
         anc = nx.ancestors(G, goid)
+        go_term = id_to_name[goid]
         # the number of positive annotations for this GO term is the number of proteins that can reach this GO term ID
         # in the gene-goid graph
         # meaning the number of proteins annotated to this term plus those annotated to an ancestral, more specific term
-        if len(anc.intersection(annotated_prots)) >= cutoff:
+
+        # anc contains both prots and goids. this intersect will make sure that we only consider the prots.
+        n_annotated_prots_per_goid[goid] = len(anc.intersection(annotated_prots))
+
+        #also want to keep track of ancestor/child goids for each go term
+        child_goids_per_goid[goid] = anc.difference(annotated_prots)
+
+        if n_annotated_prots_per_goid[goid] >= cutoff:
             high_freq_go_terms.add(goid)
 
-    return high_freq_go_terms
+    return high_freq_go_terms, n_annotated_prots_per_goid,child_goids_per_goid
 
 
 def build_gene_goterm_graph(go_dag, goid_prots):
@@ -581,7 +595,6 @@ def build_ann_matrix(goid_pos, goid_neg, prots):
     """
     Function to build a sparse matrix out of the annotations
     """
-
     goids = sorted(goid_pos.keys())
     node2idx = {prot: i for i, prot in enumerate(prots)}
 
@@ -627,7 +640,7 @@ def main(obo_file, gaf_file, out_pref=None, cutoff=1000, write_table=False,
     df_summaries = pd.DataFrame()
     results = {}
 
-    # assign the positives, negatives and unknowns for biological process and molecular function
+    # assign the positives, negatives and unknowns for biological process and molecular function and cellular components
     for c in ["P", "F", "C"]:
         print("Category: %s" % (c))
         print("Building the gene-goterm graph")
@@ -639,13 +652,16 @@ def main(obo_file, gaf_file, out_pref=None, cutoff=1000, write_table=False,
         # print("# of prots with at least 1 %s annotation: %d" % (c, len(prot_goids)))
         # print("# of %s GO terms with at 1 protein annotated to it: %d" % (c, len(goid_prots)))
 
+        #TODO set category specific cutoff here
         print("Extracting GO terms with >= %d annotations" % (cutoff))
         annotated_prots = set(direct_prot_goids_by_c[c].keys())
-        high_freq_goids = extract_high_freq_goterms(G, go_dags[c].nodes(), annotated_prots, cutoff=cutoff)
+
+        # n_annotated_prots_per_goid contains annotations for a term and annotations from it's children
+        high_freq_goids, n_annotated_prots_per_goid, child_goids_per_goid = extract_high_freq_goterms(G, go_dags[c].nodes(), annotated_prots, cutoff=cutoff)
 
         #now filter out the ancestor go terms from high freq go_ids
-        high_freq_goids = get_most_specific_terms(high_freq_goids, go_dags[c] )
-
+        high_freq_goids = get_most_specific_terms(high_freq_goids, go_dags[c])
+        n_annotated_prots_per_most_spec_goid = {goid: n_annotated_prots_per_goid[goid] for goid in high_freq_goids }
         print('Category: ', c, 'Number of most specific terms: ', len(high_freq_goids))
 
         # also remove biological process, cellular component and molecular function
@@ -653,6 +669,13 @@ def main(obo_file, gaf_file, out_pref=None, cutoff=1000, write_table=False,
             set([name_to_id[name] for name in ["cellular_component", "biological_process", "molecular_function"]]))
         print("\t%d (out of %d) GO terms have >= %d proteins annotated to them" % (
         len(high_freq_goids), go_dags[c].number_of_nodes(), cutoff))
+
+
+        #make sure I do not have any parent in the most spec terms
+        children = []
+        for goid in high_freq_goids:
+            children+=child_goids_per_goid[goid]
+        assert len(set(children).intersection(set(high_freq_goids)))==0, print('problem in most spec term selection')
 
         # keep track of the set of proteins with at least 1 annotation in this category to assign negatives later
         goid_pos, goid_neg, goid_unk = assign_all_pos_neg(high_freq_goids, G, revG, annotated_prots, all_prots,

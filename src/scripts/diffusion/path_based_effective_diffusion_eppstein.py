@@ -261,6 +261,9 @@ def main(config_map, k, **kwargs):
                         shortest_path_input_graph_file = "%s/shortest-path-input-graph-%s-a%s.txt" % \
                                                          (net_obj.out_pref, alg_name,
                                                           str(alpha).replace('.', '_'))
+                        all_same_weight_input_graph_file = "%s/all_same_weight_input-graph-%s-a%s.txt" % \
+                                                         (net_obj.out_pref, alg_name,
+                                                          str(alpha).replace('.', '_'))
 
                         # shortest_path_file will be created only when all shortest paths for
                         # the targets for this certain setup (i.e. nsp, m, k values) have been computed.
@@ -305,13 +308,18 @@ def main(config_map, k, **kwargs):
 
                             # save this graph as list of edges with weights.
                             nx.write_weighted_edgelist(G, shortest_path_input_graph_file)
+
+                            #now to find out actual number of shortest paths of less than a length l, we need the graph
+                            # G where all edges are of weight 1.
+                            nx.set_edge_attributes(G, values=1, name='weight')
+                            nx.write_weighted_edgelist(G, all_same_weight_input_graph_file)
+
                             del G
 
                             del M_pathmtx
                             adj_matrix = (net_obj.W).toarray(order='C')
 
                             n_shortest_path = kwargs.get('n_sp')
-
 
                             f = open(contr_file, 'w')
                             out_str = 'source\ttarget\tneighbour\tscore\tfrac_source_contr'
@@ -357,7 +365,7 @@ def main(config_map, k, **kwargs):
 
                                     # Two values govern the increase of K in k-shortest path alg.
                                     # first is the tolerance. The ksp alg will keep increasing
-                                    # k until the sum of contribution from shortest paths is >= (1-tolerance)
+                                    # k until the sum of frac-contribution from shortest paths is >= (1-tolerance)
                                     # second is the hard-coded condition in the java function which checks if with increasing
                                     # k, the sum of the contribution changes. If the change is as small as (10^-10) then the
                                     # alg stops.
