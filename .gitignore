@@ -5,6 +5,7 @@ fss_inputs/
 doc/
 config-files/
 *test*
+*.log
 # python
 *.pyc
 __pycache__
