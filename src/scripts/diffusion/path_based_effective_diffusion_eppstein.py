@@ -54,11 +54,11 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                                                     "fss_inputs/config_files/provenance/provenance_string700_s12.yaml"
+                                                     "fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml"
                        , help="Configuration file used when running FSS. ")
 
     group.add_argument('--run-algs', type=str, action='append', default=[])
-    group.add_argument('--k-to-test', '-k', type=int, action='append', default=[],
+    group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
 
@@ -75,9 +75,9 @@ def setup_opts():
                        help="Cutoff on the node p-value for a node to be considered in the topk. " + \
                             "The p-values should already have been computed with run_eval_algs.py")
 
-    group.add_argument('--force-ksp', action='store_true', default=False,
+    group.add_argument('--force-ksp', action='store_true', default=True,
                        help="Force re-running the path diffusion analysis")
-    group.add_argument('--force-contr', action='store_true', default=False,
+    group.add_argument('--force-contr', action='store_true', default=True,
                        help="Force re-running the path diffusion analysis")
 
     group.add_argument('--plot-only', action='store_true', default=False,
@@ -344,9 +344,14 @@ def main(config_map, k, **kwargs):
                             for target in top_k_pred_idx:
                                 # target_spec_shortest_path_file
                                 target_spec_sp_file = shortest_path_file.replace('.txt', '_' + str(target) + '.tsv')
+                                target_spec_pathlen_info_file = shortest_path_file.replace('.txt', '_' + str(target) + '_threshold_pathlen.tsv')
+
                                 if (not os.path.isfile(target_spec_sp_file)) or (kwargs.get('force_ksp') == True):
                                     os.makedirs(os.path.dirname(target_spec_sp_file), exist_ok=True)
                                     f = open(target_spec_sp_file, 'w')
+                                    f.close()
+
+                                    f = open(target_spec_pathlen_info_file, 'w')
                                     f.close()
 
                                     print('target: ', target)
@@ -363,19 +368,28 @@ def main(config_map, k, **kwargs):
                                     # write code for running Eppstein's ksp algo here.
                                     # get current directory
 
-                                    # Two values govern the increase of K in k-shortest path alg.
-                                    # first is the tolerance. The ksp alg will keep increasing
-                                    # k until the sum of frac-contribution from shortest paths is >= (1-tolerance)
-                                    # second is the hard-coded condition in the java function which checks if with increasing
-                                    # k, the sum of the contribution changes. If the change is as small as (10^-10) then the
-                                    # alg stops.
-                                    tolerance = 0.001
-                                    eppstein_inputs = [shortest_path_input_graph_file, \
-                                                       target_spec_sp_file, str(sources), str(target), \
-                                                       str(n_shortest_path), source_contrs, str(tolerance)]
+                                    # # Two values govern the increase of K in k-shortest path alg.
+                                    # # first is the tolerance. The ksp alg will keep increasing
+                                    # # k until the sum of frac-contribution from shortest paths is >= (1-tolerance)
+                                    # # second is the hard-coded condition in the java function which checks if with increasing
+                                    # # k, the sum of the contribution changes. If the change is as small as (10^-10) then the
+                                    # # alg stops.
+                                    # tolerance = 0.001
+
+                                    #First find out how many paths per length exist till pathlenth pl
+                                    eppstein_inputs_1 = ["unweighted", all_same_weight_input_graph_file, \
+                                                       target_spec_pathlen_info_file, str(sources), str(target), \
+                                                       str(n_shortest_path), str(max_pathlen)]
+
+                                    eppstein_inputs_2 = ["weighted", shortest_path_input_graph_file, \
+                                                         target_spec_sp_file, str(sources), str(target), \
+                                                         str(n_shortest_path),str(max_pathlen), target_spec_pathlen_info_file ]
                                     os.chdir(eppstein_code_dir)
                                     p = subprocess.Popen(['java', 'edu.ufl.cise.bsmock.graph.ksp.test.TestEppstein'] + \
-                                                         eppstein_inputs)
+                                                         eppstein_inputs_1)
+                                    p.wait()
+                                    p = subprocess.Popen(['java', 'edu.ufl.cise.bsmock.graph.ksp.test.TestEppstein'] + \
+                                                         eppstein_inputs_2)
                                     p.wait()
                                     os.chdir(wd)
 

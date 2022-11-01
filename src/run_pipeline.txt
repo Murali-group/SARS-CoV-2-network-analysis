@@ -18,9 +18,6 @@ python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/prov
 python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_go.yaml --num-pred-to-write -1 --forcealg
 python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_hi_union_go.yaml --num-pred-to-write -1 --forcealg
 
-
-
-
 ******************************************* Compute Shortest Paths Eppsteins: ********************************************
 
 cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
