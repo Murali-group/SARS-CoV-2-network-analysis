@@ -137,16 +137,16 @@ def compute_two_loss_terms(y_true, y_pred, alpha, W):
     #first term = alpha. ||(y_pred-y_true).(deg_root_inv)||^2 where deg_root_inv(i) = 1/(sqrt(deg(i)))
     deg = np.asarray(W.sum(axis=0)).flatten()
     deg_root_inv = np.divide(1., np.sqrt(deg))
-    loss_term1 = alpha * (norm(np.multiply((y_pred-y_true), deg_root_inv),ord = 2))**2
+    loss_term1 = 2* alpha * (norm(np.multiply((y_pred-y_true), deg_root_inv),ord = 2))**2 #multiplying with extra 2
 
     #one implementation for the second term
     # #second term = (1-alpha) (y_pred_norm*L*y_pred_norm_transpose), where y_pred_norm(i) = (y_pred(i)/(deg(i))
     # # L = D-W, D = un-normalized degree matrix, W= un-nomalized weight matrix
-    y_pred_norm = np.divide(y_pred, deg).reshape(-1, len(y_pred))
-    deg[np.isinf(deg)] = 0
-    D = sp.diags(deg)
-    L = (D-W).toarray()
-    loss_term2_1 = (1-alpha)*np.matmul(np.matmul(y_pred_norm, L), y_pred_norm.transpose())[0,0]
+    # y_pred_norm = np.divide(y_pred, deg).reshape(-1, len(y_pred))
+    # deg[np.isinf(deg)] = 0
+    # D = sp.diags(deg)
+    # L = (D-W).toarray()
+    # loss_term2_1 = (1-alpha)*np.matmul(np.matmul(y_pred_norm, L), y_pred_norm.transpose())[0,0]
 
     #another implementation for the second term
     loss_term2 = 0

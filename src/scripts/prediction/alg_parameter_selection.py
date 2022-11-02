@@ -39,7 +39,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml"
+                        "fss_inputs/config_files/provenance/provenance_biogrid_hi_union_go.yaml"
                        ,help="Configuration file used when running FSS.")
 
     # group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
@@ -50,7 +50,7 @@ def setup_opts():
     group.add_argument('--stat-sig-cutoff', type=float,
                        help="Cutoff on the node p-value for a node to be considered in the topk. " + \
                             "The p-values should already have been computed with run_eval_algs.py")
-    group.add_argument('--only_loss_diff', type=bool, default=False)
+    group.add_argument('--only_loss_diff', type=bool, default=True)
 
     return parser
 
@@ -206,22 +206,22 @@ def main(config_map, **kwargs):
     for dataset in input_settings['datasets']:
 
         # Store data (serialize)
-        filename = config_map['output_settings']['output_dir'] + \
+        loss_filename = config_map['output_settings']['output_dir'] + \
                    "/viz/%s/%s/param_select/" % (
                        dataset['net_version'],
                        dataset['exp_name']) + 'loss_intersect.pickle'
 
-        if (not kwargs.get('only_loss_diff') or (not os.path.isfile(filename))):
 
-            print("Loading data for %s" % (dataset['net_version']))
-            # load the network and the positive examples for each term
-            net_obj, ann_obj, _ = setup_dataset(
-                dataset, input_dir, **kwargs)
-            prots, node2idx = net_obj.nodes, net_obj.node2idx
+        print("Loading data for %s" % (dataset['net_version']))
+        # load the network and the positive examples for each term
+        net_obj, ann_obj, _ = setup_dataset(
+            dataset, input_dir, **kwargs)
+        prots, node2idx = net_obj.nodes, net_obj.node2idx
 
-            #declare a dict of dict here:
-            #level1 key = alg, level2 key = term, value = (min_alpha, min_beta, min_difference between two loss terms)
-            loss_diff = {}
+        #declare a dict of dict here:
+        #level1 key = alg, level2 key = term, value = (min_alpha, min_beta, min_difference between two loss terms)
+        loss_diff = {}
+        if (not kwargs.get('only_loss_diff') or (not os.path.isfile(loss_filename))):
             for term in ann_obj.terms:
             # for term in np.array(['GO:0098656']):
                 term_idx = ann_obj.term2idx[term]
@@ -329,28 +329,69 @@ def main(config_map, **kwargs):
                                         title, outfile_prefix+'_alpha.png')
                         if alg_name=='genemaniaplus':
                             plot_loss_terms(loss_term1_across_betas,loss_term2_across_betas, 'Beta', title, outfile_prefix+'_beta.png')
-            with open(filename, 'wb') as handle:
+            with open(loss_filename, 'wb') as handle:
                 pickle.dump(loss_diff, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
         else:
             # Load data (deserialize)
-            with open(filename, 'rb') as handle:
+            with open(loss_filename, 'rb') as handle:
                 loss_diff = pickle.load(handle)
-
+        
         # ##save loss intersections as pickle
+        # for alg_name in loss_diff:
+        #     title = dataset['plot_exp_name'] + '_' +dataset['exp_name']+'_'+ plot_alg_name(alg_name)
+        #     outfile_prefix = config_map['output_settings']['output_dir'] + \
+        #                     "/viz/%s/%s/param_select/%s/" % (
+        #                     dataset['net_version'],
+        #                     dataset['exp_name'], alg_name) + 'difference_btn_quad_loss_terms'
+        #     plot_min_diff(loss_diff[alg_name], 'Alpha', title, outfile_prefix + '_alpha.png')
         #
-        for alg_name in loss_diff:
-            title = dataset['plot_exp_name'] + '_' +dataset['exp_name']+'_'+ plot_alg_name(alg_name)
-            outfile_prefix = config_map['output_settings']['output_dir'] + \
-                            "/viz/%s/%s/param_select/%s/" % (
-                            dataset['net_version'],
-                            dataset['exp_name'], alg_name) + 'difference_btn_quad_loss_terms'
-            plot_min_diff(loss_diff[alg_name], 'Alpha', title, outfile_prefix + '_alpha.png')
+        #     if alg_name=='genemaniaplus':
+        #         plot_min_diff(loss_diff[alg_name], 'beta', title, outfile_prefix + '_beta.png')
 
-            if alg_name=='genemaniaplus':
-                plot_min_diff(loss_diff[alg_name], 'beta', title, outfile_prefix + '_beta.png')
+        #now create a file that contains go terms ids, description, #pos_nodes for corresponding go term,
+        # alpha/beta intersection values.
+        if 'go' in dataset['exp_name']:
+            go_summary_file = input_settings['input_dir'] +'/'+ os.path.dirname(dataset['pos_neg_file']) + '/pos-neg-177-summary-stats.tsv'
+            go_summary_df = pd.read_csv(go_summary_file, sep='\t')
 
+            go_id_2_name = dict(zip(go_summary_df['GO term'], go_summary_df['GO term name']))
+            go_id_2_initial_pos = dict(zip(go_summary_df['GO term'], go_summary_df['# positive examples']))
+
+            for alg_name in alg_settings:
+
+                # for RL save beta intersect values, for RWR save alpha intersect values
+                alpha_summary_dict = {'GO term': [], 'GO term name': [], '#positives': [], '#init_positives': [],
+                                      'intersect': []}
+                alpha_summary_filename = config_map['output_settings']['output_dir'] + \
+                                "/viz/%s/%s/param_select/" % (
+                                    dataset['net_version'],
+                                    dataset['exp_name']) +'/'+alg_name+ '/go_alpha_summary.tsv'
+
+                for term in ann_obj.terms:
+                    # for term in np.array(['GO:0098656']):
+                    term_idx = ann_obj.term2idx[term]
+                    orig_pos_idx, _ = alg_utils.get_term_pos_neg(ann_obj.ann_matrix, term_idx)
+                    orig_pos = [prots[p] for p in orig_pos_idx]
+                    pos_nodes_idx = [node2idx[n] for n in orig_pos if n in node2idx]
+                    n_pos = len(pos_nodes_idx)
+
+
+                    alpha_summary_dict['GO term'].append(term)
+                    alpha_summary_dict['GO term name'].append(go_id_2_name[term])
+                    alpha_summary_dict['#positives'].append(n_pos)
+                    alpha_summary_dict['#init_positives'].append(go_id_2_initial_pos[term])
+
+                    # #in loss_diff we saved tuple a tuple e.g.
+                    # loss_diff[alg_name][term] = (intersection_alpha, intersection_beta)
+                    # for RWR save alpha intersect values and  RL save beta intersect values,
+                    if alg_name =='rwr':
+                        alpha_summary_dict['intersect'].append(loss_diff[alg_name][term][0])
+                    elif alg_name=='genemaniaplus':
+                        alpha_summary_dict['intersect'].append(loss_diff[alg_name][term][1])
+                alpha_summary_df = pd.DataFrame(alpha_summary_dict)
+                alpha_summary_df.to_csv(alpha_summary_filename, sep='\t', index=False)
 
 
 

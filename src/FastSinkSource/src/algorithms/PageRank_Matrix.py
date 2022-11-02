@@ -56,8 +56,8 @@ Outputs:
 '''
 
 def create_and_save_transition_mtx_zerodegnodes(net, N, alpha, out_dir, force_write=False):
-    trans_mat_file = out_dir + 'q_'+str(alpha)+'_transition.mtx'
-    zero_deg_node_file = out_dir +'q_'+str(alpha)+ '_zero_deg_node.pickle'
+    trans_mat_file = out_dir + '/q_'+str(alpha)+'_transition.mtx'
+    zero_deg_node_file = out_dir +'/q_'+str(alpha)+ '_zero_deg_node.pickle'
 
     if (not os.path.exists(trans_mat_file)) or (not os.path.exists(zero_deg_node_file)) or force_write:
         # Cache out-degree of all nodes to speed up the update loop
