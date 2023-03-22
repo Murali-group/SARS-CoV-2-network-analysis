@@ -2,7 +2,7 @@
 dataset_settings:
 
     # Base directory where datasets will be placed
-    datasets_dir: "datasets"
+    datasets_dir: "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/datasets"
     # list of mapping files, one per species. Will be placed in datasets/mapping/species/
     mappings:
       #### Mapping options:

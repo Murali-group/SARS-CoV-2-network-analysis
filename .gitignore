@@ -1,7 +1,7 @@
 # don't add the outputs or temporary/test files
-*outputs*/
-*datasets/
-*fss_inputs*
+outputs*/
+datasets/
+fss_inputs/*
 doc/
 config-files/
 *archive*
