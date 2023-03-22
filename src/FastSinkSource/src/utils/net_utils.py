@@ -3,20 +3,40 @@ from collections import defaultdict
 import numpy as np
 import scipy.sparse as sp
 
+def get_prots_in_largest_cc(W, isdirected, idx2node):
+    '''
+    Here, W is a coo_matrix
+    idx2node is a dict of key=node_idx and value: equivaled uniprot
+    '''
+    num_ccs, cc_labels = sp.csgraph.connected_components(W, directed=isdirected, connection =  'weak', return_labels=True)
+    # now split the nodes into their respective connected components
+    ccs = defaultdict(set)
+    for i, label in enumerate(cc_labels):
+        ccs[label].add(i)
+    max_len_cc = 0
+    max_cc = set()
+    for label in ccs:
+        if len(ccs[label]) > max_len_cc:
+            max_len_cc = len(ccs[label])
+            max_cc = ccs[label]
 
-def print_net_stats(W, train_ann_mat, test_ann_mat=None, term_idx=None):
+    prots_in_max_cc = [idx2node[i] for i in max_cc]
+    print('total prot: ', W.shape[0])
+    print('prots in largest cc: ', len(prots_in_max_cc))
+    return prots_in_max_cc
+
+
+def print_net_stats(W, train_ann_mat, isdirected, test_ann_mat=None, term_idx=None):
     """
     Get statistics about the # of connected components, and the number of left-out positive examples that are in a component without a positive example
     *term_idx*: indices of terms for which to limit the train and test annotations 
         e.g., current terms for a species
     """
-    # count the nodes with at least one edge
-    num_nodes = np.count_nonzero(W.sum(axis=0))
-    # since the network is symmetric, the number of undirected edges is the number of entries divided by 2
-    num_edges = (len(W.data) / 2)
+    num_nodes = W.shape[0]
+    num_edges = (len(W.data))
     print("\t%s nodes, %s edges" % (num_nodes, num_edges))
     # get the number of connected components (ccs), as well as the nodes in each cc
-    num_ccs, cc_labels = sp.csgraph.connected_components(W, directed=False, return_labels=True)
+    num_ccs, cc_labels = sp.csgraph.connected_components(W, directed=isdirected, return_labels=True)
     # now split the nodes into their respective connected components
     ccs = defaultdict(set)
     for i, label in enumerate(cc_labels):

@@ -4,7 +4,7 @@ from collections import defaultdict
 from scipy import sparse
 import fcntl
 # needed for evaluation metrics
-os.environ['R_HOME'] = '/home/tasnina/anaconda3/envs/sarscov2-net/lib/R'
+os.environ['R_HOME'] = '/home/tasnina/anaconda3/envs/sarscov2-net-new/lib/R'
 from rpy2.robjects.packages import importr
 from rpy2.robjects import FloatVector
 prroc = importr('PRROC')

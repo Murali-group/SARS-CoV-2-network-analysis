@@ -1,4 +1,3 @@
-
 import yaml
 import argparse
 import itertools
@@ -24,22 +23,19 @@ from .utils import net_utils
 from .utils import string_utils as string_utils
 from .utils import config_utils as config_utils
 
-
 def parse_args():
     parser = setup_opts()
     args = parser.parse_args()
     kwargs = vars(args)
     with open(args.config, 'r') as conf:
-        #config_map = yaml.load(conf, Loader=yaml.FullLoader)
-        config_map = yaml.load(conf)
+        config_map = yaml.load(conf, Loader=yaml.FullLoader)
+        # config_map = yaml.load(conf)
     # TODO check to make sure the inputs are correct in config_map
-
     # for each argument not set in opts, remove it from kwargs.
     # That way the default will be used instead of None
     for key in list(kwargs.keys()):
         if kwargs[key] is None:
             del kwargs[key]
-
     return config_map, kwargs
 
 
@@ -50,7 +46,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                                                     "fss_inputs/config_files/provenance/provenance_biogrid_y2h_go.yaml",
+            "fss_inputs/config_files/provenance/string700_s12.yaml",
             help="Configuration file")
     group.add_argument('--term', '-T', type=str, action="append",
             help="Specify the terms to use. Can use this option multiple times")
@@ -190,6 +186,9 @@ def run(config_map, **kwargs):
 
 
 def setup_net(input_dir, dataset, **kwargs):
+    is_directed = dataset['directed'] if 'directed' in dataset else False
+    largest_cc = dataset['largest_cc'] if 'largest_cc' in dataset else False
+
     # load the network matrix and protein IDs
     net_files = None
     net_dir = "%s/%s" % (input_dir, dataset['net_version'])
@@ -229,7 +228,7 @@ def setup_net(input_dir, dataset, **kwargs):
             sparse_nets, net_names, prots, netx_graphs = setup.create_sparse_net_file(
                     out_pref, net_files=net_files, string_net_files=string_net_files, 
                     string_nets=string_nets,
-                    string_cutoff=string_cutoff,
+                    string_cutoff=string_cutoff, largest_cc=largest_cc,
                     forcenet=kwargs.get('forcenet',False))
         else:
             # if a .mat file with multiple sparse matrix networks inside of it is passed in, read that here
@@ -242,15 +241,18 @@ def setup_net(input_dir, dataset, **kwargs):
             weight_method = 'add'
         else:
             weight_method = dataset['net_settings']['weight_method'].lower()
+
         net_obj = setup.Sparse_Networks(
             sparse_nets, prots, net_names=net_names, weight_method=weight_method,
             unweighted=unweighted, netx_graphs=netx_graphs, verbose=kwargs.get('verbose',False)
         )
-    else:
+    else: #Nure: For networks other than STRING go here.
         if net_files is None:
             print("ERROR: no net files specified in the config file. Must provide either 'net_files', or 'string_net_files'")
             sys.exit()
-        W, prots = alg_utils.setup_sparse_network(net_files[0], forced=kwargs.get('forcenet', False))
+
+        W, prots = alg_utils.setup_sparse_network(net_files[0], is_directed, largest_cc,
+                                                  forced=kwargs.get('forcenet', False) )
         net_obj = setup.Sparse_Networks(
             W, prots, unweighted=unweighted, verbose=kwargs.get('verbose',False))
     # store the output prefix of the network to use later
@@ -276,9 +278,10 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
     # use the same str that is used for the sparse network files
     net_files_str = setup.get_net_out_str(
         dataset.get('net_files',[]), dataset.get('string_net_files',[]),
-        dataset['net_settings'].get('string_nets') if 'net_settings' in dataset else None) 
-    sparse_ann_file = "%s/%s/sparse-anns/%s%s.npz" % (
-        input_dir, dataset['net_version'], net_files_str, pos_neg_str)
+        dataset['net_settings'].get('string_nets') if 'net_settings' in dataset else None)
+
+
+    sparse_ann_file = "%s/%s/sparse-anns/%s%s.npz" % (input_dir, dataset['net_version'], net_files_str, pos_neg_str)
     # now build the annotation matrix
     pos_neg_file = "%s/%s" % (input_dir, dataset['pos_neg_file'])
 
@@ -312,8 +315,11 @@ def load_annotations(prots, dataset, input_dir, **kwargs):
 def setup_dataset(dataset, input_dir, **kwargs):
     if kwargs.get('verbose'):
         utils.print_memory_usage()
+
+
     # setup the network matrix first
     net_obj = setup_net(input_dir, dataset, **kwargs)
+
     if kwargs.get('verbose'):
         utils.print_memory_usage()
     #ann_obj = setup_annotations(input_dir, dataset, **kwargs)
@@ -323,12 +329,13 @@ def setup_dataset(dataset, input_dir, **kwargs):
 
     # print out some statistics about the network
     if net_obj.multi_net is False:
-        # net_utils.print_net_stats(net_obj.W, ann_obj.ann_matrix)
+        net_utils.print_net_stats(net_obj.W, ann_obj.ann_matrix, dataset['directed'] if 'directed'
+                                  in dataset else False)
 
         #Nure: Print stat for each term
-        for term in selected_terms:
-            print('\n\nTerm:', term)
-            net_utils.print_net_stats(net_obj.W, ann_obj.ann_matrix, term_idx=ann_obj.term2idx[term])
+        # for term in selected_terms:
+        #     print('\n\nTerm:', term)
+        #     net_utils.print_net_stats(net_obj.W, ann_obj.ann_matrix, term_idx=ann_obj.term2idx[term])
 
 
     #algs = get_algs_to_run(alg_settings)

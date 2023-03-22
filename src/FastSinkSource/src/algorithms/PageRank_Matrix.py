@@ -27,7 +27,7 @@ import numpy as np
 from numpy.linalg import norm
 
 import os
-from scipy.sparse import csr_matrix, find
+from scipy.sparse import csr_matrix, csc_matrix, find
 from optparse import OptionParser, OptionGroup
 from scipy.linalg import inv
 from scipy.sparse import eye, diags
@@ -55,66 +55,38 @@ Outputs:
 
 '''
 
-def create_and_save_transition_mtx_zerodegnodes(net, N, alpha, out_dir, force_write=False):
-    trans_mat_file = out_dir + '/q_'+str(alpha)+'_transition.mtx'
-    zero_deg_node_file = out_dir +'/q_'+str(alpha)+ '_zero_deg_node.pickle'
+def create_transition_mtx_zerodegnodes(net, N, alpha):
+    '''
+    The following function will create a transition matrix considering
+    targets along the rows and sources along the columns.
+    '''
 
-    if (not os.path.exists(trans_mat_file)) or (not os.path.exists(zero_deg_node_file)) or force_write:
-        # Cache out-degree of all nodes to speed up the update loop
-        outDeg = csr_matrix((N, 1), dtype=float)
-        zeroDegNodes = set()
+    outDeg = csr_matrix((1, N), dtype=float)
+    zeroDegNodes = set()
+    for i in range(N):
+        #NURE: till 12/30 the following was implemented. But the net was default
+        # symmetric till this point.
+        # outDeg[i, 0] = 1.0 * net.getrow(i).sum()  # weighted out degree of every node
+        #NURE: from 12/30. As for directed network we have source of an edge along columns,
+        # for computing outdegree we need to sum column wise.
+        outDeg[0, i] = 1.0 * net.getcol(i).sum()  # weighted out degree of every node
 
-        for i in range(N):
-            outDeg[i, 0] = 1.0 * net.getrow(i).sum()  # weighted out degree of every node
-            if outDeg[i, 0] == 0:
-                zeroDegNodes.add(i)
-        # print("Number of zero degree nodes = ", len(zeroDegNodes))
+        if outDeg[0, i] == 0:
+            zeroDegNodes.add(i)
+    # Walking in from neighbouring edge:
+    #Nure: Checked throughly the following statement to make sure that the degree normalization is done column wise.
+    e = net.multiply(1 - alpha).multiply(outDeg.power(-1))  # (1-q)*net[u,v]/(outDeg[u])
+    return e, zeroDegNodes
 
-        # Create the transition matrix
-        # (from_idx, to_idx) = net.nonzero()
-        # print("Number of edges in sparse matrix = ", len(from_idx))
-
-        # net[u,v] = Walking in from an edge + Teleporting from source node + Teleporting from dangling node
-        #          = (1-q)*net[u,v]/(outDeg[u]) + (q)*(incomingTeleProb[v] + zSum)
-
-        # Walking in from neighbouring edge:
-        e = net.multiply(1 - alpha).multiply(outDeg.power(-1))  # (1-q)*net[u,v]/(outDeg[u])
-
-        # Compute transition matrix X
-        X = e
-        # print("Shape of transition matrix X = ", X.get_shape())  # N X N
-
-        #####SAVE X and zerodegnodes
-        print('type of transition matrix: ', type(X))
-        os.makedirs(os.path.dirname(trans_mat_file), exist_ok=True)
-        mmwrite(trans_mat_file, X)
-
-        with open(zero_deg_node_file, 'wb') as f:
-            pickle.dump(zeroDegNodes, f)
-
-        print('saves transition matrix and zerodegnodes\n')
-    # READ from files
-    X = mmread(trans_mat_file)
-    with open(zero_deg_node_file,'rb') as f:
-        zeroDegNodes = pickle.load(f)
-
-
-    return X, zeroDegNodes
-
-def rwr(net, out_dir, weights={}, alpha=0.5, eps=0.01, maxIters=500, verbose=False, weightName='weight'):
-    # print(out_dir)
-    # outputs/networks/stringv11/400/2020-03-sarscov2-human-ppi-ace2//rwr/
+def rwr(net, weights={}, alpha=0.5, eps=0.01, maxIters=500, verbose=False, weightName='weight'):
     N = net.get_shape()[0]
     # print("Shape of network = ", net.get_shape())
     # print("Number of teleportation weights = ", len(weights))
     # print("Number of nodes in network = ", N)
 
-    ###### Create and save transition matrix ###################
-    X, zeroDegNodes = create_and_save_transition_mtx_zerodegnodes(net, N,alpha, out_dir, force_write=False)
-
+    ###### Create transition matrix ###################
+    X, zeroDegNodes = create_transition_mtx_zerodegnodes(net, N, alpha)
     incomingTeleProb = {}  # The node weights when the algorithm begins, also used as teleport-to probabilities
-    prevVisitProb = {}  # The visitation probability in the previous iterations
-    currVisitProb = {}  # The visitation probability in the current iteration
 
     # Find the incoming teleportation probability for each node, which is also used as the initial probabilities in
     # the graph. If no node weights are passed in, use a uniform distribution.
@@ -159,8 +131,14 @@ def rwr(net, out_dir, weights={}, alpha=0.5, eps=0.01, maxIters=500, verbose=Fal
         iters += 1
 
         # X: N X N ; prevVisitProb: N X 1 ; Thus, X.transpose() * prevVisitProb: N X 1
-        currVisitProb = (X.transpose() * prevVisitProb)
+        #Nure: till 12/30, in X along rows I had sources, and columns I had targets.
+        # currVisitProb = (X.transpose() * prevVisitProb)
+
+        #Nure: from 12/30, in X along rows I have sources, and columns I have targets. So using
+        # X directly instead of X.transpose()
+        currVisitProb = (X * prevVisitProb)
         currVisitProb = currVisitProb + t  # N X 1
+
 
         # Teleporting from dangling node
         # In the basic formulation, nodes with degree zero ("dangling
@@ -169,8 +147,11 @@ def rwr(net, out_dir, weights={}, alpha=0.5, eps=0.01, maxIters=500, verbose=Fal
         # teleport with uniform probability to any node. Here we compute
         # the probability that a walker will teleport to each node by
         # this process.
-        zSum = sum([prevVisitProb[x, 0] for x in zeroDegNodes]) / N  # scalar
-        currVisitProb = currVisitProb + ((1 - alpha) * zSum)  # the scalar (1-q)*zSum will get broadcasted and added to every element of currVisitProb
+        zSum = sum([prevVisitProb[x, 0] for x in zeroDegNodes])/N  # scalar
+        currVisitProb = currVisitProb + csc_matrix(np.full(currVisitProb.shape,
+                        ((1 - alpha) * zSum)))  # the scalar (1-q)*zSum will get broadcasted and added to every element of currVisitProb
+
+        # currVisitProb = currVisitProb + ((1 - alpha) * zSum)  # the scalar (1-q)*zSum will get broadcasted and added to every element of currVisitProb
 
         # Keep track of the maximum RELATIVE difference between this
         # iteration and the previous to test for convergence
@@ -190,63 +171,97 @@ def rwr(net, out_dir, weights={}, alpha=0.5, eps=0.01, maxIters=500, verbose=Fal
         finished = (maxDiff < eps) or (iters >= maxIters)
         # Update prevVistProb
         prevVisitProb = currVisitProb
+
+
         # break
     # Create a dictionary of final scores (keeping it consistent with the return type in PageRank.py)
     finalScores = {}
     for i in range(N):
         finalScores[i] = currVisitProb[i, 0]  #dim(currVisitProb)=N*1.
-        # so, take the value of the first col which is the only col as well
-
+        # so, take the value of the first col    which is the only col as well
     return finalScores
 
-
-
-
-def compute_two_loss_terms(y_true, y_pred, alpha, W):
+def compute_two_loss_terms(y_true, y_pred, alpha, W, is_directed=False):
     '''
     This function computes the two terms in the quadratic loss or energy function in PageRank algorithm
     presented in Ref: Christopher L. Poirel, Reconciling differential gene expression data with
     molecular interaction networks, Bioinformatics, Volume 29, Issue 5, 1 March 2013, Pages 622–629
     '''
 
-    #first term = alpha. ||(y_pred-y_true).(deg_root_inv)||^2 where deg_root_inv(i) = 1/(sqrt(deg(i)))
-    #But we are multiplying the first term with 2 i.e. first term = 2* alpha. ||(y_pred-y_true).(deg_root_inv)||^2,
-    # and we are doing it because in our second term we compute each edge twice and as a result the second term
-    # is twice than what we should compute. And to balance them out we need the first term multipled by 2.
+    if not is_directed:
+        #first term = alpha. ||(y_pred-y_true).(deg_root_inv)||^2 where deg_root_inv(i) = 1/(sqrt(deg(i)))
+        #But we are multiplying the first term with 2 i.e. first term = 2* alpha. ||(y_pred-y_true).(deg_root_inv)||^2,
+        # and we are doing it because in our second term we compute each edge twice and
+        # as a result the second term
+        # is twice than what we should compute.
+        # And to balance them out we need the first term multiplied by 2.
 
-    deg = np.asarray(W.sum(axis=0)).flatten()
-    deg_root_inv = np.divide(1., np.sqrt(deg))
-    loss_term1 = 2* alpha * (norm(np.multiply((y_pred-y_true), deg_root_inv),ord = 2))**2
+        deg = np.asarray(W.sum(axis=0)).flatten()
+        deg_root_inv = np.divide(1., np.sqrt(deg))
+        deg_root_inv[np.isinf(deg_root_inv)] = 0 #TODO: is this the right way?
+        # if degree of a node is 0, then inv(deg)=inf, we convert it to 0 as we don't
+        # want that degree to have any impact on the calculated loss term
 
+        loss_term1_wo_alpha =2* (norm(np.multiply((y_pred-y_true), deg_root_inv),ord = 2))**2
+        loss_term1 = alpha * loss_term1_wo_alpha
 
+        #one implementation for the second term
+        # #second term = (1-alpha) (y_pred_norm*L*y_pred_norm_transpose), where y_pred_norm(i) = (y_pred(i)/(deg(i))
+        # # L = D-W, D = un-normalized degree matrix, W= un-nomalized weight matrix
+        # y_pred_norm = np.divide(y_pred, deg).reshape(-1, len(y_pred))
+        # deg[np.isinf(deg)] = 0
+        # D = sp.diags(deg)
+        # L = (D-W).toarray()
+        # loss_term2 = (1-alpha)*np.matmul(np.matmul(y_pred_norm, L), y_pred_norm.transpose())[0,0]
+        #another implementation for the second term
+        loss_term2_wo_alpha = 0
+        y_pred_norm = np.divide(y_pred, deg)
+        rows, cols, vals = find(W)
+        for i in range(len(rows)):
+            l = vals[i]*((y_pred_norm[rows[i]]-y_pred_norm[cols[i]])**2)
+            loss_term2_wo_alpha += l
 
-    #one implementation for the second term
-    # #second term = (1-alpha) (y_pred_norm*L*y_pred_norm_transpose), where y_pred_norm(i) = (y_pred(i)/(deg(i))
-    # # L = D-W, D = un-normalized degree matrix, W= un-nomalized weight matrix
-    # y_pred_norm = np.divide(y_pred, deg).reshape(-1, len(y_pred))
-    # deg[np.isinf(deg)] = 0
-    # D = sp.diags(deg)
-    # L = (D-W).toarray()
-    # loss_term2 = (1-alpha)*np.matmul(np.matmul(y_pred_norm, L), y_pred_norm.transpose())[0,0]
+        loss_term2 = (1-alpha)*loss_term2_wo_alpha
 
-    #another implementation for the second term
-    loss_term2 = 0
-    y_pred_norm = np.divide(y_pred, deg)
-    rows, cols, vals = find(W)
-    for i in range(len(rows)):
-        a = vals[i]
-        b = y_pred_norm[rows[i]]
-        c = y_pred_norm[cols[i]]
-        loss_term2 += vals[i]*((y_pred_norm[rows[i]]-y_pred_norm[cols[i]])**2)
+    else:
+        out_deg = np.asarray(W.sum(axis=0)).flatten()
+        in_deg = np.asarray(W.sum(axis=1)).flatten()
+        in_deg_root_inv = np.divide(1., np.sqrt(in_deg))
+        in_deg_root_inv[np.isinf(in_deg_root_inv)] = 0  # TODO: is this the right way?
+        # if degree of a node is 0, then inv(deg)=inf, we convert it to 0 as we don't
+        # want that degree to have any impact on the calculated loss term
+        loss_term1_wo_alpha =2* (norm(np.multiply((y_pred - y_true), in_deg_root_inv), ord=2)) ** 2
+        loss_term1 = alpha * loss_term1_wo_alpha
 
-    loss_term2 *= (1-alpha)
+        loss_term2_wo_alpha = 0
+        y_pred_out_deg_norm = np.divide(y_pred, out_deg)
+        y_pred_in_deg_norm = np.divide(y_pred, in_deg)
 
+        rows, cols, vals = find(W)
+
+        #DEBUG PURPOSE
+        loss_2_per_source={p:0 for p in range(W.shape[0])}
+        loss_2_per_target={p:0 for p in range(W.shape[0])}
+
+        for i in range(len(rows)):
+            l = vals[i] * ((y_pred_in_deg_norm[rows[i]] - y_pred_out_deg_norm[cols[i]]) ** 2)
+            loss_2_per_source[cols[i]]+=l
+            loss_2_per_target[rows[i]]+=l
+            loss_term2_wo_alpha += l
+
+        loss_term2 =(1 - alpha)*loss_term2_wo_alpha
+
+        # #######DEBUG PURPOSE
+        # loss_2_per_target = dict(sorted(loss_2_per_target.items(), key=lambda x: x[1], reverse=True))
+        # out_deg_zero = np.where(out_deg == 0)[0]
+        # loss_2_per_target = set(list(loss_2_per_target.keys())[0:100])
+        # print(len(loss_2_per_target.difference(set(out_deg_zero))))
+        # ##########
+
+    print('loss without alpha multiplied for alpha: ', alpha, ' ', round(loss_term1_wo_alpha,4),\
+          ' ', round(loss_term2_wo_alpha,4))
+    print('loss for alpha: ', alpha, ' ', round(loss_term1,4), ' ', round(loss_term2,4))
     return loss_term1, loss_term2
-
-
-
-
-
 
 
 def get_diffusion_matrix(W, alpha=0.5, diff_mat_file=None, force_run=False):
@@ -277,6 +292,10 @@ def get_diffusion_matrix(W, alpha=0.5, diff_mat_file=None, force_run=False):
     del X, X_full
     return X_inv
 
+def get_M(W, alpha):
+    M = alg_utils._net_normalize(W, norm='full')
+    M = M.multiply(1 - alpha) # So every value in M is < 1.
+    return M.A
 def get_fluid_flow_matrix(W, alpha, fluid_flow_mat_file_M=None, fluid_flow_mat_file_R=None, force_run=False):
     """
 
@@ -290,11 +309,12 @@ def get_fluid_flow_matrix(W, alpha, fluid_flow_mat_file_M=None, fluid_flow_mat_f
         print("Reading %s" % (fluid_flow_mat_file_R))
         R = np.load(fluid_flow_mat_file_R)
     else:
-        M = alg_utils._net_normalize(W, norm='full')
-        M = M.multiply(1 - alpha)
-        M=M.A
-        eps = 0.000001
+
+        M = get_M(W, alpha)
+        # M=M.A
         assert (M <= 1).all(), print('greater than 1 values in M')
+        eps = 0.000001
+
         for i in range(M.shape[1]):
             s = np.sum(M[:, i])
             assert (s-1)<=eps, print('problem in norm', s)
@@ -321,6 +341,6 @@ def get_fluid_flow_matrix(W, alpha, fluid_flow_mat_file_M=None, fluid_flow_mat_f
         print("Writing to %s" % (fluid_flow_mat_file_R))
         os.makedirs(os.path.dirname(fluid_flow_mat_file_R), exist_ok=True)
         np.save(fluid_flow_mat_file_R, R)
-
+        del M
     return M_log, R
 

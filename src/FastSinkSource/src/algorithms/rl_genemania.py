@@ -152,6 +152,29 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None, force_run=False):
 
     return M_inv
 
+def get_M(W, alpha):
+    W_norm = alg_utils._net_normalize(W)
+    # take the column sum and set them as the diagonals of a matrix
+    deg = np.asarray(W_norm.sum(axis=0)).flatten() #check
+    deg[np.isinf(deg)] = 0
+    D_norm = diags(deg)
+
+    # the equation for final M is W_norm*a(I + a*D_norm)^-1
+    #first compute Q_inv = (I + a*D_norm)^-1
+
+    Q = eye(D_norm.shape[0]) + alpha*D_norm
+    # t1 = time.time()
+    Q = Q.A
+    Q_inv = inv(Q)
+    # print('time 1: ', time.time()-t1)
+    W_norm = W_norm.A
+    #now to get final M, compute M=W_norm*a*Q_inv
+    W_norm= W_norm*alpha #Every value in W_norm is < 1 as we are multiplying it with alpha that is < 1.
+    M = np.matmul(W_norm, Q_inv) # Here we are dividing each value in W_norm with
+    # (1+alpha*degree_of_correpsonding_node)), i.e. dividing with some value>1. So the values in M
+    # will be less than 1.
+    del W_norm, Q
+    return M
 
 def get_fluid_flow_matrix(W, alpha=1.0, fluid_flow_mat_file_M=None, fluid_flow_mat_file_R=None, force_run=False):
     """
@@ -173,34 +196,20 @@ def get_fluid_flow_matrix(W, alpha=1.0, fluid_flow_mat_file_M=None, fluid_flow_m
         R = np.load(fluid_flow_mat_file_R)
 
     else:
-        W_norm = alg_utils._net_normalize(W)
-        # take the column sum and set them as the diagonals of a matrix
-        deg = np.asarray(W_norm.sum(axis=0)).flatten() #check
-        deg[np.isinf(deg)] = 0
-        D_norm = diags(deg)
-
-        # the equation for final M is W_norm*a(I + a*D_norm)^-1
-        #first compute Q_inv = (I + a*D_norm)^-1
-        Q = eye(D_norm.shape[0]) + alpha*D_norm
-        Q = Q.A
-        Q_inv = inv(Q)
-
-        W_norm = W_norm.A
-        #now to get final M, compute M=W_norm*a*Q_inv
-        W_norm= W_norm*alpha
-        M = np.matmul(W_norm, Q_inv)
+        M = get_M(W, alpha)
 
         #R=(I-M)^-1
         R = eye(M.shape[0]) - M
+        # t2 = time.time()
         R = inv(R)
+        # print('time 2: ', time.time()-t2)
 
-        del W_norm, Q
         # now take absolute value of logarithm of each element/weight in M so that while calculating
         # shortest path we can add the weights to compute the cost of a path. Initially,( without
         # logarithm)from Mark's derivation the cost of a path l->k->j->i is M_ij*M_jk*M_kl*b_l where
         # l is a source and b_l = 1 for genemaniaplus
 
-        assert np.all(M<1), print('sum of weight greater than 1')
+        assert np.all(M<=1), print('sum of weight greater than 1')
         M_log = np.absolute(np.log10(M))
 
         # log converts 0 elements into infinity. infinity weight==no edge.

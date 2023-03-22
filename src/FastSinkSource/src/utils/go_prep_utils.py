@@ -724,14 +724,16 @@ def main(obo_file, gaf_file, out_pref=None, cutoff=1000, write_table=False,
     return results, df_summaries
 
 
-if __name__ == "__main__":
-    print("Running %s" % (' '.join(sys.argv)))
-    opts, args = parse_args(sys.argv)
-    pos_neg_ec = [] if opts.pos_neg_ec is None else opts.pos_neg_ec.split(',')
-    rem_neg_ec = [] if opts.rem_neg_ec is None else opts.rem_neg_ec.split(',')
-    ignore_ec = [] if opts.ignore_ec is None else opts.ignore_ec.split(',')
-    obo_file = opts.input_dir + opts.obo_file
-    gaf_file = opts.input_dir + opts.gaf_file
-
-    main(obo_file, gaf_file, opts.out_dir, cutoff=opts.cutoff, write_table=opts.write_table,
-         pos_neg_ec=pos_neg_ec, rem_neg_ec=rem_neg_ec, ignore_ec=ignore_ec)
+##RUN it when we need to create specific go terms with certain number of annotated prots to them.
+## otherwise comment out
+# if __name__ == "__main__":
+#     print("Running %s" % (' '.join(sys.argv)))
+#     opts, args = parse_args(sys.argv)
+#     pos_neg_ec = [] if opts.pos_neg_ec is None else opts.pos_neg_ec.split(',')
+#     rem_neg_ec = [] if opts.rem_neg_ec is None else opts.rem_neg_ec.split(',')
+#     ignore_ec = [] if opts.ignore_ec is None else opts.ignore_ec.split(',')
+#     obo_file = opts.input_dir + opts.obo_file
+#     gaf_file = opts.input_dir + opts.gaf_file
+#
+#     main(obo_file, gaf_file, opts.out_dir, cutoff=opts.cutoff, write_table=opts.write_table,
+#          pos_neg_ec=pos_neg_ec, rem_neg_ec=rem_neg_ec, ignore_ec=ignore_ec)

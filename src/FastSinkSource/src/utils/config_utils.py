@@ -35,6 +35,7 @@ def setup_config_variables(config_map, **kwargs):
             # if the user provided a value for this parameter (i.e., in kwargs), don't overwrite it
             if key not in kwargs or kwargs[key] is None or kwargs[key] == "":
                 kwargs[key] = val
+
     return input_settings, input_dir, output_dir, alg_settings, kwargs
 
 

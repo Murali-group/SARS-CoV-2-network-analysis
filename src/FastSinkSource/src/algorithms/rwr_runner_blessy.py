@@ -13,7 +13,6 @@ def setupInputs(run_obj):
     run_obj.ann_matrix = run_obj.ann_obj.ann_matrix
     run_obj.terms = run_obj.ann_obj.terms
     run_obj.P = alg_utils.normalizeGraphEdgeWeights(run_obj.net_obj.W)
-
     return
 
 
@@ -37,7 +36,7 @@ def run(run_obj):
         for i in positives:
             positive_weights[i] = 1
 
-        scores_map = PageRank_Matrix.rwr(run_obj.net_obj.W, run_obj.out_dir, weights=positive_weights,
+        scores_map = PageRank_Matrix.rwr(run_obj.net_obj.W, weights=positive_weights,
                                        alpha=params.get('alpha'), eps=params.get('eps'), maxIters=params.get('max_iters'),
                                        verbose=run_obj.verbose)
         # PageRank returns a dictionary of node_id:score mapping.

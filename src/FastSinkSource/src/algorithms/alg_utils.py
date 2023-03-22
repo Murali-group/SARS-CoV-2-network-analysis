@@ -1,4 +1,3 @@
-
 import os, sys
 from scipy import sparse as sp
 from scipy.sparse import csr_matrix, csgraph, diags
@@ -8,8 +7,7 @@ import time
 from tqdm import tqdm, trange
 import gzip
 from ..utils import file_utils as utils
-import networkx as nx
-
+from ..utils import net_utils
 ALGORITHMS = [
     "sinksourceplus-bounds",
     "sinksource-bounds",
@@ -40,17 +38,19 @@ def select_terms(only_functions_file=None, terms=None):
     return selected_terms
 
 
-def setup_sparse_network(network_file, node2idx_file=None, forced=False):
+
+def setup_sparse_network(network_file, isdirected, largest_cc, node2idx_file=None, forced=False):
     """
     Takes a network file and converts it to a sparse matrix
     """
+
     sparse_net_file = network_file.replace('.'+network_file.split('.')[-1], '.npz')
     if node2idx_file is None:
         node2idx_file = sparse_net_file + "-node-ids.txt"
     if forced is False and (os.path.isfile(sparse_net_file) and os.path.isfile(node2idx_file)):
         print("Reading network from %s" % (sparse_net_file))
         W = sp.load_npz(sparse_net_file)
-        print("\t%d nodes and %d edges" % (W.shape[0], len(W.data)/2))
+        print("\t%d nodes and %d edges" % (W.shape[0], len(W.data))) #changed from (W.data)/2 to (W.data)
         print("Reading node names from %s" % (node2idx_file))
         node2idx = {n: int(n2) for n, n2 in utils.readColumns(node2idx_file, 1, 2)}
         idx2node = {n2: n for n, n2 in node2idx.items()}
@@ -71,31 +71,60 @@ def setup_sparse_network(network_file, node2idx_file=None, forced=False):
                     w.append(float(line[2]))
                 else:
                     w.append(float(1))
+
+
+        ## if largest_cc is true then take nodes/edges which create only largest component
+
         print("\tconverting uniprot ids to node indexes / ids")
         # first convert the uniprot ids to node indexes / ids
         prots = sorted(set(list(u)) | set(list(v)))
         node2idx = {prot: i for i, prot in enumerate(prots)}
+        idx2node = {i:prot for i,prot in enumerate(prots)}
         i = [node2idx[n] for n in u]
         j = [node2idx[n] for n in v]
         print("\tcreating sparse matrix")
         #print(i,j,w)
         W = sp.coo_matrix((w, (i, j)), shape=(len(prots), len(prots))).tocsr()
 
-        # make sure it is symmetric
+        if largest_cc==True: #get the prots in largest cc and then consider only them to create new W and remap node2idx
+            prots = net_utils.get_prots_in_largest_cc(W, isdirected, idx2node)
+            node2idx = {prot: i for i, prot in enumerate(prots)}
+
+            #filter out edges that are outside of largest cc
+            init_edges = set(zip(u,v,w))
+            filterd_edges = np.array([[node2idx[x],node2idx[y],w] for x,y,w in init_edges if (x in prots and
+                                                             y in prots)], dtype=int)
+
+            i = filterd_edges[:, 0]
+            j = filterd_edges[:, 1]
+            w = filterd_edges[:, 2]
+
+            # print(i,j,w)
+            W = sp.coo_matrix((w, (i, j)), shape=(len(prots), len(prots))).tocsr()
+
+        # check if symmetric
         if (W.T != W).nnz == 0:
             pass
         else:
             print("### Matrix not symmetric!")
-            #W = W + W.T #Getting rid of this way of matrix symmetricizatuin as it changes the weights
-            #Nure:
-            W = sp.lil_matrix(W)
-            rows, cols = W.nonzero()
-            W[cols, rows] = W[rows, cols]
-            W = W.tocsr()
-            if (W.T != W).nnz == 0:
-                print("### Matrix converted to symmetric.")
+            if isdirected == False: #if the network is not directed, then make it symmetric.
+                #W = W + W.T #Getting rid of this way of matrix symmetricization as it changes the weights
+                #Nure:
+                W = sp.lil_matrix(W)
+                # remove any data on diagonal as there should not be any self loop
+                W.setdiag(0)
 
-            print("### Matrix converted to symmetric.")
+                rows, cols = W.nonzero()
+                W[cols, rows] = W[rows, cols]
+                W = W.tocsr()
+
+                if (W.T != W).nnz == 0:
+                    print("### Matrix converted to symmetric.")
+
+            else: #if directed make sure that we have targets along rows and sources along cols.
+                # As long as W was symmetric we did not have to take care of it.
+                W=W.T
+
         #print("\t%d nodes, %d edges")
         #name = os.path.basename(net_file)
         print("\twriting sparse matrix to %s" % (sparse_net_file))
@@ -181,7 +210,6 @@ def _net_normalize(W, axis=0, norm='sqrt', ss_lambda=None):
             deg = np.divide(1., ss_lambda + deg)
         deg[np.isinf(deg)] = 0
         D = sp.diags(deg)
-
         P = W.dot(D)
         # P = P.asformat(W.getformat())
 

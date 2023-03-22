@@ -233,7 +233,7 @@ def get_net_out_str(net_files, string_net_files=None, string_nets=None):
 
 def create_sparse_net_file(
         out_pref, net_files=[], string_net_files=[],
-        string_nets=STRING_NETWORKS, string_cutoff=None, forcenet=False):
+        string_nets=STRING_NETWORKS, string_cutoff=None, largest_cc=False, forcenet=False):
     if net_files is None:
         net_files = []
     # if there aren't any string net files, then set the string nets to empty
@@ -270,7 +270,8 @@ def create_sparse_net_file(
     else:
         print("\tcreating sparse nets and writing to %s" % (sparse_nets_file))
         sparse_networks, network_names, nodes, netx_graphs = setup_sparse_networks(
-            net_files=net_files, string_net_files=string_net_files, string_nets=string_nets, string_cutoff=string_cutoff)
+            net_files=net_files, string_net_files=string_net_files,
+            string_nets=string_nets, string_cutoff=string_cutoff, largest_cc=largest_cc)
 
         # now write them to a file
         write_sparse_net_file(
@@ -308,7 +309,7 @@ def write_sparse_net_file(
         out.write(''.join(["%s\n" % (n) for n in network_names]))
 
 
-def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], string_cutoff=None):
+def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], string_cutoff=None,largest_cc=False):
     """
     Function to setup networks as sparse matrices 
     *net_files*: list of networks for which to make into a sparse
@@ -369,7 +370,12 @@ def setup_sparse_networks(net_files=[], string_net_files=[], string_nets=[], str
                 # if the edge already exists, 
                 # the old attributes will still be retained
                 G.add_edge(u, v, **attr_dict)
-    print("\t%d nodes and %d edges" % (G.number_of_nodes(), G.number_of_edges()))
+    print("\t%d nodes and %d edges before largest cc computation" % (G.number_of_nodes(), G.number_of_edges()))
+    #TODO NURE: if largest_cc=True then keep only the largest component from G here.
+    largest_cc = max(nx.connected_components(G),key=len)
+    G = G.subgraph(largest_cc).copy()
+
+    print("\t%d nodes and %d edges after largest cc computation" % (G.number_of_nodes(), G.number_of_edges()))
 
     print("\trelabeling node IDs with integers")
     G, node2idx, idx2node = convert_nodes_to_int(G)
