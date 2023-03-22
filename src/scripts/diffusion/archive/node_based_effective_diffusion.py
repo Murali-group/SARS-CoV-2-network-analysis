@@ -46,7 +46,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str,  default = "/data/tasnina/Provenance-Tracing/"
-                    "SARS-CoV-2-network-analysis/fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_s12.yaml" ,
+                    "SARS-CoV-2-network-analysis/fss_inputs/config_files/provenance/biogrid_y2h_s12.yaml" ,
                        help="Configuration file used when running FSS. ")
 
     group.add_argument('--analysis-type', type=str, default="diffusion_analysis",
@@ -80,8 +80,7 @@ def setup_opts():
                        help="Number of random sets used when computing pvals. Default: 1000")
     group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the path lengths for random sets, and re-writing the output files")
-    # group.add_argument('--id-mapping-file', type=str, default="datasets/mappings/human/uniprot-reviewed-status.tab.gz",
-    #                    help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry' and 'Gene names'")
+
 
     return parser
 
@@ -115,8 +114,7 @@ def main(config_map, **kwargs):
             for alg_name in alg_settings:
                 if (alg_settings[alg_name]['should_run'][0]==True) or (alg_name in kwargs.get('run_algs')):
                     # load the top predictions
-                    #Nure: This statement perviously considered only genemaniaplus.
-                    # now considers all algo with alpha as a param
+
                     alg_pred_files = config_utils.get_dataset_alg_prediction_files(
                         output_dir, dataset, alg_settings, [alg_name], **kwargs)
                     cutoff = kwargs.get('cutoff', 0.01)
@@ -127,6 +125,7 @@ def main(config_map, **kwargs):
                     alpha_nodes_pos_nbr_dfsn = {}
                     beta_nodes_pos_nbr_dfsn = {}
                     alpha_dfs = {}
+
                     for alpha, alg in zip(alphas, alg_pred_files):
                         pred_file = alg_pred_files[alg]
 
@@ -147,6 +146,7 @@ def main(config_map, **kwargs):
                         df.reset_index(inplace=True, drop=True)
 
                         sig_cutoff = kwargs.get('stat_sig_cutoff')
+                        sig_str = "-sig%s" % (str(sig_cutoff).replace('.','_')) if sig_cutoff else ""
                         if sig_cutoff:
                             df = config_utils.get_pvals_apply_cutoff(df, pred_file, **kwargs)
 
@@ -166,7 +166,6 @@ def main(config_map, **kwargs):
 
                         # print('pred_scores: ', pred_scores[0:10])
 
-                        sig_str = "-sig%s" % (str(sig_cutoff).replace('.','_')) if sig_cutoff else ""
 
                         # Nure: add alg_name to out_pref
                         out_pref = config_map['output_settings']['output_dir']+"/viz/%s/%s/diffusion-node-analysis/%s/cutoff%s-k%s-a%s%s" % (
@@ -229,7 +228,7 @@ def main(config_map, **kwargs):
 
                     # ylabel = 'Fraction Non-Nbr Diffusion'
                     ylabel = 'Node Based Effective Diffusion'
-                    title = dataset['plot_exp_name'] + '_' + term + '_' + plot_alg_name(alg_name)
+                    title = dataset['plot_exp_name'] + '_' + term + '_' + get_plot_alg_name(alg_name)
 
                     plot_effective_diffusion(df, out_file, xlabel="Alpha", ylabel=ylabel, title=title)
 

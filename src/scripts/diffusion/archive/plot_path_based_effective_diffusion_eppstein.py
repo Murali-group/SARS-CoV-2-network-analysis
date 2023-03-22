@@ -32,23 +32,26 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                                                     "fss_inputs/config_files/provenance/provenance_string400v11.5_s12.yaml"
+                                                     "fss_inputs/config_files/provenance/string700_go.yaml"
                        , help="Configuration file used when running FSS. ")
 
     group.add_argument('--run-algs', type=str, action='append', default=[])
-    group.add_argument('--k-to-test', '-k', type=int, action='append', default=[],
+    group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
 
-    group.add_argument('--n-sp', '-n', type=int, default=200,
+    group.add_argument('--n-sp', '-n', type=int, default=1000,
                        help="n-sp is the number of shortest paths to be considered" +
                             "If not specified, will check the config file. Default=20")
-    group.add_argument('--m', type=int, default=20,
-                       help="for each top prediction, for how many top contributing sources we wanna analyse the path" +
-                            "Default=20")
+
     group.add_argument('--stat-sig-cutoff', type=float,
                        help="Cutoff on the node p-value for a node to be considered in the topk. " + \
                             "The p-values should already have been computed with run_eval_algs.py")
+    # group.add_argument('--balancing-alpha-only', action='store_true', default=False,
+    #                    help="Ignore alpha from config file rather take the alpha value\
+    #                         that balanced the two loss terms in quad loss function for the corresponding\
+    #                         network-term-alg")
+    #
 
     return parser
 
@@ -107,6 +110,7 @@ def main(config_map, k, **kwargs):
             for alg_name in alg_settings:
                 if (alg_settings[alg_name]['should_run'][0] == True) or (alg_name in kwargs.get('run_algs')):
                     # get the alpha values to use
+
                     alphas = alg_settings[alg_name]['alpha']
 
                     #dictionaries to pass to plotting functions
@@ -119,17 +123,17 @@ def main(config_map, k, **kwargs):
                     diffusion_via_pathlen_2_all_alpha_dict = {alpha: [] for alpha in alphas}
                     diffusion_via_pathlen_2_all_beta_dict = {}
 
-                    diffusion_via_pathlen_3_all_alpha_dict = {alpha: [] for alpha in alphas}
-                    diffusion_via_pathlen_3_all_beta_dict = {}
+                    # diffusion_via_pathlen_3_all_alpha_dict = {alpha: [] for alpha in alphas}
+                    # diffusion_via_pathlen_3_all_beta_dict = {}
+
 
                     for alpha in alphas:
                         net_alg_settings = config_map['output_settings']['output_dir'] + \
                                         "/viz/%s/%s/diffusion-path-analysis/%s/" % (dataset['net_version'], term, alg_name)
-                        run_settings = "k%s-nsp%s-m%s-a%s%s" \
-                                        % ( k, kwargs.get('n_sp'),
-                                        kwargs.get('m'), alpha, sig_str)
+                        run_settings = "k%s-nsp%s-a%s%s" \
+                                        % ( k, kwargs.get('n_sp'), alpha, sig_str)
                         path_length_based_effective_diffusion_file =\
-                                        "%s/path-length-wise-effective-diff-%s.tsv"%(net_alg_settings,run_settings)
+                                        "%s/path-length-wise-effective-diff-ss-%s.tsv"%(net_alg_settings,run_settings)
 
                         path_length_based_effective_diffusion_df = \
                             pd.read_csv(path_length_based_effective_diffusion_file, sep='\t', index_col=None)
@@ -140,8 +144,8 @@ def main(config_map, k, **kwargs):
                                                                                     ['frac_total_score_via_len_1'])
                         diffusion_via_pathlen_2_all_alpha_dict[alpha] = list(path_length_based_effective_diffusion_df \
                                                                                     ['frac_total_score_via_len_2'])
-                        diffusion_via_pathlen_3_all_alpha_dict[alpha] = list(path_length_based_effective_diffusion_df \
-                                                                                 ['frac_total_score_via_len_3'])
+                        # diffusion_via_pathlen_3_all_alpha_dict[alpha] = list(path_length_based_effective_diffusion_df \
+                        #                                                          ['frac_total_score_via_len_3'])
                         if alg_name == 'genemaniaplus':
                             # Nure: introduced new param beta = 1/(1+alpha). this beta variabel is comparable with alpha in rwr.
                             diffusion_beyond_pathlen_1_all_beta_dict[round(float(1 / (1 + alpha)), 2)] = \
@@ -150,29 +154,29 @@ def main(config_map, k, **kwargs):
                                 diffusion_via_pathlen_1_all_alpha_dict[alpha]
                             diffusion_via_pathlen_2_all_beta_dict[round(float(1 / (1 + alpha)), 2)] = \
                                 diffusion_via_pathlen_2_all_alpha_dict[alpha]
-                            diffusion_via_pathlen_3_all_beta_dict[round(float(1 / (1 + alpha)), 2)] = \
-                                diffusion_via_pathlen_3_all_alpha_dict[alpha]
+                            # diffusion_via_pathlen_3_all_beta_dict[round(float(1 / (1 + alpha)), 2)] = \
+                            #     diffusion_via_pathlen_3_all_alpha_dict[alpha]
 
                     #********************plot*******************
-                    plot_dir = net_alg_settings + '/plot/'
+                    plot_dir = net_alg_settings + '/plot/ss/'
                     os.makedirs(plot_dir, exist_ok=True)
-                    title = dataset['plot_exp_name'] + '_' + term + '_' + plot_alg_name(alg_name)
-                    common_plot_file_substring =  "k%s-nsp%s-m%s%s" \
-                                        % ( k, kwargs.get('n_sp'),kwargs.get('m'),sig_str)
+                    title = dataset['plot_exp_name'] + '_' + term + '_' + get_plot_alg_name(alg_name)
+                    common_plot_file_substring =  "k%s-nsp%s%s" \
+                                        % ( k, kwargs.get('n_sp'),sig_str)
 
-                    #plot diffusion coming beyond pathlength 1
+                    #plot diffusion coming beyond pathlength 1 across alphas
                     boxplot_dfsn(diffusion_beyond_pathlen_1_all_alpha_dict, 'Alpha', 'Path Based Effective Diffusion',\
                                  title, plot_dir+'path_effective_diffusion_alphas_'+common_plot_file_substring+'.pdf')
 
-                    #plot diffusion coming via only pathlength 1,( pathlength 2, pathlength 3)
+                    #plot diffusion coming via only pathlength 1,( pathlength 2, pathlength 3) across alphas
                     boxplot_dfsn(diffusion_via_pathlen_1_all_alpha_dict, 'Alpha', 'diffusion via path length 1', \
                                  title, plot_dir + 'contribution_via_path_length_1_alphas_' + common_plot_file_substring + '.pdf')
 
                     boxplot_dfsn(diffusion_via_pathlen_2_all_alpha_dict, 'Alpha', 'diffusion via path length 2', \
                                  title, plot_dir + 'contribution_via_path_length 2_alphas_' + common_plot_file_substring + '.pdf')
 
-                    boxplot_dfsn(diffusion_via_pathlen_3_all_alpha_dict, 'Alpha', 'diffusion via path length 3', \
-                                 title,plot_dir + 'contribution_via_path_length 3_alphas_' + common_plot_file_substring + '.pdf')
+                    # boxplot_dfsn(diffusion_via_pathlen_3_all_alpha_dict, 'Alpha', 'diffusion via path length 3', \
+                    #              title,plot_dir + 'contribution_via_path_length 3_alphas_' + common_plot_file_substring + '.pdf')
 
 
                     if alg_name=='genemaniaplus':
@@ -182,8 +186,8 @@ def main(config_map, k, **kwargs):
                                      title,plot_dir + 'contribution_via_path_length 1_betas_' + common_plot_file_substring + '.pdf')
                         boxplot_dfsn(diffusion_via_pathlen_2_all_beta_dict, 'Beta', 'diffusion via path length 2', \
                                      title,plot_dir + 'contribution_via_path_length 2_betas_' + common_plot_file_substring + '.pdf')
-                        boxplot_dfsn(diffusion_via_pathlen_3_all_beta_dict, 'Beta', 'diffusion via path length 3', \
-                                     title,plot_dir + 'contribution_via_path_length 3_betas_' + common_plot_file_substring + '.pdf')
+                        # boxplot_dfsn(diffusion_via_pathlen_3_all_beta_dict, 'Beta', 'diffusion via path length 3', \
+                        #              title,plot_dir + 'contribution_via_path_length 3_betas_' + common_plot_file_substring + '.pdf')
 
 if __name__ == "__main__":
     config_map, kwargs = parse_args()

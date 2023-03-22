@@ -32,7 +32,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_string700v11.5_s1.yaml"
+                        "fss_inputs/config_files/provenance/string700_biogrid_y2h_signor_s1.yaml"
                        , help="Configuration file used when running FSS. ")
     group.add_argument('--run-algs', type=str, action='append', default=[])
     group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
@@ -114,7 +114,6 @@ def main(config_map, k, **kwargs):
 
             network_names=[]
             for alpha in alphas:
-
                 for dataset in input_settings['datasets']:
                     print("Loading data for %s" % (dataset['net_version']))
                     network_name = dataset['net_version'].replace('networks/','')
@@ -133,7 +132,7 @@ def main(config_map, k, **kwargs):
                                         "/viz/%s/%s/diffusion-path-analysis/%s/" % (dataset['net_version'], term, alg_name)
                         path_based_run_settings = "k%s-nsp%s-m%s-a%s%s" \
                                        % (k, kwargs.get('n_sp'), kwargs.get('m'), alpha, sig_str)
-                        path_based_ed_file = "%s/path-length-wise-effective-diff-%s.tsv" \
+                        path_based_ed_file = "%s/path-length-wise-effective-diff-ss-%s.tsv" \
                                                     % (path_based_net_alg_settings, path_based_run_settings)
 
                         node_based_net_alg_settings = config_map['output_settings']['output_dir'] + \

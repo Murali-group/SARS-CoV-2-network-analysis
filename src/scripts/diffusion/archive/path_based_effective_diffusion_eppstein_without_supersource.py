@@ -1,5 +1,5 @@
 # here's an example call to this script:
-# python src/scripts/path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_go.yaml
+# python src/scripts/effective_diffusion_node_path.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_go.yaml
 # --run-algs genemaniaplus --k 500 --m 20 --n-sp 500
 
 
@@ -15,11 +15,11 @@ import time
 import subprocess
 import logging
 
-logging.basicConfig(filename='diffisuion_eppsteins.log', filemode='a', level=logging.INFO, \
+logging.basicConfig(filename='../diffisuion_eppsteins.log', filemode='a', level=logging.INFO, \
                     format='%(message)s')
 
 if __name__ == "__main__":
-    # Use this to save files remotely. 
+    # Use this to save files remotely.
     matplotlib.use('Agg')
 
 import pandas as pd
@@ -54,7 +54,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                                                     "fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml"
+                                                     "fss_inputs/config_files/provenance/string700_s12.yaml"
                        , help="Configuration file used when running FSS. ")
 
     group.add_argument('--run-algs', type=str, action='append', default=[])
