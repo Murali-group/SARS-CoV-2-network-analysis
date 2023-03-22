@@ -4,7 +4,6 @@ datasets/
 fss_inputs/
 doc/
 config-files/
-*archive/
 *test*
 *.log
 # python

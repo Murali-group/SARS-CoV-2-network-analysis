@@ -13,7 +13,7 @@ from graphspace_python.graphs.classes.gsgraph import GSGraph
 #import networkx as nx
 #import utils.file_utils as utils
 #sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#from src.utils import file_utils as utils
+from src.FastSinkSource.src.utils import file_utils as utils
 import sys
 import pandas as pd
 
@@ -452,9 +452,12 @@ def parseArgs(args):
     parser.add_option('', '--edges', type='string', metavar='STR',
                       help='File of edges to post. Tab-delimited file with columns TAIL, HEAD. Required')
     parser.add_option('', '--net', type='string', metavar='STR',
-                      help='File of weighted directed edges. Can be used to get the weight of each edge for the popup. Tab-delimited file with columns TAIL,  HEAD,  WEIGHT.')
+                      help='File of weighted directed edges. Can be used to get the weight of each edge for the popup.'
+                           ' Tab-delimited file with columns TAIL,  HEAD,  WEIGHT.')
     parser.add_option('', '--mapping-file', type='string', metavar='STR',
-                      help='File used to map to a different namespace. Network/edge IDs (uniprot ids) should be in the first column with the other namespace (gene name) in the second')
+                      help='File used to map to a different namespace.'
+                           ' Network/edge IDs (uniprot ids) should be in the first column with the other'
+                           ' namespace (gene name) in the second')
 
     # extra options
     parser.add_option('', '--graph-attr', type='string', metavar='STR',

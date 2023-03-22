@@ -1,7 +1,47 @@
+Steps:
+Datset-Prep:
+    1. Run masterscripts.py for downloading datasets i.e. STRING PPI network, Uniprot mapping.
+    2. Run scripts/dataset-prep/ppi_network_download.py to download and initial pre-prpcessing of
+    BioGRID-Y2H, BioGRID-Physical networks.
+    3. Run scripts/dataset-prep/overlapping_network_prep.py to create PPI network's initial file with only overlapping
+    proteins across given networks.
+
+   4. i. For Signor file, downloaded all causal interaction data from link:
+       < http://signor.uniroma2.it/downloads.php >. Selected 'Homo sapiens' and format
+       'tsv' under Download all data section.
+      ii. Put the downloaded file named <all_data_22_12_22.tsv> in /datasets/signor/
+      iii. Run  scripts/dataset-prep/signaling_network_parse.py to parse the downloaded file.
+Prediction:
+    1. Run FastSinkSource/run_eval_algs.py to get top predictions.
+    2. Run scripts/prediction/alg_parameter_selection.py to get balancing alpha
+Effective Diffusion:
+    1. Run  diffusion/effective_diffusion_node_path.py to get node and path based effective diffusion values
+    2. plot_path_based_effective_diffusion_eppstein_balancing_alpha.py to plot path-based ed
+Other Analysis:
+    1. Run compare_across_networks_balancing_alpha.py to compare effective diffusion and pred results across
+    networks.
+
+
+
+******************************** RUN ALL ANALYSIS USING A BASH SCRIPT *************************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+source src/bash-scripts/full_run.sh "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml"
+
+******************************* CREATE NETWORK WITH OVERLAPPING PROTEINS ONLY ***********************
+The following code uses the config_file: overlap_network_config.yaml
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+python src/scripts/dataset-prep/overlapping_network_prep.py
+
+**************************** FULL SCRIPT RUN *****************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+source src/bash-scripts/full_run.sh fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_single_uniprot_s12.yaml
+
 ****************************************************** Prediction ****************************************************
 
 cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
-conda activate sarscov2-net
+conda activate sarscov2-net-new
 
 python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_s12.yaml --num-pred-to-write -1  --forcealg --eval-stat-sig-nodes 1000
 
@@ -18,28 +58,11 @@ python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/prov
 python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_go.yaml --num-pred-to-write -1 --forcealg
 python src/FastSinkSource/run_eval_algs.py --config fss_inputs/config_files/provenance/provenance_hi_union_go.yaml --num-pred-to-write -1 --forcealg
 
-******************************************* Compute Shortest Paths Eppsteins: ********************************************
-
-cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
-conda activate sarscov2-net
-
-python src/scripts/diffusion/path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_s12.yaml --k 332 --m 20 --n-sp 200 --max-len 100
-
-
-
-******************************************* Plot and Analysis on Predictions and Shortest paths ****************************
-cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
-conda activate sarscov2-net
-
-
-python src/scripts/diffusion/plot_path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332 --m 20 --n-sp 200
-
-python src/scripts/diffusion/node_based_effective_diffusion.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332
 
 
 ****************************************** Parameter Alpha Selection ********************************
 cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
-conda activate sarscov2-net
+conda activate sarscov2-net-new
 
 python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_biogrid_physicalsept22_s12.yaml
 python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_hi_union_s12.yaml
@@ -48,11 +71,67 @@ python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/con
 python src/scripts/prediction/alg_parameter_selection.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml
 
 
-******************************************** Old as of Oct 2, 2022 **********************************************************
+*********************************** Effective Diffusion  *********************************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
 
-Node based effective 
-python src/scripts/effective_diffusion_analysis.py --config fss_inputs/config_files/provenance/provenance_string_s12.yaml --cutoff 0.01 --k  332 --k  500 --k 1000 --stat-sig-cutoff 0.05
+python src/scripts/diffusion/effective_diffusion_node_path.py --force-contr --balancing-alpha-only --config fss_inputs/config_files/provenance/overlap_provenance_sp_biogrid_physicalsept22_s12.yaml
 
-python src/scripts/diffusion_path_analysis.py --config fss_inputs/config_files/provenance/provenance_biogrid_s12.yaml --k  332 --run-algs 'genemaniaplus'
- 
+python src/scripts/diffusion/effective_diffusion_node_path.py --pos-k --config fss_inputs/config_files/provenance/provenance_string700v11.5_go.yaml
+python src/scripts/diffusion/effective_diffusion_node_path.py --pos-k --config fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_go.yaml
+
+
+
 python -m cProfile -o src/scripts/profile_diffusion_path_analysis.txt -m module | diffusion_path_analysis.py
+
+
+
+********************************** Enrichment *************************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate enrichment
+python src/scripts/enrichment/enrichment_runner_termwise.py --config fss_inputs/config_files/provenance/provenance_string400v11.5_s12.yaml
+
+
+*********************** WHOLE SCRIPT FOR ALL THE ANALYSIS (EXCEPT ENRICHMENT) WITH SIGNIFICANT PREDICTIONS****
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+
+python src/FastSinkSource/run_eval_algs.py --config  fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_single_uniprot_s12.yaml --num-pred-to-write -1
+python src/scripts/prediction/alg_parameter_selection.py --config  fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_single_uniprot_s12.yaml
+
+#add the balancing alpha value to alpha param list and then run run_eval_algs.py again with significant analysis
+python src/FastSinkSource/run_eval_algs.py --config  fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_single_uniprot_s12.yaml --num-pred-to-write -1 --eval-stat-sig-nodes 1000
+
+python src/scripts/diffusion/effective_diffusion_node_path.py --force-contr --balancing-alpha-only  --stat-sig-cutoff 0.05 --config  fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_single_uniprot_s12.yaml
+python src/scripts/diffusion/plot_path_based_effective_diffusion_eppstein_balancing_alpha.py --balancing-alpha-only  --stat-sig-cutoff 0.05 --config  fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_single_uniprot_s12.yaml
+
+
+#****************** RUN BETWEENNESS ANALYSIS **********************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+
+python src/scripts/exploratory-ideas/betweenness.py --config "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/fss_inputs/config_files/provenance/provenance_biogrid_y2hsept22_s12.yaml" --master-config "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/config-files/master-config.yaml"
+
+
+***************************************      Archive: **************************************
+******************************************* Compute Shortest Paths Eppsteins: ********************************************
+
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+
+python src/scripts/diffusion/path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_biogrid_y2h_s12.yaml --k 332 --m 20 --n-sp 200 --max-len 4
+
+#For balancing alpha only
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+python src/scripts/diffusion/path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332 --n-sp 1000 --max-len 4 --balancing-alpha-only
+
+
+******************************************* Plot and Analysis on Predictions and Shortest paths ****************************
+cd /data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/
+conda activate sarscov2-net-new
+
+
+python src/scripts/diffusion/plot_path_based_effective_diffusion_eppstein.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332 --m 20 --n-sp 200
+
+python src/scripts/diffusion/node_based_effective_diffusion.py --config fss_inputs/config_files/provenance/provenance_string700v11.5_s12.yaml --k 332

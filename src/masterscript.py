@@ -25,8 +25,8 @@ def parse_args():
     kwargs = vars(args)
 
     with open(args.config, 'r') as conf:
-        #config_map = yaml.load(conf, Loader=yaml.FullLoader)
-        config_map = yaml.load(conf)
+        config_map = yaml.load(conf, Loader=yaml.FullLoader)
+        # config_map = yaml.load(conf)
     # TODO check to make sure the inputs are correct in config_map
 
     return config_map, kwargs
@@ -38,7 +38,7 @@ def setup_opts():
 
     # general parameters
     group = parser.add_argument_group('Main Options')
-    group.add_argument('--config', type=str, default="config-files/master-config.yaml",
+    group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/config-files/master-config-yeast.yaml",
                        help="Configuration file for this script.")
     group.add_argument('--download-only', action='store_true', default=False,
                        help="Stop once files are downloaded and mapped to UniProt IDs.")
@@ -73,7 +73,6 @@ def main(config_map, **kwargs):
     *kwargs*: all of the options passed into the script
     """
     dataset_settings = config_map['dataset_settings']
-
     datasets_dir = dataset_settings['datasets_dir']
 
     # Download and parse the ID mapping files 
@@ -82,7 +81,6 @@ def main(config_map, **kwargs):
 
     if kwargs.get('download_only'):
         return
-
     # Now setup the config file to run the FastSinkSource pipeline using the specified networks
     # For now I will assume some of the essential structure is already setup (i.e., committed to the repo) 
     # TODO setup the pos-neg file(s) automatically (the file containing the positive and negative examples for which to use when running FSS)

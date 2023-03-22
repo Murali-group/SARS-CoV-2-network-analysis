@@ -14,7 +14,6 @@ import shutil
 #sys.path.insert(0,os.path.dirname(__file__))
 from src.utils import parse_utils as utils
 
-
 def setup_mappings(datasets_dir, mapping_settings, **kwargs):
     """
     Download and build mappings to/from UniProt protein ids.
@@ -25,10 +24,11 @@ def setup_mappings(datasets_dir, mapping_settings, **kwargs):
         mapping_file = "%s/mappings/%s/%s" % (
             datasets_dir, mapping['species'], mapping['mapping_file'])
 
-        # download the file 
+        # download the file
         if kwargs['force_download'] or not os.path.isfile(mapping_file):
             try:
                 utils.download_file(mapping['url'], mapping_file)
+                print("downloaded file from:", mapping['url'] )
             except:
                 print("Failed to download '%s' using the url '%s'." % (mapping_file, mapping['url']))
                 print("Please either try again, manually download the file, or remove this section of the config file. Quitting")

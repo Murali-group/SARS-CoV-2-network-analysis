@@ -8,18 +8,23 @@ def plot_loss_terms(loss_term1_across_param, loss_term2_across_param, xlabel, ti
     params = list(loss_term1_across_param.keys())
     loss_term1 = list(loss_term1_across_param.values())
     loss_term2 = list(loss_term2_across_param.values())
-    x_data = np.arange(0, len(loss_term1), 1)
 
+    x_data = np.arange(0, len(loss_term1), 1)
     plt.plot(x_data, loss_term1, label='term1')
     plt.plot(x_data, loss_term2, label='term2')
-
     plt.xticks(x_data, params, rotation=90)
+
+    # plt.plot(params, loss_term1, label='term1')
+    # plt.plot(params, loss_term2, label='term2')
+
     plt.xlabel(xlabel)
     plt.ylabel('Quadratic loss terms')
     plt.title(title)
     plt.legend()
     plt.tight_layout()
     plt.savefig(filename)
+    plt.savefig(filename.replace('.png','.pdf'))
+
     plt.close()
 
 

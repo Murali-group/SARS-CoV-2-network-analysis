@@ -444,7 +444,8 @@ def main(config_map, **kwargs):
             if kwargs.get('paths_to_virus'):
                 pred_nodes = get_paths_to_virus_nodes(node_list, net_obj, virhost_edges, **kwargs)
             node_types = {} 
-            # if the drug nodes were part of the network, then get the top predicted drugs from the prediction scores
+            # if the drug nodes were part of the network, then get the top predicted drugs
+            # from the prediction scores
             if drug_nodes is not None and drugG is None:
                 if len(node_list) > 0:
                     top_k_drug_nodes = node_list
