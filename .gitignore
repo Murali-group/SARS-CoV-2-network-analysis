@@ -8,7 +8,7 @@ config-files/
 *.log
 # python
 *.pyc
-__pycache__
+*__pycache__*
 
 # vim backup files
 .*.sw* 
