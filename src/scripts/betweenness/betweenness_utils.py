@@ -153,22 +153,23 @@ def compute_1st_2nd_3rd_intermediate_node_contr(M1, M2, M3, X1, X2, X3):
                                             second_intermediate_nodes_contr_pathlen4_mat + \
                                             third_intermediate_nodes_contr_pathlen4_mat-\
                                             first_third_intermediate_nodes_contr_pathlen4_mat).T
+    intermediate_nodes_contr_mat = intermediate_nodes_contr_pathlen2_mat + intermediate_nodes_contr_pathlen3_mat+\
+                                    intermediate_nodes_contr_pathlen4_mat
+    # first_intermediate_nodes_contr = first_intermediate_nodes_contr_pathlen2_mat + \
+    #                                  first_intermediate_nodes_contr_pathlen3_mat + \
+    #                                  first_intermediate_nodes_contr_pathlen4_mat
+    # second_intermediate_nodes_contr = second_intermediate_nodes_contr_pathlen3_mat + \
+    #                                   second_intermediate_nodes_contr_pathlen4_mat
+    # # total contribution from each node being a first, second, third intermediate node. Also take a transpose
+    # # so we have sources along the columns and target along the rows again.
+    # intermediate_nodes_contr_mat = (first_intermediate_nodes_contr + second_intermediate_nodes_contr + \
+    #                                 third_intermediate_nodes_contr_pathlen4_mat - first_third_intermediate_nodes_contr_pathlen4_mat).T
+    # del first_intermediate_nodes_contr, second_intermediate_nodes_contr
 
-    first_intermediate_nodes_contr = first_intermediate_nodes_contr_pathlen2_mat + \
-                                     first_intermediate_nodes_contr_pathlen3_mat + \
-                                     first_intermediate_nodes_contr_pathlen4_mat
-    second_intermediate_nodes_contr = second_intermediate_nodes_contr_pathlen3_mat + \
-                                      second_intermediate_nodes_contr_pathlen4_mat
-    # total contribution from each node being a first, second, third intermediate node. Also take a transpose
-    # so we have sources along the columns and target along the rows again.
-    intermediate_nodes_contr_mat = (first_intermediate_nodes_contr + second_intermediate_nodes_contr + \
-                                    third_intermediate_nodes_contr_pathlen4_mat - first_third_intermediate_nodes_contr_pathlen4_mat).T
-    
     del second_intermediate_nodes_contr_pathlen3_mat, second_intermediate_nodes_contr_pathlen4_mat
     del first_intermediate_nodes_contr_pathlen2_mat, first_intermediate_nodes_contr_pathlen3_mat, \
         first_intermediate_nodes_contr_pathlen4_mat
-    del first_intermediate_nodes_contr, second_intermediate_nodes_contr, \
-        third_intermediate_nodes_contr_pathlen4_mat, first_third_intermediate_nodes_contr_pathlen4_mat
+    del third_intermediate_nodes_contr_pathlen4_mat, first_third_intermediate_nodes_contr_pathlen4_mat
 
     del M1, X1, M2, X2, M3, X3
     return intermediate_nodes_contr_mat, intermediate_nodes_contr_pathlen2_mat, \
@@ -270,7 +271,7 @@ def handle_btns(M_pathmtx_loginv, prots, betweenness_score_file, force_run=False
     return sorted_btns_scores_df
 
 
-def compute_src_spec_btns(M, idx_to_prot, pos_nodes_idx):
+def compute_src_spec_btns(M, alg_name, a_d_norm_inv, idx_to_prot, pos_nodes_idx):
     '''
     Input: 1) Matrix, M. In M graph, cost of a path
     (multiplication of edge costs) from s to t means, source s's contribution to t's score.
@@ -295,12 +296,21 @@ def compute_src_spec_btns(M, idx_to_prot, pos_nodes_idx):
     M3 = np.matmul(M2, M1)
     X3 = np.sum(M3[pos_nodes_idx, :], axis=0).reshape(-1, 1)  # column matrix
 
+    #in the returned matrix again sources along columns and targets along rows
     intermediate_nodes_contr_mat, intermediate_nodes_contr_pathlen2_mat, \
     intermediate_nodes_contr_pathlen3_mat,intermediate_nodes_contr_pathlen4_mat=\
         compute_1st_2nd_3rd_intermediate_node_contr(M1, M2, M3, X1, X2, X3)
 
+    #multiply the contributions with a_d_norm_inv=(I+a*D_norm^)-1 for RL
+    if alg_name=='genemaniaplus':
+        intermediate_nodes_contr_mat = np.matmul(a_d_norm_inv, intermediate_nodes_contr_mat)
+        intermediate_nodes_contr_pathlen2_mat = np.matmul(a_d_norm_inv, intermediate_nodes_contr_pathlen2_mat)
+        intermediate_nodes_contr_pathlen3_mat = np.matmul(a_d_norm_inv, intermediate_nodes_contr_pathlen3_mat)
+        intermediate_nodes_contr_pathlen4_mat = np.matmul(a_d_norm_inv, intermediate_nodes_contr_pathlen4_mat)
+
     # compute the average contribution of an intermediate node to a target i.e. betweeness score
     src_spec_betweenness = np.mean(intermediate_nodes_contr_mat, axis=0)
+
     #now compute nodes contribution only via paths of length 2
     src_spec_mean_contr_via_pathlen_2 = np.mean(intermediate_nodes_contr_pathlen2_mat, axis=0)
     #now compute nodes contribution only via paths of length 3
@@ -325,14 +335,14 @@ def compute_src_spec_btns(M, idx_to_prot, pos_nodes_idx):
 
 
 def handle_src_spec_btns(M_pathmtx_loginv, prots, betweenness_score_file,
-                         pos_nodes_idx, force_run=False):
+                         pos_nodes_idx, alg_name, a_d_norm_inv, force_run=False):
     if (not os.path.exists(betweenness_score_file) or force_run==True):
         # *******************************************
         # Compute betweenness scores.
         # The following analysis is focused on each node on the network and how important
         # they are as intermediate node considering all source target pairs.
         sorted_src_spec_btns_scores_df = \
-            compute_src_spec_btns(M_pathmtx_loginv, prots, pos_nodes_idx)
+            compute_src_spec_btns(M_pathmtx_loginv,alg_name, a_d_norm_inv,  prots, pos_nodes_idx)
         sorted_src_spec_btns_scores_df['percent_rank'] = sorted_src_spec_btns_scores_df['betweenness'].rank(pct=True)
 
         # save betweenness score in file
@@ -438,6 +448,10 @@ def interesting_prot_in_topks(sorted_btns_scores_df, essential_uniprots, ks):
 
 
 def find_new_prots_appearing_at_each_pathlens(sorted_scores_df, criteria = ['contr_pathlen_2','contr_pathlen_3','contr_pathlen_4']):
+    '''
+    Return the fraction of total prots appearing at each new path length
+    '''
+    total_prots = float(len(sorted_scores_df))
     new_prots_appearing_at_each_pathlens={}
     seen_prots=set()
     for criteron in criteria:
@@ -445,7 +459,7 @@ def find_new_prots_appearing_at_each_pathlens(sorted_scores_df, criteria = ['con
         criterion_prots= set(sorted_scores_df[~(sorted_scores_df[criteron]==0)]['prot'])
         new_prots = criterion_prots.difference(seen_prots)
         #Do not want 'contr_' to appear in the keys
-        new_prots_appearing_at_each_pathlens[criteron.replace('contr_','')] = new_prots
+        new_prots_appearing_at_each_pathlens[criteron.replace('contr_','')] = len(new_prots)/total_prots
         seen_prots = seen_prots.union(new_prots)
     return new_prots_appearing_at_each_pathlens
 
@@ -546,7 +560,8 @@ def prepare_plotdata_for_Kolmogorov_Smirnov(filtered_src_spec_btns_df, ess_unipr
         for k in ks:
             #if betweenness score is zero than its rank is not valid anymore.
             #if for some rank k betwenness is zero then do not consider k or any later ranks
-            if btns_scores[k]==0:
+            #also if #number_of_total_prots in network is less than k then do not consider that k.
+            if (len(btns_scores)<k) or (btns_scores[k]==0) :
                 break
             n_prots_ge_marker[k]=k
             frac_prots_ge_btns_marker['ppi_prots'][k] = k / float(n_ppi_prots)
@@ -617,8 +632,8 @@ def save_btns_corr(alg_term_btns_corr_file, count, beta, pc, pval, mw):
     else:
         corr_term_fout = open(alg_term_btns_corr_file, 'a')
 
-    corr_term_fout.write(str(beta) + '\t' + str(pc) + '\t' + str(pval) +
-                        '\t'+str(mw)+'\n')
+        corr_term_fout.write(str(beta) + '\t' + str(pc) + '\t' + str(pval) +
+                            '\t'+str(mw)+'\n')
     corr_term_fout.close()
 
 

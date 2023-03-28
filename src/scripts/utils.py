@@ -33,6 +33,7 @@ def get_M_pathmtx_loginv(net_obj, alg_name, alpha):
         M_pathmtx_loginv = log_inv_mat(M_pathmtx)
     else:
         M_pathmtx_loginv = alg_alias[alg_name].get_M(net_obj.W, alpha)
+
     return M_pathmtx_loginv
 
 #***************************************** ALGO PREDICTIONS SCORE *********************************************
@@ -62,6 +63,18 @@ def term_based_pred_file(pred_file, term):
     pred_file  = pred_file.replace(':','-')
     return pred_file
 
+
+def get_balancing_alpha(config_map, dataset, alg_name,  term):
+    alpha_summary_filename = config_map['output_settings']['output_dir'] + \
+                             "/viz/%s/%s/param_select/" % (dataset['net_version'], dataset[
+        'exp_name']) + '/' + alg_name + '/alpha_summary.tsv'
+    alpha_summary_df = pd.read_csv(alpha_summary_filename, sep='\t', index_col=None)[
+        ['term', 'balancing_alpha']]
+    term_2_balancing_alpha_dict = dict(
+        zip(alpha_summary_df['term'], alpha_summary_df['balancing_alpha']))
+
+    balancing_alpha = term_2_balancing_alpha_dict[term]
+    return balancing_alpha
 #************************* NETWORK ANALYSIS*************************
 def is_neighbor(W, source, target):
     ''' This will return True if there is an edge from the source to target'''
@@ -80,6 +93,7 @@ def is_diag_zero(W):
         return True
     else:
         return False
+
 
 #********************** STATISTICAL TEST ******************************
 def pearson_correlations(list1, list2):
@@ -100,3 +114,5 @@ def save_dict(dict1, filename):
         val = "{:.2e}".format(dict1[key])
         f.write(str(key) + '\t' + val +'\n')
     f.close()
+
+

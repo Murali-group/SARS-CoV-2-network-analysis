@@ -152,6 +152,21 @@ def get_diffusion_matrix(W, alpha=1.0, diff_mat_file=None, force_run=False):
 
     return M_inv
 
+
+def get_alpha_d_norm_inv(W, alpha):
+    W_norm = alg_utils._net_normalize(W)
+    # take the column sum and set them as the diagonals of a matrix
+    deg = np.asarray(W_norm.sum(axis=0)).flatten()  # check
+    deg[np.isinf(deg)] = 0
+    D_norm = diags(deg)
+
+    # first compute Q_inv = (I + a*D_norm)^-1
+    Q = eye(D_norm.shape[0]) + alpha * D_norm
+    # t1 = time.time()
+    Q = Q.A
+    Q_inv = inv(Q)
+    return Q_inv
+
 def get_M(W, alpha):
     W_norm = alg_utils._net_normalize(W)
     # take the column sum and set them as the diagonals of a matrix

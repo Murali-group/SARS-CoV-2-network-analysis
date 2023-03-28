@@ -65,6 +65,10 @@ def setup_opts():
 
     group.add_argument('--force-download', action='store_true', default=False,
                        help="Force re-downloading and parsing of the input files")
+    group.add_argument('--balancing-alpha-only', action='store_true', default=True,
+                       help="Ignore alpha from config file rather take the alpha value\
+                               that balanced the two loss terms in quad loss function for the corresponding\
+                               network-term-alg")
     return parser
 
 
@@ -73,9 +77,8 @@ def main(config_map, master_config_map, **kwargs):
     *config_map*: everything in the config file
     *kwargs*: all of the options passed into the script
     """
+    ks = kwargs.get('ks')
     # extract the general variables from the config map
-
-    sep_pos_top = kwargs.get('sep_pos_top')
     input_settings, input_dir, output_dir, alg_settings, kwargs \
         = config_utils.setup_config_variables(config_map, **kwargs)
 
@@ -96,31 +99,38 @@ def main(config_map, master_config_map, **kwargs):
         viral_uniprots_dict =  btns_utils.parse_viral_prot_file(viral_prot_file)
 
         ##Directory for saving any betweenness related analysis result
-        btns_out_dir = output_dir + '/biological_significance_of_preds/' + dataset['net_version'] + '/'
+        pred_overlap_out_dir = output_dir + '/biological_significance_of_preds/' + dataset['net_version'] + '/'
 
         for alg_name in alg_settings:
             if (alg_settings[alg_name]['should_run'][0] == True) or (alg_name in kwargs.get('run_algs')):
                 print(alg_name)
-                #Get prediction files
-                alg_pred_files = config_utils.get_dataset_alg_prediction_files(
-                    output_dir, dataset, alg_settings, [alg_name], **kwargs)
-                # get the alpha values to use
-                alphas = alg_settings[alg_name]['alpha']
-                count=0
-                for alpha, alg in zip(alphas, alg_pred_files):
-                    count+=1
-                    for term in ann_obj.terms:
-                        alg_term_spec_btns_out_dir = btns_out_dir + alg_name +'/'+dataset['exp_name']+'/'
 
-                        term_idx = ann_obj.term2idx[term]
-                        orig_pos_idx, _ = alg_utils.get_term_pos_neg(ann_obj.ann_matrix, term_idx)
-                        orig_pos = [prots[p] for p in orig_pos_idx]
-                        pos_nodes_idx = [node2idx[n] for n in orig_pos if n in node2idx]
-                        assert len(orig_pos)==len(pos_nodes_idx); print('not all source present in net')
+                for term in ann_obj.terms:
+                    alg_term_spec_btns_out_dir = pred_overlap_out_dir + alg_name + '/' + dataset['exp_name'] + '/'
 
-                        # remove any positive protein present in viral interactors
-                        for viral_type in viral_uniprots_dict:
-                            viral_uniprots_dict[viral_type] = viral_uniprots_dict[viral_type].difference(set(orig_pos))
+                    term_idx = ann_obj.term2idx[term]
+                    orig_pos_idx, _ = alg_utils.get_term_pos_neg(ann_obj.ann_matrix, term_idx)
+                    orig_pos = [prots[p] for p in orig_pos_idx]
+                    pos_nodes_idx = [node2idx[n] for n in orig_pos if n in node2idx]
+                    assert len(orig_pos) == len(pos_nodes_idx);
+                    print('not all source present in net')
+
+                    # remove any positive protein present in viral interactors
+                    for viral_type in viral_uniprots_dict:
+                        viral_uniprots_dict[viral_type] = viral_uniprots_dict[viral_type].difference(set(orig_pos))
+
+                    if kwargs.get('balancing_alpha_only'):  # in alg_setting[alg_name]['alpha'] put the balancing alpha
+
+                        balancing_alpha = script_utils.get_balancing_alpha(config_map, dataset,alg_name,term)
+                        alg_settings[alg_name]['alpha'] = [balancing_alpha]
+                    #Get prediction files
+                    alg_pred_files = config_utils.get_dataset_alg_prediction_files(
+                        output_dir, dataset, alg_settings, [alg_name], **kwargs)
+                    # get the alpha values to use
+                    alphas = alg_settings[alg_name]['alpha']
+                    count=0
+                    for alpha, alg in zip(alphas, alg_pred_files):
+                        count+=1
 
                         #Now get the top predicted proteins
                         #here k= len(orig_pos)
@@ -149,7 +159,7 @@ def main(config_map, master_config_map, **kwargs):
                             #compute overlap between top_ranked_prots and essential_prots. The ranking was done using
                             # paths of len 2,3,4 separately and all together.
                             all_criteria_overlap_pvals_topks = btns_utils.handle_Fishers_exact_test_in_topks\
-                                            (sorted_filtered_src_spec_preds_df, ess_uniprots_dict[ess_type], kwargs.get('ks'),
+                                            (sorted_filtered_src_spec_preds_df, ess_uniprots_dict[ess_type], ks,
                                              ranking_criteria = ['score'])
 
                             #now compute  1. frac of src_nodes are essential 2. frac of predicted nodes by algorithms are essential
@@ -162,7 +172,8 @@ def main(config_map, master_config_map, **kwargs):
                             title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
                             overlap_pval_plt_file = alg_term_spec_btns_out_dir + 'overlap_ess_'+ess_type+'_a' + str(alpha) + '.pdf'
                             #Plot for hypergeometric test/Fisher's exact test
-                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_pvals_topks, ess_in_pos, ess_in_top, ess_in_net, title,overlap_pval_plt_file)
+                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_pvals_topks, ess_in_pos, ess_in_top,
+                                                                ess_in_net, title,overlap_pval_plt_file)
                             #Compute correlation between rank_percentiles of bins and percentage of essential prots in bins
 
 

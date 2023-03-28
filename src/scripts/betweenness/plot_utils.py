@@ -83,9 +83,8 @@ def plot_KS(frac_prots_ge_btns_marker,marker, title, filename):
     print('Save fig to ', filename)
 
 
-
-
 def plot_prots_appearing_at_each_pathlens(new_prots_each_pathlens, filename):
+    #For balancing alpha only
     '''Input: a dict with keys: ['network', 'term', 'alg', 'alpha','new_appearing_prots'], each value is a list.
     Especially: value for the key 'new_appearing_prots' is a list of dicts.
     Where inner dict keys:['pathlen_2', 'pathlen_3','pathlen_4']
@@ -96,14 +95,14 @@ def plot_prots_appearing_at_each_pathlens(new_prots_each_pathlens, filename):
 
     #converting prots_appearing_at_each_pathlens into dataframe
     new_prots_each_pathlens_df = pd.DataFrame(new_prots_each_pathlens)
+    new_prots_each_pathlens_df = new_prots_each_pathlens_df[['term','alg','network','pathlen_2', 'pathlen_3','pathlen_4']]
     #for a certain term-alg-alpha combo plot all the networks and  #new_appearing_prots in one plot.
     #the following will return a list of unique (term, alg, alpha) tuples present in prots_appearing_at_each_pathlens
-    term_alg_alpha_list = list(new_prots_each_pathlens_df.groupby(by=['term', 'alg', 'alpha']).groups.keys())
+    term_alg_alpha_list = list(new_prots_each_pathlens_df.groupby(by=['term', 'alg']).groups.keys())
 
-    for (term, alg, alpha) in term_alg_alpha_list:
+    for (term, alg) in term_alg_alpha_list:
         df = new_prots_each_pathlens_df[(new_prots_each_pathlens_df['term']==term)&
-                                        (new_prots_each_pathlens_df['alg']==alg) &
-                                        (new_prots_each_pathlens_df['alpha']==alpha)]
+                                        (new_prots_each_pathlens_df['alg']==alg)]
 
         df.set_index('network', inplace=True)
         df=df[['pathlen_2', 'pathlen_3','pathlen_4']]
@@ -114,11 +113,11 @@ def plot_prots_appearing_at_each_pathlens(new_prots_each_pathlens, filename):
         # Put a nicer background color on the legend.
 
         plt.xlabel('Networks')
-        plt.ylabel('New prots appearing at each path lengths')
-        plt.title(term + '_'+ alg + '_' + str(alpha))
+        plt.ylabel('New prots appearing at each path length')
+        plt.title(term + '_'+ alg )
         plt.tight_layout()
 
-        filename1 =filename.replace('.pdf', term + '_'+ alg + '_' + str(alpha)+'.pdf')
+        filename1 =filename.replace('.pdf', '_ '+term + '_'+ alg +'.pdf')
         os.makedirs(os.path.dirname(filename1), exist_ok=True)
         plt.savefig(filename1)
         plt.savefig(filename1.replace('.pdf', '.png'))  # save plot in .png format as well
@@ -126,6 +125,50 @@ def plot_prots_appearing_at_each_pathlens(new_prots_each_pathlens, filename):
         plt.close()
         print('Save fig to ', filename1)
 
+
+
+
+# def plot_prots_appearing_at_each_pathlens(new_prots_each_pathlens, filename):
+#     '''Input: a dict with keys: ['network', 'term', 'alg', 'alpha','new_appearing_prots'], each value is a list.
+#     Especially: value for the key 'new_appearing_prots' is a list of dicts.
+#     Where inner dict keys:['pathlen_2', 'pathlen_3','pathlen_4']
+#
+#     Output: a plot where along x-axis we will have networks and along y axis we will have stacked bar chart.
+#     In the bar chart, we will have the #of_prots appearing as we go along each path_len.
+#     '''
+#
+#     #converting prots_appearing_at_each_pathlens into dataframe
+#     new_prots_each_pathlens_df = pd.DataFrame(new_prots_each_pathlens)
+#     #for a certain term-alg-alpha combo plot all the networks and  #new_appearing_prots in one plot.
+#     #the following will return a list of unique (term, alg, alpha) tuples present in prots_appearing_at_each_pathlens
+#     term_alg_alpha_list = list(new_prots_each_pathlens_df.groupby(by=['term', 'alg', 'alpha']).groups.keys())
+#
+#     for (term, alg, alpha) in term_alg_alpha_list:
+#         df = new_prots_each_pathlens_df[(new_prots_each_pathlens_df['term']==term)&
+#                                         (new_prots_each_pathlens_df['alg']==alg) &
+#                                         (new_prots_each_pathlens_df['alpha']==alpha)]
+#
+#         df.set_index('network', inplace=True)
+#         df=df[['pathlen_2', 'pathlen_3','pathlen_4']]
+#         ax = df.plot.bar(stacked=True)
+#
+#         legend = ax.legend(loc='upper right', shadow=True, fontsize='x-large',
+#                            fancybox=True, framealpha=0.5)
+#         # Put a nicer background color on the legend.
+#
+#         plt.xlabel('Networks')
+#         plt.ylabel('New prots appearing at each path length')
+#         plt.title(term + '_'+ alg + '_' + str(alpha))
+#         plt.tight_layout()
+#
+#         filename1 =filename.replace('.pdf', '_ '+term + '_'+ alg + '_' + str(alpha)+'.pdf')
+#         os.makedirs(os.path.dirname(filename1), exist_ok=True)
+#         plt.savefig(filename1)
+#         plt.savefig(filename1.replace('.pdf', '.png'))  # save plot in .png format as well
+#         plt.show()
+#         plt.close()
+#         print('Save fig to ', filename1)
+#
 
 
 def barplot_from_dict(n_essential_prots_per_topk, x_label, y_label,ymax, filename,title=''):

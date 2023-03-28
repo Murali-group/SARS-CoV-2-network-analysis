@@ -64,8 +64,6 @@ def setup_opts():
         '/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/datasets/go/goa_human.gaf',
          help="File containing GO annotations in GAF format. Required")
 
-    group.add_argument('--pos-k', action='store_true', default=False,
-                       help="if true get the top-k predictions to test is equal to the number of positive annotations")
 
     group.add_argument('--compare-krogan-terms',
             help="path/to/krogan-enrichment-dir with the enriched terms files (i.e., enrich-BP.csv)"
@@ -78,6 +76,18 @@ def setup_opts():
                        help="Make a separate summary file per algorithm")
 
     group = parser.add_argument_group('Enrichment Testing Options')
+    group.add_argument('--balancing-alpha-only', action='store_true', default=True,
+                       help="Ignore alpha from config file rather take the alpha value\
+                            that balanced the two loss terms in quad loss function for the corresponding\
+                            network-term-alg")
+    group.add_argument('--enrichment-on', type=str, default='top_paths',
+                       help="if 'top_preds' then do enrichment analysis on top k predicted nodes, "
+                        "if 'top_paths' then do enrichment analysis on nodes present in top nsp paths.")
+    group.add_argument('--n-sp', '-n', type=int, default=1000,
+                       help="n-sp is the number of shortest paths to be considered" +
+                            "If not specified, will check the config file. Default=1000")
+    group.add_argument('--pos-k', action='store_true', default=True,
+                       help="if true get the top-k predictions to test is equal to the number of positive annotations")
     group.add_argument('--k-to-test', '-k', type=int, default=332,
                        help="k-value(s) for which to get the top-k predictions to test. " +
                        "If not specified, will check the config file. Default=100")
@@ -98,20 +108,10 @@ def setup_opts():
                        help="Cutoff on the Benjamini-Hochberg q-value for enrichment.")
 
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
-    # group.add_argument('--alg', '-A', dest='algs', type=str, action="append",
-    #                    help="Algorithms for which to get results. Must be in the config file. " +
-    #                    "If not specified, will get the list of algs with 'should_run' set to True in the config file")
-    group.add_argument('--num-reps', type=int,
-                       help="Number of times negative sampling was repeated to compute the average scores. Default=1")
-    # group.add_argument('--sample-neg-examples-factor', type=float,
-    #                    help="Factor/ratio of negatives to positives used when making predictions. " +
-    #                    "Not used for methods which use only positive examples.")
-    group.add_argument('--force-run', action='store_true', default=False,
+
+    group.add_argument('--force-run', action='store_true', default=True,
                        help="Force re-running the enrichment tests, and re-writing the output files")
-    group.add_argument('--balancing-alpha-only', action='store_true', default=True,
-                       help="Ignore alpha from config file rather take the alpha value\
-                            that balanced the two loss terms in quad loss function for the corresponding\
-                            network-term-alg")
+
     return parser
 
 def simplify_enrichment_result(df):
@@ -504,6 +504,11 @@ def main(config_map, **kwargs):
     kwargs['gene_to_uniprot'] = gene_to_uniprot
 
     k_to_test = kwargs.get('k_to_test')
+    sig_cutoff = kwargs.get('stat_sig_cutoff')
+    sig_str = "-sig%s" % (str(sig_cutoff).replace('.', '_')) if sig_cutoff else ""
+
+    enrichment_on = kwargs.get('enrichment_on')
+    nsp = kwargs.get('n_sp')
 
     # for each dataset, extract the path(s) to the prediction files,
     # read in the predictions, and test for the statistical significance of overlap
@@ -556,31 +561,48 @@ def main(config_map, **kwargs):
                         output_dir, dataset, alg_settings, [alg_name], **kwargs)
                     # get the alpha values to use
                     alphas = alg_settings[alg_name]['alpha']
+
                     for alpha, alg in zip(alphas, alg_pred_files):
-                        t1=time.time()
-                        pred_file = alg_pred_files[alg]
-                        pred_file = script_utils.term_based_pred_file(pred_file, term)
+                        if kwargs.get('enrichment_on') =='top_preds':
+                            t1=time.time()
+                            pred_file = alg_pred_files[alg]
+                            pred_file = script_utils.term_based_pred_file(pred_file, term)
 
-                        df = pd.read_csv(pred_file, sep='\t')
-                        # remove the original positives
-                        df = df[~df['prot'].isin(orig_pos)]
-                        df.reset_index(inplace=True, drop=True)
-                        #df = df[['prot', 'score']]
-                        df.sort_values(by='score', ascending=False, inplace=True)
+                            df = pd.read_csv(pred_file, sep='\t')
+                            # remove the original positives
+                            df = df[~df['prot'].isin(orig_pos)]
+                            df.reset_index(inplace=True, drop=True)
+                            #df = df[['prot', 'score']]
+                            df.sort_values(by='score', ascending=False, inplace=True)
 
-                        pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
-                            base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
-                            "-p%s"%str(kwargs['stat_sig_cutoff']).replace('.','_') if kwargs.get('stat_sig_cutoff') else "")
-                        os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
-                        if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
-                            print("writing %s" % (pred_filtered_file))
-                            df.to_csv(pred_filtered_file, sep='\t', index=None)
+                            pred_filtered_file = "%s/%s/%s-filtered%s.tsv" % (
+                                base_out_dir, alg, os.path.basename(pred_file).split('.')[0],
+                                "-p%s"%sig_str)
+                            os.makedirs(os.path.dirname(pred_filtered_file), exist_ok=True)
+                            if kwargs.get('force_run') or not os.path.isfile(pred_filtered_file):
+                                print("writing %s" % (pred_filtered_file))
+                                df.to_csv(pred_filtered_file, sep='\t', index=None)
 
-                        # for k in k_to_test:
-                        topk_predictions = list(df.iloc[:k_to_test]['prot'])
+                            # for k in k_to_test:
+                            query_prots = list(df.iloc[:k_to_test]['prot'])
+                            enrich_str = enrichment_on+'_'+str(k_to_test)
 
+                        elif kwargs.get('enrichment_on') =='top_paths':
+                            nsp_processed_paths_file = config_map['output_settings'][
+                            'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/processed_shortest-paths-2ss-nsp%s-a%s%s.tsv" % (
+                            dataset['net_version'], term, alg_name, nsp,alpha, sig_str)
+                            #reading 'path_prots' column value as list
+                            df = pd.read_csv(nsp_processed_paths_file, sep='\t', index_col=None, converters={'path_prots':pd.eval})
+                            #get prots on top nsp paths
+                            path_prots = list(df['path_prots']) #this is one nested list. flatten it.
+                            query_prots = set([element for innerList in path_prots for element in innerList])
+
+                            #remove source nodes
+                            query_prots = query_prots.difference(set(orig_pos))
+                            enrich_str = enrichment_on + '_' + str(nsp)
                         # now run clusterProfiler from R
-                        out_dir = pred_filtered_file.split('.')[0]
+                        out_dir = "%s/%s/%s/a-%s/" % (
+                            base_out_dir, alg, term,str(alpha) )
 
                         direct_prot_goids_by_c,_,_,_ = \
                             go_prep_utils.parse_gaf_file(kwargs.get('gaf_file'))
@@ -588,13 +610,16 @@ def main(config_map, **kwargs):
 
                         for ont in ['BP', 'MF', 'CC']:
                             ##keep the prots that have atleast one go annotation
-                            filtered_topk_predictions = keep_prots_having_atleast_one_go_ann(topk_predictions,
+                            filtered_topk_predictions = keep_prots_having_atleast_one_go_ann(query_prots,
                                                         go_category[ont],direct_prot_goids_by_c)
                             filtered_prot_universe= keep_prots_having_atleast_one_go_ann(prot_universe,
                                                         go_category[ont],direct_prot_goids_by_c)
+                            print('#prots in query: ', len(filtered_topk_predictions),
+                                  '\n #prots in universe: ', len(filtered_prot_universe))
                             enrich_df = enrichment.run_clusterProfiler_GO(
-                                filtered_prot_universe, filtered_topk_predictions, ont,out_dir,
-                                forced=kwargs.get('force_run'), **kwargs)
+                                filtered_prot_universe, filtered_topk_predictions, ont,
+                                enrich_str, out_dir, forced=kwargs.get('force_run'), **kwargs)
+
                             print('number of enriched terms for ', ont, ': ', len(enrich_df))
                         print('Running enrichgo done: ', term, ' ', alg)
 

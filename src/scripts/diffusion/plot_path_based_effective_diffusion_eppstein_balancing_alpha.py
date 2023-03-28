@@ -156,7 +156,6 @@ def main(config_map, k, **kwargs):
 
                 # dictionaries to pass to plotting functions
                 path_based_effective_diffusion_all_term_dict = {}
-                node_based_effective_diffusion_all_term_dict = {}
 
                 for term in ann_obj.terms:
                     term_idx = ann_obj.term2idx[term]

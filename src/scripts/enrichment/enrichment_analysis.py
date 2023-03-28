@@ -23,7 +23,7 @@ base = importr('base')
 base.require('org.Hs.eg.db')
 
 def run_clusterProfiler_GO(
-        prot_universe, prots_to_test, ont, out_dir, forced=False,  **kwargs):
+        prot_universe, prots_to_test, ont, enrichment_str, out_dir, forced=False,  **kwargs):
     """
     parameters: prots_to_test: the list of predicted proteins(UniprotID)
                 out_dir: Directory to write the output i.e. enrichment results
@@ -35,19 +35,20 @@ def run_clusterProfiler_GO(
                 This uniprotID to geneName mapping has to created outside this function.
     *returns*: a list of DataFrames of the enrichement of BP, MF, and CC
     """
+
     os.makedirs(out_dir, exist_ok=True)
     # TODO make this a seting
     print("Running enrichGO from clusterProfiler")
 
 
-    out_file = "%s/enrich-%s-%s.csv" % (out_dir,ont,
-                        str(kwargs.get('pval_cutoff')).replace('.','_'))
+    out_file = "%s/enrich-%s-%s-%s.csv" % (out_dir, ont, enrichment_str,
+                                           str(kwargs.get('pval_cutoff')).replace('.','_'))
     if forced is False and os.path.isfile(out_file):
         print("\t%s already exists. Use --force-run to overwrite" % (out_file))
         df = pd.read_csv(out_file, sep=',', index_col=None)
     else:
-        out_file1 = "%s/enrich-temp-%s-%s.csv" % \
-                    (out_dir,ont,str(kwargs.get('pval_cutoff')).replace('.','_'))
+        out_file1 = "%s/enrich-temp-%s-%s-%s.csv" % \
+                    (out_dir, ont, enrichment_str, str(kwargs.get('pval_cutoff')).replace('.', '_'))
         ego = clusterProfiler.enrichGO(
             gene          = StrVector(list(prots_to_test)),
             universe      = StrVector(list(prot_universe)),

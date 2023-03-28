@@ -64,7 +64,7 @@ def setup_opts():
 
     group.add_argument('--n-sp', '-n', type=int, default=1000,
                        help="n-sp is the number of shortest paths to be considered" +
-                            "If not specified, will check the config file. Default=20")
+                            "If not specified, will check the config file. Default=1000")
 
     group.add_argument('--stat-sig-cutoff', type=float,
                        help="Cutoff on the node p-value for a node to be considered in the topk. " + \
