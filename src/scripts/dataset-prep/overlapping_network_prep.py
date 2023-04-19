@@ -17,7 +17,8 @@ def extract_prots_indv_net(net_file):
             u, v = line[:2]
             #some biogrid prots' uniprot ids are in form 'AAAT|POQJS', take the first uniprot id only.
             u=u.split('|')[0]
-            u = v.split('|')[0]
+            #Nure: 04/07/2023.fixed a bug where the following line was u=v.split('|')[0]. So run code again.
+            v = v.split('|')[0]
             prots+=[u,v]
     return prots
 

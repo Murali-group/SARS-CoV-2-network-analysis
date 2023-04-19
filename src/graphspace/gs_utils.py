@@ -294,9 +294,10 @@ def grid_layout(G, graph_attr, parent_coord=None, padding=35, node_size=40):
     num_term_cols = np.ceil(len(nodes_per_parent)**(1/2))
     term_col_size = 400 * num_term_cols
     # sort in order of the largest terms
-    for i, parent in enumerate(sorted(nodes_per_parent, key=lambda k: len(nodes_per_parent[k]), reverse=True)):
-        nodes = nodes_per_parent[parent]
+    for i, parent in enumerate(sorted(nodes_per_parent, key=lambda k:
+        len(nodes_per_parent[k]), reverse=True)):
 
+        nodes = nodes_per_parent[parent]
         # to make it mostly square, take the square root of the number of terms
         num_cols = np.ceil(len(nodes)**(1/2))
         if parent_coord is not None and parent in parent_coord:
@@ -304,7 +305,7 @@ def grid_layout(G, graph_attr, parent_coord=None, padding=35, node_size=40):
         else:
             x = curr_x
             y = curr_y
-        # add to the x value (col) until we reach the end of the squaure, then move to the next row
+        # add to the x value (col) until we reach the end of the square, then move to the next row
         for j, n in enumerate(sorted(nodes)):
             x += node_size + padding
             if j % num_cols == 0:
@@ -312,6 +313,7 @@ def grid_layout(G, graph_attr, parent_coord=None, padding=35, node_size=40):
                 if j > 0:
                     y += node_size + padding - 20
             layout[n] = (x, y)
+
         if y > largest_y:
             largest_y = y
 

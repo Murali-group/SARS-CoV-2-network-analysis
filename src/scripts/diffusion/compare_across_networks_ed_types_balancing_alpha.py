@@ -15,10 +15,10 @@ from src.FastSinkSource.src.main import setup_dataset
 from src.FastSinkSource.src.utils import config_utils
 from src.FastSinkSource.src.algorithms import alg_utils
 
-net_name_alias = {'stringv11-5/700': 'STRING', 'biogrid-physical-sept22-single-uniprot':'BioGRID-Physical',
+net_name_alias = {'stringv11-5/700': 'STRING', 'biogrid-physical-sept22-single-uniprot':'BioGRID-Phy',
                  'biogrid-y2h-sept22-single-uniprot':'BioGRID-Y2H',
                   'HI-union': 'HI-union', 'signor-cc':'Signor',
-                  'stringv11-5-cc/700': 'STRING', 'biogrid-physical-cc': 'BioGRID-Physical',
+                  'stringv11-5-cc/700': 'STRING', 'biogrid-physical-cc': 'BioGRID-Phy',
                   'biogrid-y2h-cc': 'BioGRID-Y2H',
                   'HI-union-cc': 'HI-union'}
 def parse_args():
@@ -39,7 +39,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/string700_biogrid_physical_biogrid_y2h_hi_union_s1.yaml"
+                        "fss_inputs/config_files/provenance/string700_biogrid_physical_biogrid_y2h_s1.yaml"
                        , help="Configuration file used when running FSS. ")
 
     # group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
@@ -51,7 +51,7 @@ def setup_opts():
     group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
-    group.add_argument('--pos-k', action='store_true', default=False,
+    group.add_argument('--pos-k', action='store_true', default=True,
                        help="if true get the top-k predictions to test is equal to the number of positive annotations")
 
     group.add_argument('--common', action='store_true', default=False,
@@ -360,6 +360,7 @@ def boxplot_ed_node_vs_path(node_based_ed_dict, path_based_ed_dict, network_name
                     y = df['effective diffusion'],
                     hue = df['effective diffusion type'] )
         plt.ylim([0,1])
+        plt.legend(loc='upper right', shadow=True, fontsize='x-large', fancybox=True, framealpha=0.5)
         plt.tight_layout()
         plt.savefig(ed_across_nets_plot_file.replace('.png','-'+term+'.png'))
         plt.savefig(ed_across_nets_plot_file.replace('.png','-'+term+'.pdf'))

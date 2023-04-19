@@ -39,12 +39,16 @@ def parse_viral_prot_file(viral_prot_file):
     #stat for viral interactors
     print('number of viruses: ', len(viral_df['Mnemonic_Tax'].unique()))
 
-
-    #TODO check  if I should use any other column to check for SARS2 viral interactors.
     viral_dict = {}
-    all_interactors = set(viral_df['Uniprot_Human'])
-    sars2_interactors = set(viral_df[viral_df['Mnemonic_Tax']=='SARS2']['Uniprot_Human'])
-    viral_dict['sars2--'] = all_interactors.difference(sars2_interactors)
+
+    #commented out the code which remove SARS2 prots even if it is from other virus
+    # all_interactors = set(viral_df['Uniprot_Human'])
+    # sars2_interactors = set(viral_df[viral_df['Mnemonic_Tax']=='SARS2']['Uniprot_Human'])
+    # viral_dict['sars2--'] = all_interactors.difference(sars2_interactors)
+
+    # the following will make sure that if a protein is common btn SARS2 and other protein then it will
+    # appear in the dict
+    viral_dict['sars2--'] = set(viral_df[viral_df['Mnemonic_Tax'] != 'SARS2']['Uniprot_Human'])
     print('Done parsing viral interactors file')
     return viral_dict
 

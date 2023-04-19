@@ -59,7 +59,7 @@ def setup_opts():
     group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
-    group.add_argument('--pos-k', action='store_true', default=False,
+    group.add_argument('--pos-k', action='store_true', default=True,
                        help="if true get the top-k predictions to test is equal to the number of positive annotations")
 
     group.add_argument('--n-sp', '-n', type=int, default=1000,
@@ -70,9 +70,9 @@ def setup_opts():
                        help="Cutoff on the node p-value for a node to be considered in the topk. " + \
                             "The p-values should already have been computed with run_eval_algs.py")
 
-    group.add_argument('--force-ksp', action='store_true', default=False,
+    group.add_argument('--force-ksp', action='store_true', default=True,
                        help="Force re-running the path diffusion analysis")
-    group.add_argument('--force-contr', action='store_true', default=False,
+    group.add_argument('--force-contr', action='store_true', default=True,
                        help="Force re-running the path diffusion analysis")
 
     group.add_argument('--balancing-alpha-only', action='store_true', default=True,
@@ -426,38 +426,38 @@ def main(config_map, k, **kwargs):
                         fluid_flow_mat_file_R = "%s/fluid-flow-mat-R-%s-a%s.npy" % (net_obj.out_pref, alg_name,
                                                                                     str(alpha).replace('.', '_'))
 
-                        shortest_path_input_graph_file = "%s/shortest-path-input-graph-2ss-%s-a%s-%s.txt" % \
-                                                         (net_obj.out_pref, alg_name,
+                        shortest_path_input_graph_file = "%s/shortest-path-input-graph-2ss-%s-k%s-a%s-%s.txt" % \
+                                                         (net_obj.out_pref, alg_name, k,
                                                           str(alpha).replace('.', '_'), term)
 
                         # shortest_path_file will be created only when all shortest paths for
                         # the targets for this certain setup (i.e. nsp, m, k values) have been computed.
                         ssource_2_ssink_paths_file = config_map['output_settings'][
                                         'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/" \
-                                        "shortest-paths-2ss-nsp%s-a%s%s.tsv" % (
-                                         dataset['net_version'], term, alg_name,
+                                        "shortest-paths-2ss-k%s-nsp%s-a%s%s.tsv" % (
+                                         dataset['net_version'], term, alg_name,k,
                                          kwargs.get('n_sp'), alpha, sig_str)
 
                         paths_of_different_types_stat_file = config_map['output_settings'][
-                                        'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/type_based_path_stat-a%s%s.tsv" % (
-                                        dataset['net_version'], term, alg_name,
+                                        'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/type_based_path_stat-k%s-a%s%s.tsv" % (
+                                        dataset['net_version'], term, alg_name,k,
                                         alpha, sig_str)
                         #the following file will contain all nsp paths as in ssource_2_ssink_paths_file, but this file will contain
                         # some extra information/stat about those paths.
                         nsp_processed_paths_file = config_map['output_settings'][
-                                                       'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/processed_shortest-paths-2ss-nsp%s-a%s%s.tsv" % (
-                                                       dataset['net_version'], term, alg_name, kwargs.get('n_sp'),
-                                                       alpha, sig_str)
+                                                'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/processed_shortest-paths-2ss-k%s-nsp%s-a%s%s.tsv" % (
+                                                dataset['net_version'], term, alg_name,k, kwargs.get('n_sp'),
+                                                alpha, sig_str)
 
                         summary_file = config_map['output_settings'][
                                                          'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/" \
-                                                                         "summary-2ss-nsp%s-a%s%s.tsv" % (
-                                                         dataset['net_version'], term, alg_name,
+                                                            "summary-2ss-k%s-nsp%s-a%s%s.tsv" % (
+                                                         dataset['net_version'], term, alg_name,k,
                                                          kwargs.get('n_sp'), alpha, sig_str)
 
                         interesting_paths_file = config_map['output_settings'][
-                                     'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/paths_of_interest-nsp%s-a%s%s.tsv" % (
-                                     dataset['net_version'], term, alg_name, kwargs.get('n_sp'),
+                                     'output_dir'] + "/viz/%s/%s/diffusion-path-analysis/%s/shortest_path_2ss/paths_of_interest-k%s-nsp%s-a%s%s.tsv" % (
+                                     dataset['net_version'], term, alg_name, k, kwargs.get('n_sp'),
                                      alpha, sig_str)
 
                         os.makedirs(os.path.dirname(interesting_paths_file), exist_ok=True)

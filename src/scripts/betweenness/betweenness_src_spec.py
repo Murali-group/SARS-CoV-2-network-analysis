@@ -36,7 +36,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/string700_biogrid_physical_biogrid_y2h_hi_union_s1.yaml"
+                        "fss_inputs/config_files/provenance/biogrid_y2h_s12.yaml"
                        , help="Configuration file used when running FSS. ")
     group.add_argument('--master-config', type=str, default="/data/tasnina/Provenance-Tracing/"
                         "SARS-CoV-2-network-analysis/config-files/master-config.yaml"
@@ -68,12 +68,13 @@ def setup_opts():
     group.add_argument('--run-algs', type=str, action='append', default=[])
     group.add_argument('--force-download', action='store_true', default=False,
                        help="Force re-downloading and parsing of the input files")
-    group.add_argument('--force-run', action='store_true', default=True,
+    group.add_argument('--force-run', action='store_true', default=False,
                        help="If true Compute betweenness even if it was computed before.")
-    group.add_argument('--balancing-alpha-only', action='store_true', default=True,
-                       help="Ignore alpha from config file rather take the alpha value\
-                              that balanced the two loss terms in quad loss function for the corresponding\
-                              network-term-alg")
+    #Nure: removing balancing_alpha_only as I will always pick balancing alpha
+    # group.add_argument('--balancing-alpha-only', action='store_true', default=True,
+    #                    help="Ignore alpha from config file rather take the alpha value\
+    #                           that balanced the two loss terms in quad loss function for the corresponding\
+    #                           network-term-alg")
     return parser
 
 
@@ -91,6 +92,19 @@ def main(config_map, master_config_map, **kwargs):
     #keep track of how many prots with non-zero betweenness appear as we consider contribution via
     #paths of len 2,3,4
     n_prots_appearing_at_each_pathlens={'network':[],'term':[],'alg':[],'alpha':[], 'pathlen_2':[],  'pathlen_3':[],  'pathlen_4':[]}
+
+    #all_criteria_overlap_es_pvals_topks_multinet is a dict of dict of dict. first_key=alg_name, second_key = dataset/network name,
+    # third_key=rank ks, value=overlap pvalue at each rank. The following dict will save overlap for org-specific essential genes and
+    # sars2-- viral interactors set only.
+    all_criteria_overlap_es_pvals_topks_multialg_multinet={alg_name:{} for alg_name in alg_settings}
+    all_criteria_overlap_viral_pvals_topks_multialg_multinet={alg_name:{} for alg_name in alg_settings}
+
+    #save the #ess and viral prots in the whole network after removing top_k preds and source proteins from list of prots
+    ess_multinet={alg_name:{} for alg_name in alg_settings}
+    viral_multinet={alg_name:{} for alg_name in alg_settings}
+
+
+
     for dataset in input_settings['datasets']:
         print("Loading data for %s" % (dataset['net_version']))
         dataset_name = dataset['plot_exp_name']
@@ -122,18 +136,17 @@ def main(config_map, master_config_map, **kwargs):
                     pos_nodes_idx = [node2idx[n] for n in orig_pos if n in node2idx]
                     assert len(orig_pos) == len(pos_nodes_idx), print('not all source present in net')
                     # remove any positive protein present in viral interactors
-                    for viral_type in viral_uniprots_dict:
-                        viral_uniprots_dict[viral_type] = viral_uniprots_dict[viral_type].difference(set(orig_pos))
+                    # for viral_type in viral_uniprots_dict:
+                    #     viral_uniprots_dict[viral_type] = viral_uniprots_dict[viral_type].difference(set(orig_pos))
 
-                    if kwargs.get('balancing_alpha_only'):
-                        balancing_alpha = script_utils.get_balancing_alpha(config_map,dataset,alg_name,term)
-                        alg_settings[alg_name]['alpha'] = [balancing_alpha]
+                    # if kwargs.get('balancing_alpha_only'):
+                    balancing_alpha = script_utils.get_balancing_alpha(config_map,dataset,alg_name,term)
+                    alg_settings[alg_name]['alpha'] = [balancing_alpha]
                     #Get prediction file
                     alg_pred_files = config_utils.get_dataset_alg_prediction_files(
                         output_dir, dataset, alg_settings, [alg_name], **kwargs)
                     # get the alpha values to use
                     alphas = alg_settings[alg_name]['alpha']
-
                     count=0
                     for alpha, alg in zip(alphas, alg_pred_files):
                         count+=1
@@ -197,44 +210,49 @@ def main(config_map, master_config_map, **kwargs):
                         #*********************************  ESSENTIAL PROTS *****************************
                         print('\n\n ESSENTAIL PROTS ANALYSIS\n')
                         for ess_type in ess_types :
-                            print(ess_type)
-                            alg_term_ess_btns_corr_file = alg_term_spec_btns_out_dir + 'corr_ess_'+ess_type+'.tsv'
-                            os.makedirs(os.path.dirname(alg_term_ess_btns_corr_file), exist_ok=True)
+                                print(ess_type)
+                                alg_term_ess_btns_corr_file = alg_term_spec_btns_out_dir + 'corr_ess_'+ess_type+'.tsv'
+                                os.makedirs(os.path.dirname(alg_term_ess_btns_corr_file), exist_ok=True)
 
-                            #Hypergeometric test
-                            #compute overlap between top_ranked_prots and essential_prots. The ranking was done using
-                            # paths of len 2,3,4 separately and all together.
-                            all_criteria_overlap_pvals_topks = btns_utils.handle_Fishers_exact_test_in_topks\
-                                            (sorted_filtered_src_spec_btns_df, ess_uniprots_dict[ess_type], ks)
+                                #Hypergeometric test
+                                #compute overlap between top_ranked_prots and essential_prots. The ranking was done using
+                                # paths of len 2,3,4 separately and all together.
+                                all_criteria_overlap_es_pvals_topks = btns_utils.handle_Fishers_exact_test_in_topks\
+                                                (sorted_filtered_src_spec_btns_df, ess_uniprots_dict[ess_type], ks)
 
-                            #now compute  1. frac of src_nodes are essential 2. frac of predicted nodes by algorithms are essential
-                            # 3. frac of nodes in netwokrs excluding src and predicted_nodes are essential.
-                            ess_in_pos = btns_utils.compute_frac_interesting_prot(sorted_df_pos['prot'], ess_uniprots_dict[ess_type])
-                            ess_in_top = btns_utils.compute_frac_interesting_prot(sorted_df_top_k['prot'], ess_uniprots_dict[ess_type])
-                            ess_in_net = btns_utils.compute_frac_interesting_prot(sorted_filtered_src_spec_btns_df['prot'], ess_uniprots_dict[ess_type])
+                                #now compute  1. frac of src_nodes are essential 2. frac of predicted nodes by algorithms are essential
+                                # 3. frac of nodes in netwokrs excluding src and predicted_nodes are essential.
+                                ess_in_pos = btns_utils.compute_frac_interesting_prot(sorted_df_pos['prot'], ess_uniprots_dict[ess_type])
+                                ess_in_top = btns_utils.compute_frac_interesting_prot(sorted_df_top_k['prot'], ess_uniprots_dict[ess_type])
+                                ess_in_net = btns_utils.compute_frac_interesting_prot(sorted_filtered_src_spec_btns_df['prot'], ess_uniprots_dict[ess_type])
+                                if ess_type == 'org':
+                                    all_criteria_overlap_es_pvals_topks_multialg_multinet[alg_name][dataset_name] = all_criteria_overlap_es_pvals_topks
+                                    ess_multinet[alg_name][dataset_name]=ess_in_net
+
+                                title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
+                                overlap_pval_plt_file = alg_term_spec_btns_out_dir + 'overlap_ess_'+ess_type+'_a' + str(alpha) + '.pdf'
+                                #Plot for hypergeometric test/Fisher's exact test
+                                btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_es_pvals_topks, ess_in_pos,
+                                            ess_in_top, ess_in_net, title, overlap_pval_plt_file, ks=ks)
+                                btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_es_pvals_topks, ess_in_pos, ess_in_top,
+                                ess_in_net, title,overlap_pval_plt_file.replace('.pdf', '_zoomed.pdf'), ks=[200,400,600,800,1000, 2000],
+                                                                    rank_criteria=['betweenness'])
+                                #Compute correlation between rank_percentiles of bins and percentage of essential prots in bins
+                                pc_ess, pval_ess, mw_ess, prcntl_ess, prcnt_ess =\
+                                    btns_utils.handle_percentile_percent_corr(sorted_filtered_src_spec_btns_df, ess_uniprots_dict[ess_type])
+                                # SAVE correlations.
+                                btns_utils.save_btns_corr(alg_term_ess_btns_corr_file, count, beta, pc_ess, pval_ess,mw_ess)
 
 
-                            title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
-                            overlap_pval_plt_file = alg_term_spec_btns_out_dir + 'overlap_ess_'+ess_type+'_a' + str(alpha) + '.pdf'
-                            #Plot for hypergeometric test/Fisher's exact test
-                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_pvals_topks, ess_in_pos, ess_in_top,
-                                                                ess_in_net, title,overlap_pval_plt_file)
-                            #Compute correlation between rank_percentiles of bins and percentage of essential prots in bins
-                            pc_ess, pval_ess, mw_ess, prcntl_ess, prcnt_ess =\
-                                btns_utils.handle_percentile_percent_corr(sorted_filtered_src_spec_btns_df, ess_uniprots_dict[ess_type])
-                            # SAVE correlations.
-                            btns_utils.save_btns_corr(alg_term_ess_btns_corr_file, count, beta, pc_ess, pval_ess,mw_ess)
-
-
-                            # Scatter plot for rank percentile and percentage of essential protein in each bin
-                            ext_prcntl_ess, ext_prcnt_ess = btns_utils.find_interesting_prot_in_src_top(
-                                sorted_df_pos, sorted_df_top_k, ess_uniprots_dict[ess_type], prcntl_ess, prcnt_ess)
-                            prcntl_prcnt_btns_ess_plt_file = alg_term_spec_btns_out_dir + 'scatter_ess_'+ess_type+'_a' + str(alpha) + '.pdf'
-                            title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
-                            x_label = 'percentile rank'
-                            btns_plot_utils.scatter_plot(ext_prcntl_ess, ext_prcnt_ess, x_label=x_label,
-                                                         y_label='percentage of essential prot : '+ess_type,
-                                                         title=title, filename=prcntl_prcnt_btns_ess_plt_file)
+                                # Scatter plot for rank percentile and percentage of essential protein in each bin
+                                ext_prcntl_ess, ext_prcnt_ess = btns_utils.find_interesting_prot_in_src_top(
+                                    sorted_df_pos, sorted_df_top_k, ess_uniprots_dict[ess_type], prcntl_ess, prcnt_ess)
+                                prcntl_prcnt_btns_ess_plt_file = alg_term_spec_btns_out_dir + 'scatter_ess_'+ess_type+'_a' + str(alpha) + '.pdf'
+                                title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
+                                x_label = 'percentile rank'
+                                btns_plot_utils.scatter_plot(ext_prcntl_ess, ext_prcnt_ess, x_label=x_label,
+                                                             y_label='percentage of essential prot : '+ess_type,
+                                                             title=title, filename=prcntl_prcnt_btns_ess_plt_file)
 
                         #*********************************  VIRAL PROTS *****************************
                         print('\n\nVIRAL INTERACTOR ANALYSIS\n')
@@ -242,7 +260,7 @@ def main(config_map, master_config_map, **kwargs):
                             print(viral_type)
 
                             # Hypergeometric test
-                            all_criteria_overlap_pvals_topks = btns_utils.handle_Fishers_exact_test_in_topks \
+                            all_criteria_overlap_viral_pvals_topks = btns_utils.handle_Fishers_exact_test_in_topks \
                                 (sorted_filtered_src_spec_btns_df, viral_uniprots_dict[viral_type], ks)
 
                             viral_in_pos = btns_utils.compute_frac_interesting_prot(sorted_df_pos['prot'],
@@ -252,12 +270,18 @@ def main(config_map, master_config_map, **kwargs):
                             viral_in_net = btns_utils.compute_frac_interesting_prot(
                                 sorted_filtered_src_spec_btns_df['prot'], viral_uniprots_dict[viral_type])
 
+                            if viral_type == 'sars2--':
+                                all_criteria_overlap_viral_pvals_topks_multialg_multinet[alg_name][dataset_name] = all_criteria_overlap_viral_pvals_topks
+                                viral_multinet[alg_name][dataset_name] = viral_in_net
                             title = alg_plot_name[alg_name] + '_a_' + str(alpha) + '_' + term + '_' + dataset_name
                             overlap_pval_plt_file = alg_term_spec_btns_out_dir + 'overlap_viral_' + viral_type + '_a' + str(alpha) + '.pdf'
 
                             # Plot for hypergeometric test/Fisher's exact test
-                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_pvals_topks, viral_in_pos,
-                                                                viral_in_top, viral_in_net, title, overlap_pval_plt_file)
+                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_viral_pvals_topks, viral_in_pos,
+                                            viral_in_top, viral_in_net, title, overlap_pval_plt_file,ks=ks)
+
+                            btns_plot_utils.plot_hypergeom_pval(all_criteria_overlap_viral_pvals_topks, viral_in_pos,
+                                viral_in_top, viral_in_net, title, overlap_pval_plt_file.replace('.pdf', '_zoomed.pdf'),ks=[200,400,600,800,1000, 2000], rank_criteria=['betweenness'])
 
                             #Binwise Pearsons correlations
                             pc_viral, pval_viral, mw_viral, prcntl_viral, prcnt_viral = \
@@ -288,6 +312,32 @@ def main(config_map, master_config_map, **kwargs):
 
     btns_plot_utils.plot_prots_appearing_at_each_pathlens(n_prots_appearing_at_each_pathlens,
                                           filename= output_dir + '/betweenness/'+'new_appearing_prots.pdf')
+    #Plot hypergeom pval plot for overlap between top_betwenness_prots and essential
+
+
+    for alg_name in alg_settings:
+        if (alg_settings[alg_name]['should_run'][0] == True) or (alg_name in kwargs.get('run_algs')):
+            dataset_names_str = '_'.join(list(all_criteria_overlap_es_pvals_topks_multialg_multinet[alg_name].keys()))
+
+            alg_overlap_es_pval_plt_file = output_dir + '/betweenness/'+dataset_names_str +'_'+alg_name+ '_overlap_org_ess_' + '.pdf'
+            btns_plot_utils.plot_hypergeom_pval_multinet(all_criteria_overlap_es_pvals_topks_multialg_multinet[alg_name],
+                                                         ess_multinet[alg_name],title=alg_plot_name[alg_name], filename=alg_overlap_es_pval_plt_file, ks=ks)
+
+            alg_overlap_viral_pval_plt_file = output_dir + '/betweenness/'+dataset_names_str + '_'+alg_name+ '_overlap_sars2--viral_' + '.pdf'
+            btns_plot_utils.plot_hypergeom_pval_multinet(all_criteria_overlap_viral_pvals_topks_multialg_multinet[alg_name],
+                                                         viral_multinet[alg_name], title=alg_plot_name[alg_name],
+                                                         filename=alg_overlap_viral_pval_plt_file, ks=ks)
+
+    overlap_es_pval_plt_file = output_dir + '/betweenness/' +dataset_names_str+ '_overlap_org_ess_' + '.pdf'
+    btns_plot_utils.plot_hypergeom_pval_multialg_multinet(all_criteria_overlap_es_pvals_topks_multialg_multinet,
+                                                 ess_multinet,
+                                                 filename=overlap_es_pval_plt_file, ks=ks)
+
+    overlap_viral_pval_plt_file = output_dir + '/betweenness/'+dataset_names_str + '_overlap_sars2--viral_' + '.pdf'
+    btns_plot_utils.plot_hypergeom_pval_multialg_multinet(all_criteria_overlap_viral_pvals_topks_multialg_multinet,
+                                                 viral_multinet,
+                                                 filename=overlap_viral_pval_plt_file, ks=ks)
+
 
 if __name__ == "__main__":
     config_map, master_config_map, kwargs = parse_args()

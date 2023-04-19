@@ -35,14 +35,14 @@ def setup_opts():
     #                     "fss_inputs/config_files/provenance/string700_s12.yaml"
     #                    , help="Configuration file used when running FSS. ")
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/string700_s12.yaml"
+                        "fss_inputs/config_files/provenance/string700_biogrid_physical_biogrid_y2h_s1.yaml"
                        , help="Configuration file used when running FSS. ")
 
     group.add_argument('--run-algs', type=str, action='append', default=[])
     group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
-    group.add_argument('--pos-k', action='store_true', default=False,
+    group.add_argument('--pos-k', action='store_true', default=True,
                        help="if true get the top-k predictions to test is equal to the number of positive annotations")
     group.add_argument('--n-sp', '-n', type=int, default=1000,
                        help="n-sp is the number of shortest paths to be considered" +
@@ -99,7 +99,7 @@ def boxplot_diffusion_along_path_types(diffusion_path_types,title, top_or_bottom
     plt.title(title+'_'+top_or_bottom)
     plt.tight_layout()
 
-    filename = plot_dir+term+'_'+top_or_bottom+'_path_type_based_diffusion'+param_str+'.pdf'
+    filename = plot_dir+top_or_bottom+'_path_type_based_diffusion'+param_str+'.pdf'
     plt.savefig(filename)
     plt.savefig(filename.replace('.pdf', '.png'))  # save plot in .png format as well
     plt.show()
@@ -108,12 +108,10 @@ def boxplot_diffusion_along_path_types(diffusion_path_types,title, top_or_bottom
 
 def get_plot_dir(config_map,dataset, alg_name):
     plot_dir = config_map['output_settings']['output_dir'] + \
-               "/viz/%s/%s/diffusion-path-analysis/plot/%s/"\
+               "/viz/%s/%s/plot/%s/"\
                % (dataset['net_version'], dataset['exp_name'], alg_name)
     os.makedirs(os.path.dirname(plot_dir), exist_ok=True)
     return plot_dir
-
-
 
 def main(config_map, k, **kwargs):
     """
@@ -168,15 +166,10 @@ def main(config_map, k, **kwargs):
                     # get the alpha values to use
                     balancing_alpha = term_2_balancing_alpha_dict[term]
                     #*********************************
-                   
-
                     #Read effective diffusion file for the balancing alpha
-
-
                     ed_file = config_map['output_settings']['output_dir'] +\
                               "/viz/%s/%s/diffusion-analysis/%s/effective-diff-ss-k%s-nsp%s-a%s%s.tsv" \
                             % (dataset['net_version'], term, alg_name, k, kwargs.get('n_sp'), balancing_alpha, sig_str)
-
                    
                     #The following contains diffusion across paths of different types: st, sut, stst,
                     # stut, sust, suvt, paths_of_len_beyond_3
@@ -197,7 +190,7 @@ def main(config_map, k, **kwargs):
                     ##plot diffusion coming along different types of paths
                     title = dataset['plot_exp_name'] + '_' + dataset['exp_name'] + '_' + \
                             get_plot_alg_name(alg_name)
-                    param_str = 'a-'+str(balancing_alpha) +sig_str
+                    param_str = '-a'+str(balancing_alpha) +sig_str
 
                     boxplot_diffusion_along_path_types(top_preds_diffusion_across_different_types_of_paths_df,\
                                                        title, 'top_preds', term,param_str, plot_dir)

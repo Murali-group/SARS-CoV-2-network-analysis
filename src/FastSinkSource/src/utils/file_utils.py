@@ -5,7 +5,7 @@ This is a modest collection of file utilities we regularly use.
 import os
 import subprocess
 import sys
-
+import gzip
 
 def print_memory_usage():
     # this prints the total memory usage of the machine
@@ -53,7 +53,8 @@ def readDict(f, fromCol=1, toCol=2, sep='\t'):
     maps items in the fromCol to items in the toCol (1-based column index).
     """
     itemMap = {}
-    for line in open(f, 'r').readlines():
+    fopen = gzip.open(f,'r') if '.gz' in f else open(f,'r')
+    for line in fopen.readlines():
         if line=='':
             continue
         if line[0]=='#':

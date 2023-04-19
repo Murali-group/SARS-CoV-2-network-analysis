@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+import math
 # base code to post a network with attributes to graphspace
 
 #print("Importing Libraries")
@@ -78,21 +78,22 @@ def main(args):
                              group=opts.group, make_public=opts.make_public)
 
 
+
 def readGraphAttr(graph_attr_file):
     """ 
     Read attributes of nodes and edges from the graph_attr file
     Must have 4 tab-delimited columns. 
     1: Style name
     2: Style value
-    3: Nodes/Edges (joined by '|') to apply the style to
+    3: Nodes/Edges (joined by '/') to apply the style to
     4: This is intended to be either a popup or part of the Graph Description / Legend, but it isn't built yet
 
     # example node attribute:
-    color blue    p1|p2|p3  - 
+    color blue    p1/p2/p3  -
     # example edge attribute:
-    edge_style dotted    p1-p2|p2-p3  - 
+    edge_style dotted    p1-p2/p2-p3  -
     # example compound node. Here p1, p2, and p3 will have the parent attribute set to 'parent1' (i.e. they will belong to the same compound node parent1)
-    parent    parent1  p1|p2|p3  - 
+    parent    parent1  p1/p2/p3  -
     # then to set the attributes of 'parent1', specify it as the node
     color blue    parent1  -
     """
@@ -108,12 +109,12 @@ def readGraphAttr(graph_attr_file):
     # TODO the last column (here always '-') can be given as a description
     #lines = utils.readColumns(graph_attr_file, 1,2,3,4)
     #lines = utils.readColumns(graph_attr_file, 1,2,3)
-    df = pd.read_csv(graph_attr_file, sep='\t', header=None, comment='#')
+    df = pd.read_csv(graph_attr_file, sep='\t', header=None)
     print("\tread %d lines" % (len(df)))
     # reverse the lines so the pathways at the top of the file will overwrite the pathways at the bottom
-    #for style, style_attr, items, desc in lines[::-1]:
+    # for style, style_attr, items, desc in lines[::-1]:
     for style, style_attr, items, desc in df.values[::-1]:
-        for item in str(items).split('|'):
+        for item in str(items).split('/'):
             # if this is an edge, then split it by the '-'
             if len(item.split('-')) == 2:
                 item = tuple(item.split('-'))
@@ -189,6 +190,7 @@ def post_graph_to_graphspace(G, username, password, graph_name, apply_layout=Non
     """
     # post to graphspace
     gs = GraphSpace(username, password)
+
     #print("\nPosting graph '%s' to graphspace\n" % (graph_name))
     gs_graph = gs.get_graph(graph_name, owner_email=username)
 
@@ -223,7 +225,10 @@ def post_graph_to_graphspace(G, username, password, graph_name, apply_layout=Non
     else:
         # "re-post" or update the graph 
         print("\nGraph '%s' already exists. Updating it\n" % (graph_name))
-        gsgraph = gs.update_graph(G, graph_name=graph_name, owner_email=username)
+        #delete the previous graph
+        gs.delete_graph(gs_graph)
+        gsgraph = gs.post_graph(G)
+        # gsgraph = gs.update_graph(G, graph_name=graph_name, owner_email=username)
     if make_public is True:
         print("Making graph '%s' public." % (graph_name))
         gsgraph = gs.publish_graph(graph=G)
@@ -360,7 +365,7 @@ def constructGraph(edges, prednodes=None, node_labels={}, graph_attr={}, popups=
     return G
 
 
-def buildNodePopup(n, node_type='uniprot', attr_val=None):
+def buildNodePopup(n, go_id_2_name=None, node_type='uniprot', attr_val=None):
     """
     Builds the node data html for the node popup.
 
@@ -384,18 +389,28 @@ def buildNodePopup(n, node_type='uniprot', attr_val=None):
         htmlstring += '<b>DrugBank ID</b>: <a style="color:blue" href="%s" target="DrugBank">%s</a><br>' % (drugbankurl%uid, uid)
     else:
         htmlstring += "%s</br>" % (n)
-    #    htmlstring += '<li><i>Recommended name</i>: %s</li>' % (db.get_description(uid))
-#    # get the alternate names from the AltName-Full namespace
-#    alt_names = db.map_id(uid, 'uniprotkb', 'AltName-Full')
-#    if len(alt_names) > 0:
-#        htmlstring += '<li><i>Alternate name(s)</i>: <ul><li>%s</li></ul></li>' %('</li><li>'.join(sorted(alt_names)))
 
-    # TODO have a better way to build the popups
+    #add score, rank and protein names to htmlstring popup
+    link_template = "<a style=\"color:blue\" href=\"https://www.ebi.ac.uk/QuickGO/GTerm?id=%s\" target=\"DB\">%s</a>"
     if attr_val is not None and n in attr_val:
         htmlstring += "<hr />"
         # now add all of the specified node annotatinos
         for attr, val in attr_val[n].items():
-            htmlstring += "<b>%s</b>: %s</br>" % (attr, val)
+            if attr in ['Protein names', 'score', 'rank']:
+                htmlstring += "<b>%s</b>: %s</br>" % (attr, val)
+
+            # add GO terms/functions to htmlstring popup
+            # add go terms with link to QuickGO
+            elif 'GO_BP_ID' in attr :
+                htmlstring += "<b>Biological Process </b>:<ul>"
+                #for some protein there is no GO annotation. So skip them.
+                if str(val)=='nan':
+                    continue
+                for term in val: # val=set of GO_ids
+                    term_link = "https://www.ebi.ac.uk/QuickGO/GTerm?id=%s" % (term)
+                    final_link = '<a href="%s">%s (%s)</a>' % (term_link,
+                                go_id_2_name[term], term)
+                    htmlstring += '<li>%s</li>' % (final_link)
 
     return htmlstring
 

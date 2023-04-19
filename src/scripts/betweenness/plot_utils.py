@@ -7,7 +7,9 @@ import os
 from src.utils.plot_utils import *
 
 def plot_hypergeom_pval(all_criteria_overlap_pvals_topks, interesting_in_pos, interesting_in_top,
-                        interesting_in_net, title, filename):
+                        interesting_in_net, title, filename, ks=[],
+                        rank_criteria=['betweenness','contr_pathlen_2',
+                        'contr_pathlen_3','contr_pathlen_4']):
     '''
         frac_overlap_hypergeom_pvals_topks is a dict. Where, k=each k in topks
         and the value is a tuple(x,y)=> x is fraction of overlapping prots in topk and interesting prot,
@@ -19,11 +21,17 @@ def plot_hypergeom_pval(all_criteria_overlap_pvals_topks, interesting_in_pos, in
     a_sig = 0.01
 
     fig, ax = plt.subplots(1)
-    for rank_criteron in all_criteria_overlap_pvals_topks:
+    for rank_criteron in rank_criteria:
         frac_overlap_hypergeom_pvals_topks = all_criteria_overlap_pvals_topks[rank_criteron]
+        # x = list(frac_overlap_hypergeom_pvals_topks.keys())
+        # y = [frac_overlap for (frac_overlap, pval) in list(frac_overlap_hypergeom_pvals_topks.values())]
+        # pvals = [pval for (frac_overlap, pval) in list(frac_overlap_hypergeom_pvals_topks.values())]
+
         x = list(frac_overlap_hypergeom_pvals_topks.keys())
-        y = [frac_overlap for (frac_overlap, pval) in list(frac_overlap_hypergeom_pvals_topks.values())]
-        pvals = [pval for (frac_overlap, pval) in list(frac_overlap_hypergeom_pvals_topks.values())]
+        #now keep only the ks present in passed ks
+        x = [i for i in x if i in ks]
+        y = [frac_overlap for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
+        pvals = [pval for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
         c = ['g' if i<a_sig else 'r' for i in pvals]
 
         lines = [((x0, y0), (x1, y1)) for x0, y0, x1, y1 in zip(x[:-1], y[:-1], x[1:], y[1:])]
@@ -53,6 +61,118 @@ def plot_hypergeom_pval(all_criteria_overlap_pvals_topks, interesting_in_pos, in
     plt.close()
     print('Save overlap fig to ', filename)
 
+def plot_hypergeom_pval_multinet(all_criteria_overlap_pvals_topks_multinet,
+                        interesting_in_multinet, title=None, filename=None, ks=[]):
+    '''
+        all_criteria_overlap_pvals_topks_multinet is a dict of dict.
+        Where, first key=network_name, second key=k=each k in topks
+        and the value is a tuple(x,y)=> x is fraction of overlapping prots in topk and interesting prot,
+        y is the pvalue of that overlap.
+        Plot overlap between top ranked betweenness proteins and prots of interest.
+    '''
+
+    linestyle_dict = {'STRING11-5-700': 'solid', 'BioGRID-Physical': 'dotted',
+                      'BioGRID-Y2H': 'dashdot' , 'HI-Union': (0, (1, 10))}
+
+    a_sig = 0.01
+    fig, ax = plt.subplots(1)
+    for net in all_criteria_overlap_pvals_topks_multinet:
+        all_criteria_overlap_pvals_topks = all_criteria_overlap_pvals_topks_multinet[net]
+        frac_overlap_hypergeom_pvals_topks = all_criteria_overlap_pvals_topks['betweenness']
+        x = list(frac_overlap_hypergeom_pvals_topks.keys())
+        #now keep only the ks present in passed ks
+        x = [i for i in x if i in ks]
+        y = [frac_overlap for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
+        pvals = [pval for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
+        c = ['g' if i<a_sig else 'r' for i in pvals]
+
+        lines = [((x0, y0), (x1, y1)) for x0, y0, x1, y1 in zip(x[:-1], y[:-1], x[1:], y[1:])]
+        colored_lines = LineCollection(lines, colors=c, linewidths=(2,), linestyle=linestyle_dict[net],
+                                       label=net_name_alias_btns_overlap[net])
+
+        # plot data
+        ax.add_collection(colored_lines)
+        ax.autoscale_view()
+
+        plt.axhline(y=interesting_in_multinet[net], color='b', linestyle=linestyle_dict[net])
+
+    legend = ax.legend(loc='upper right', shadow=True, fontsize='x-large',
+                       fancybox=True, framealpha=0.5)
+    plt.ylim([0, 1])
+    plt.xlabel('rank')
+    plt.ylabel('fraction of overlap')
+    plt.title(title)
+    plt.tight_layout()
+
+    # filename1 = filename.replace('.pdf','_'+rank_criteron+'.pdf')
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    plt.savefig(filename)
+    plt.savefig(filename.replace('.pdf', '.png'))  # save plot in .png format as well
+    plt.close()
+    print('Save overlap fig to ', filename)
+
+def plot_hypergeom_pval_multialg_multinet(all_criteria_overlap_pvals_topks_multialg_multinet,
+                        interesting_in_multialg_multinet,filename=None, ks=[]):
+    '''
+        all_criteria_overlap_pvals_topks_multialg_multinet is a dict of dict of dict.
+        Where, fisrt key=alg_name, second key=network name, third key=k=each k in topks
+        and the value is a tuple(x,y)=> x is fraction of overlapping prots in topk and interesting prot,
+        y is the pvalue of that overlap.
+        Plot overlap between top ranked betweenness proteins and prots of interest.
+    '''
+
+    linestyle_dict = {'STRING11-5-700': 'solid', 'BioGRID-Physical': 'dotted',
+                      'BioGRID-Y2H': 'dashdot' , 'HI-Union': (0, (1, 10))}
+
+    a_sig = 0.01
+    n_algs = len(all_criteria_overlap_pvals_topks_multialg_multinet.keys())
+    if n_algs==1:
+        fig, ax = plt.subplots(1)
+        axs=[ax]
+
+    elif n_algs==2:
+        fig, (ax1, ax2) = plt.subplots(1,2)
+        axs=[ax1,ax2]
+    count=0
+    for alg in all_criteria_overlap_pvals_topks_multialg_multinet:
+        all_criteria_overlap_pvals_topks_multinet = all_criteria_overlap_pvals_topks_multialg_multinet[alg]
+        interesting_in_multinet = interesting_in_multialg_multinet[alg]
+        for net in all_criteria_overlap_pvals_topks_multinet:
+            all_criteria_overlap_pvals_topks = all_criteria_overlap_pvals_topks_multinet[net]
+            frac_overlap_hypergeom_pvals_topks = all_criteria_overlap_pvals_topks['betweenness']
+            x = list(frac_overlap_hypergeom_pvals_topks.keys())
+            #now keep only the ks present in passed ks
+            x = [i for i in x if i in ks]
+            y = [frac_overlap for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
+            pvals = [pval for (frac_overlap, pval) in [frac_overlap_hypergeom_pvals_topks[key] for key in x]]
+            c = ['g' if i<a_sig else 'r' for i in pvals]
+
+            lines = [((x0, y0), (x1, y1)) for x0, y0, x1, y1 in zip(x[:-1], y[:-1], x[1:], y[1:])]
+            colored_lines = LineCollection(lines, colors=c, linewidths=(2,), linestyle=linestyle_dict[net],
+                                           label=net_name_alias_btns_overlap[net])
+
+            # plot data
+            axs[count].add_collection(colored_lines)
+            axs[count].autoscale_view()
+
+            axs[count].axhline(y=interesting_in_multinet[net], color='b', linestyle=linestyle_dict[net])
+            axs[count].set_ylim(0,1)
+            axs[count].set_xlabel('ranks')
+            axs[count].set_ylabel('fraction of overlap')
+            axs[count].set_title(alg_plot_name[alg])
+            axs[count].set_box_aspect(0.75)
+            legend = axs[count].legend(loc='upper right', shadow=True, fancybox=True)
+        count += 1
+
+
+
+    # filename1 = filename.replace('.pdf','_'+rank_criteron+'.pdf')
+    plt.tight_layout()
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    plt.savefig(filename, bbox_inches='tight')
+    plt.savefig(filename.replace('.pdf', '.png'), bbox_inches='tight')  # save plot in .png format as well
+    plt.close()
+    print('Save overlap fig to ', filename)
 
 def plot_KS(frac_prots_ge_btns_marker,marker, title, filename):
     markers_dict = {'ppi_prots':'o', 'ess_cell': 'v', 'ess_org': 's', 'viral_sars2--':'P'}

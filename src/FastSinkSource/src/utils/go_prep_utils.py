@@ -107,6 +107,16 @@ and the columns are GO term IDs. Also writes a summary statistics table
     return opts, args
 
 
+
+def keep_prots_min_1_ann(prots, ont, direct_prot_goids_by_c):
+    prot_to_goids = direct_prot_goids_by_c[ont]
+    qualified_prots=[]
+    for prot in prots:
+        if len(prot_to_goids[prot])!=0: #atleast one go annotation
+            qualified_prots.append(prot)
+    return qualified_prots
+
+
 def parse_obo_file_and_build_dags(obo_file, forced=False):
     """
     Parse the GO OBO into a networkx MultiDiGraph using obonet.

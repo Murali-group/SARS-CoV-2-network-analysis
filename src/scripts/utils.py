@@ -75,6 +75,7 @@ def get_balancing_alpha(config_map, dataset, alg_name,  term):
 
     balancing_alpha = term_2_balancing_alpha_dict[term]
     return balancing_alpha
+
 #************************* NETWORK ANALYSIS*************************
 def is_neighbor(W, source, target):
     ''' This will return True if there is an edge from the source to target'''
@@ -103,6 +104,13 @@ def pearson_correlations(list1, list2):
 def kendal_tau(list1, list2):
     kt = stats.kendalltau(list1, list2)
     return kt.correlation, kt.pvalue
+
+#*********************** LIST COMPARE ***************************************
+def compute_jaccard(set1, set2):
+    '''
+    pass tow set or lists.
+    '''
+    return len(set(set1).intersection(set(set2)))/ len(set(set1).union(set(set2)))
 
 
 #*************************** FILE WRITE *********************************

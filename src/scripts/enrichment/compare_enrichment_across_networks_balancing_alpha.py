@@ -200,16 +200,19 @@ def handle_jaccard_enriched_terms(enriched_go_terms, network_names):
             if network_names[0] in enriched_go_terms[term] else set()
         enriched_go_terms_for_net_2  = set(enriched_go_terms[term][network_names[1]]) \
             if network_names[1] in enriched_go_terms[term] else set()
-        jaccard_idx = compute_jaccard(enriched_go_terms_for_net_1, enriched_go_terms_for_net_2)
+        jaccard_idx = script_utils.compute_jaccard(enriched_go_terms_for_net_1, enriched_go_terms_for_net_2)
 
         print('term: ', term, 'jaccard idx: ', jaccard_idx)
         print(network_names[0], ':',len(enriched_go_terms_for_net_1))
         print(network_names[1], ':',len(enriched_go_terms_for_net_2))
 
         return jaccard_idx
-
-def compute_jaccard(set1, set2):
-    return len(set1.intersection(set2))/ len(set1.union(set2))
+#
+# def compute_jaccard(set1, set2):
+#     '''
+#     pass tow set or lists.
+#     '''
+#     return len(set(set1).intersection(set(set2)))/ len(set(set1).union(set(set2)))
 
 if __name__ == "__main__":
     config_map, kwargs = parse_args()
