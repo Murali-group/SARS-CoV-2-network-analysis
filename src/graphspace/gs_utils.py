@@ -6,90 +6,120 @@ import numpy as np
 
 METHODS_TO_IGNORE = set()
 
-
 ##########################################################
-def evidenceToHTML(t,h,evidencelist):
+def evidenceToHTML(t, h, edge_evidence):
+    #NURE
     annotation = '<dl>'
-    sources = sorted(evidencelist)
     pubmedurl = 'http://www.ncbi.nlm.nih.gov/pubmed/%s'
-    stringurl = f"https://string-db.org/cgi/network.pl?identifiers={t}%0d{h}"
 
-    for source in sources:
-        if source == 'STRING':
-            # Make it a link: https://string-db.org/cgi/network.pl?identifiers=P05412%0dP01100
-            desc = f'<a style="color:blue" href="{stringurl}" target="STRING">{source}</a>'
-            annotation += '<dt>%s</dt>' % (desc)
-            for string_channel in sorted(evidencelist[source]):
-                score = list(evidencelist[source][string_channel].keys())[0]
-                annotation += '&bull;&nbsp&nbsp%s:&nbsp%s<br>' % (string_channel, score)
-            continue
+    pmids = edge_evidence['pubid']
+    annotation += '<dd><b>PubMed ID</b>: '
+    for pmid in pmids:
+        annotation += '<a style="color:blue" href="%s" target="PubMed">%s</a></dd>' % (pubmedurl%pmid, pmid)
 
-        annotation += '<dt>%s</dt>' % (source)
-        if source == "DrugBank":
-            for reference in evidencelist[source]:
-                pmid = reference['pmid']
-                annotation += '<dd><b>PubMed ID</b>: '
-                annotation += '<a style="color:blue" href="%s" target="PubMed">%s</a></dd>' % (pubmedurl%pmid, pmid)
+    effects = edge_evidence['effect']
+    annotation += '<dd><b>Effect</b>: '
+    for effect in effects:
+         annotation += '%s  </dd>' % effect
+    # annotation += '</dl><br>'
 
-                text = reference['text']
-                annotation += '<dd><b>Reference</b>: %s </dd>' % text
-            annotation += '</dl><br>'
-            continue
+    interaction_types = edge_evidence['interactiontype']
+    annotation += '<dd><b>Interaction</b>: '
+    for interaction_type in interaction_types:
+        annotation += ' %s  </dd>' % interaction_type
+    # annotation += '</dl><br>'
 
-        # This is leftover from the CSBDB evidence file
-        # for interactiontype in evidencelist[source]:
-        #     if interactiontype != '' and interactiontype != "None":
-        #         # use bull instead of li to save on white space
-        #         annotation += '&bull;&nbsp&nbsp%s <br>' % interactiontype
-        #     for detectionmethod in evidencelist[source][interactiontype]:
-        #         annotation += '&nbsp&nbsp&nbsp&nbsp&bull;&nbsp&nbsp'
-        #         if detectionmethod != '':
-        #             filtered = False
-        #             for m in METHODS_TO_IGNORE:  # CSBDB
-        #                 if m in detectionmethod:
-        #                     filtered = True
-        #                     break
-        #             # add detection method filter (i.e. gray out detection methods that we're ignoring)
-        #             if filtered:
-        #                 annotation += '<FONT COLOR="gray">%s</FONT>  ' % (detectionmethod)
-        #             else:
-        #                 annotation += '%s  ' % detectionmethod
+    notes = edge_evidence['note']
+    annotation += '<dd><b>Note</b>: '
+    for note in notes:
+        annotation += ' %s  </dd>' % note
+    # annotation += '</dl><br>'
 
-        #         # now add the pubmed IDs. &nbsp is the html for a non-breaking space
-        #         pub_ids = evidencelist[source][interactiontype][detectionmethod]
-        #         #KEGG doesn't have pub ids. It has a pathway map and entry (evidence)
-        #         try:
-        #             # How do we want to sort the pmid, imex, doi and MINT and such? pmid first?
-        #             pubmed_ids = [pubmed_id for pubmed_id in pub_ids if pubmed_id.split(':')[0] == 'pubmed' and 'None' not in pubmed_id]
-        #             # just sort the pubmed_ids and put them first
-        #             #pubmed_ids = sortPubs(pubmed_ids)
-        #             # add the rest of the ids
-        #             pub_ids = pubmed_ids + [other_id for other_id in pub_ids if other_id.split(':')[0] != 'pubmed']
-        #             # now get the html for each of the links
-        #             pub_ids = [parseCSBDBpubs(pub_id) for pub_id in pub_ids if parseCSBDBpubs(pub_id) != '']
-        #         except ValueError:
-        #             print("ERROR when parsing pub_ids from:")
-        #             print(t,h, source, interactiontype, detectionmethod, pub_ids)
-        #             raise
-
-        #         # use a non-breaking space with a comma so they all stay on the same line
-        #         annotation += ',&nbsp'.join(pub_ids)
-        #         annotation += "<br>"
-        annotation += '</li></ul><br>'
+    annotation += '</li></ul><br>'
 
     return annotation
 
 
-def getEvidence(edges, evidence_file=None):
+# def evidenceToHTML(t,h,evidencelist):
+# Jeff
+#     annotation = '<dl>'
+#     sources = sorted(evidencelist)
+#     pubmedurl = 'http://www.ncbi.nlm.nih.gov/pubmed/%s'
+#     stringurl = f"https://string-db.org/cgi/network.pl?identifiers={t}%0d{h}"
+#
+#     for source in sources:
+#         if source == 'STRING':
+#             # Make it a link: https://string-db.org/cgi/network.pl?identifiers=P05412%0dP01100
+#             desc = f'<a style="color:blue" href="{stringurl}" target="STRING">{source}</a>'
+#             annotation += '<dt>%s</dt>' % (desc)
+#             for string_channel in sorted(evidencelist[source]):
+#                 score = list(evidencelist[source][string_channel].keys())[0]
+#                 annotation += '&bull;&nbsp&nbsp%s:&nbsp%s<br>' % (string_channel, score)
+#             continue
+#
+#         annotation += '<dt>%s</dt>' % (source)
+#         if source == "DrugBank":
+#             for reference in evidencelist[source]:
+#                 pmid = reference['pmid']
+#                 annotation += '<dd><b>PubMed ID</b>: '
+#                 annotation += '<a style="color:blue" href="%s" target="PubMed">%s</a></dd>' % (pubmedurl%pmid, pmid)
+#
+#                 text = reference['text']
+#                 annotation += '<dd><b>Reference</b>: %s </dd>' % text
+#             annotation += '</dl><br>'
+#             continue
+#
+#         # This is leftover from the CSBDB evidence file
+#         # for interactiontype in evidencelist[source]:
+#         #     if interactiontype != '' and interactiontype != "None":
+#         #         # use bull instead of li to save on white space
+#         #         annotation += '&bull;&nbsp&nbsp%s <br>' % interactiontype
+#         #     for detectionmethod in evidencelist[source][interactiontype]:
+#         #         annotation += '&nbsp&nbsp&nbsp&nbsp&bull;&nbsp&nbsp'
+#         #         if detectionmethod != '':
+#         #             filtered = False
+#         #             for m in METHODS_TO_IGNORE:  # CSBDB
+#         #                 if m in detectionmethod:
+#         #                     filtered = True
+#         #                     break
+#         #             # add detection method filter (i.e. gray out detection methods that we're ignoring)
+#         #             if filtered:
+#         #                 annotation += '<FONT COLOR="gray">%s</FONT>  ' % (detectionmethod)
+#         #             else:
+#         #                 annotation += '%s  ' % detectionmethod
+#         #
+#         #         # now add the pubmed IDs. &nbsp is the html for a non-breaking space
+#         #         pub_ids = evidencelist[source][interactiontype][detectionmethod]
+#         #         #KEGG doesn't have pub ids. It has a pathway map and entry (evidence)
+#         #         try:
+#         #             # How do we want to sort the pmid, imex, doi and MINT and such? pmid first?
+#         #             pubmed_ids = [pubmed_id for pubmed_id in pub_ids if pubmed_id.split(':')[0] == 'pubmed' and 'None' not in pubmed_id]
+#         #             # just sort the pubmed_ids and put them first
+#         #             #pubmed_ids = sortPubs(pubmed_ids)
+#         #             # add the rest of the ids
+#         #             pub_ids = pubmed_ids + [other_id for other_id in pub_ids if other_id.split(':')[0] != 'pubmed']
+#         #             # now get the html for each of the links
+#         #             pub_ids = [parseCSBDBpubs(pub_id) for pub_id in pub_ids if parseCSBDBpubs(pub_id) != '']
+#         #         except ValueError:
+#         #             print("ERROR when parsing pub_ids from:")
+#         #             print(t,h, source, interactiontype, detectionmethod, pub_ids)
+#         #             raise
+#         #
+#         #         # use a non-breaking space with a comma so they all stay on the same line
+#         #         annotation += ',&nbsp'.join(pub_ids)
+#         #         annotation += "<br>"
+#         annotation += '</li></ul><br>'
+#
+#     return annotation
+#
+
+def getEvidence(edges,evidence_file=None):
+    #NURE This is for SIGNOR evidence collection only
     """
     *edges*: a set of edges for which to get the evidence for
     returns a multi-level dictionary with the following structure
-    edge: 
-      db/source: 
-        interaction_type: 
-          detection_method: 
-            publication / database ids
-    For NetPath, KEGG and SPIKE, the detection method is the pathway name 
+    edge, effect, mechanism,publication / database ids, signod_id
+    For NetPath, KEGG and SPIKE, the detection method is the pathway name
     NetPath, KEGG, and Phosphosite also have a pathway ID in the database/id set
     which follows convention of id_type:id (for example: kegg:hsa04611).
     For STRING, the sub-channel is in the interaction_type col and the score is in the detection method
@@ -110,7 +140,7 @@ def getEvidence(edges, evidence_file=None):
     print("\t%d lines" % (len(df)))
     print(df.head())
 
-    # create a graph of the passed in edges 
+    # create a graph of the passed in edges
     G = nx.Graph()
     G.add_edges_from(edges)
 
@@ -123,28 +153,102 @@ def getEvidence(edges, evidence_file=None):
         edge_dir[(t,h)] = False
         edge_dir[(h,t)] = False
 
-    for u,v, directed, interactiontype, detectionmethod, pubid, source in df.values:
+    # process according to the network being used
+    df['DIRECTED'] = ['True'] * len(df)
+    # IDA=UNIPROT_A, IDB=UNIPROT_B, EFFECT= up_regulation/down_regulation/...,mechanism=interaction_type
+    df = df[['IDA', 'IDB', 'DIRECTED', 'EFFECT', 'MECHANISM', 'PMID', 'SENTENCE', 'SIGNOR_ID']]
+    for u, v, directed, effect, interaction_type, pubid, note, signor_id in df.values:
         # header line of file
-        #uniprot_a  uniprot_b   directed    interaction_type    detection_method    publication_id  source
+        # uniprot_a  uniprot_b   directed    interaction_type    detection_method    publication_id  source
         directed = True if directed == "True" else False
 
         # We only need to get the evidence for the edges passed in, so if this edge is not in the list of edges, skip it
         # G is a Graph so it handles undirected edges correctly
-        if not G.has_edge(u,v):
+        if not G.has_edge(u, v):
             continue
 
-        evidence = addToEvidenceDict(evidence, (u,v), directed, source, interactiontype, detectionmethod, pubid)
-        edge_types = addEdgeType(edge_types, (u,v), directed, source, interactiontype)
+        evidence = addToEvidenceDict(evidence, (u, v), directed, note, effect, interaction_type, pubid)
+        edge_types = addEdgeType(edge_types, (u, v), directed, note, effect)
 
         if directed is True:
-            edge_dir[(u,v)] = True
+            edge_dir[(u, v)] = True
         else:
             # if they are already directed, then set them as undirected
-            if (u,v) not in edge_dir:
-                edge_dir[(u,v)] = False
-                edge_dir[(v,u)] = False
+            if (u, v) not in edge_dir:
+                edge_dir[(u, v)] = False
+                edge_dir[(v, u)] = False
 
     return evidence, edge_types, edge_dir
+
+
+# def getEvidence(edges,net_name=None, evidence_file=None):
+#JEFF
+#     """
+#     *edges*: a set of edges for which to get the evidence for
+#     returns a multi-level dictionary with the following structure
+#     edge:
+#       db/source:
+#         interaction_type:
+#           detection_method:
+#             publication / database ids
+#     For NetPath, KEGG and SPIKE, the detection method is the pathway name
+#     NetPath, KEGG, and Phosphosite also have a pathway ID in the database/id set
+#     which follows convention of id_type:id (for example: kegg:hsa04611).
+#     For STRING, the sub-channel is in the interaction_type col and the score is in the detection method
+#     """
+#     # dictionary of an edge mapped to the evidence for it
+#     evidence = defaultdict(dict)
+#     edge_types = {}
+#     edge_dir = {}
+#
+#     if evidence_file is None:
+#         print("evidence_file not given. Returning empty sets")
+#         return evidence, edge_types, edge_dir
+#         # TODO use a default version or something
+#
+#     print("Reading evidence file %s" % (evidence_file))
+#     #evidence_lines = utils.readColumns(evidence_file, 1,2,3,4,5,6,7)
+#     df = pd.read_csv(evidence_file, sep='\t')
+#     print("\t%d lines" % (len(df)))
+#     print(df.head())
+#
+#     # create a graph of the passed in edges
+#     G = nx.Graph()
+#     G.add_edges_from(edges)
+#
+#     # initialize the dictionaries
+#     for t,h in G.edges():
+#         evidence[(t,h)] = {}
+#         evidence[(h,t)] = {}
+#         edge_types[(t,h)] = set()
+#         edge_types[(h,t)] = set()
+#         edge_dir[(t,h)] = False
+#         edge_dir[(h,t)] = False
+#
+#         # process according to the network being used
+#
+#     for u,v, directed, interactiontype, detectionmethod, pubid, source in df.values:
+#         # header line of file
+#         #uniprot_a  uniprot_b   directed    interaction_type    detection_method    publication_id  source
+#         directed = True if directed == "True" else False
+#
+#         # We only need to get the evidence for the edges passed in, so if this edge is not in the list of edges, skip it
+#         # G is a Graph so it handles undirected edges correctly
+#         if not G.has_edge(u,v):
+#             continue
+#
+#         evidence = addToEvidenceDict(evidence, (u,v), directed, source, interactiontype, detectionmethod, pubid)
+#         edge_types = addEdgeType(edge_types, (u,v), directed, source, interactiontype)
+#
+#         if directed is True:
+#             edge_dir[(u,v)] = True
+#         else:
+#             # if they are already directed, then set them as undirected
+#             if (u,v) not in edge_dir:
+#                 edge_dir[(u,v)] = False
+#                 edge_dir[(v,u)] = False
+
+#     return evidence, edge_types, edge_dir
 
 
 def addEdgeType(edge_types, e, directed, source, interactiontype):
@@ -192,25 +296,52 @@ def addEdgeType(edge_types, e, directed, source, interactiontype):
     return edge_types
 
 
-def addToEvidenceDict(evidence, e, directed, source, interactiontype, detectionmethod, pubid):
+def addToEvidenceDict(evidence, e, directed, note, effect, interaction_type, pubid):
     """ add the evidence of the edge to the evidence dictionary
-    *pubids*: publication id to add to this edge. 
+    *pubids*: publication id to add to this edge.
     """
-    #if e not in evidence:
-    #    evidence[e] = {}
-    if source not in evidence[e]:
-        evidence[e][source] = {}
-    if interactiontype not in evidence[e][source]:
-        evidence[e][source][interactiontype] = {}
-    if detectionmethod not in evidence[e][source][interactiontype]:
-        evidence[e][source][interactiontype][detectionmethod] = set()
-    evidence[e][source][interactiontype][detectionmethod].add(pubid)
 
-    if not directed:
-        # add the evidence for both directions
-        evidence = addToEvidenceDict(evidence, (e[1],e[0]), True, source, interactiontype, detectionmethod, pubid)
+    if 'note' not in evidence[e]:
+        evidence[e]['note'] = [note]
+    else:
+        evidence[e]['note'].append(note)
+
+    if 'effect' not in evidence[e]:
+        evidence[e]['effect'] = [effect]
+    else:
+        evidence[e]['effect'].append(effect)
+
+    if 'interaction_type' not in evidence[e]:
+        evidence[e]['interactiontype'] = [interaction_type]
+    else:
+        evidence[e]['interactiontype'].append(interaction_type)
+
+    if 'pubid' not in evidence[e]:
+        evidence[e]['pubid'] = [pubid]
+    else:
+        evidence[e]['pubid'].append(pubid)
 
     return evidence
+
+# def addToEvidenceDict(evidence, e, directed, source, interactiontype, detectionmethod, pubid):
+#     """ add the evidence of the edge to the evidence dictionary
+#     *pubids*: publication id to add to this edge.
+#     """
+#     #if e not in evidence:
+#     #    evidence[e] = {}
+#     if source not in evidence[e]:
+#         evidence[e][source] = {}
+#     if interactiontype not in evidence[e][source]:
+#         evidence[e][source][interactiontype] = {}
+#     if detectionmethod not in evidence[e][source][interactiontype]:
+#         evidence[e][source][interactiontype][detectionmethod] = set()
+#     evidence[e][source][interactiontype][detectionmethod].add(pubid)
+#
+#     if not directed:
+#         # add the evidence for both directions
+#         evidence = addToEvidenceDict(evidence, (e[1],e[0]), True, source, interactiontype, detectionmethod, pubid)
+#
+#     return evidence
 
 
 ##########################################################

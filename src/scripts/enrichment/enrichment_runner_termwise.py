@@ -114,7 +114,7 @@ def setup_opts():
 
     group = parser.add_argument_group('FastSinkSource Pipeline Options')
 
-    group.add_argument('--force-run', action='store_true', default=True,
+    group.add_argument('--force-run', action='store_true', default=False,
                        help="Force re-running the enrichment tests, and re-writing the output files")
     return parser
 
@@ -233,6 +233,11 @@ def main(config_map, **kwargs):
                             go_prep_utils.parse_gaf_file(kwargs.get('gaf_file'))
                         go_category = {'BP':'P', 'MF':'F', 'CC':'C'}
 
+                        # # Now do KEGG enrichment analysis
+                        # _, _ = enrichment.run_clusterProfiler_KEGG(
+                        #     prot_universe, query_prots,
+                        #     enrich_str, out_dir, forced=kwargs.get('force_run'), **kwargs)
+
                         for ont in ['BP', 'MF', 'CC']:
                             ##keep the prots that have atleast one go annotation
                             filtered_topk_predictions = go_prep_utils.keep_prots_min_1_ann(query_prots,
@@ -252,14 +257,16 @@ def main(config_map, **kwargs):
                                 simplified_file = out_file.replace('.csv','_revigo_simplified.csv')
                                 revigo_simplify(enrich_df, simplified_file,ont_revigo_name[ont])
 
-                            #some extra analysis
-                            if kwargs.get('enrichment_on') == 'top_paths':
-                                #enrichment on protein that are present only in top paths
-                                filtered_query_diff = go_prep_utils.keep_prots_min_1_ann\
-                                    (prots_dif_in_top_paths,go_category[ont],direct_prot_goids_by_c)
-                                enrich_df, out_file = enrichment.run_clusterProfiler_GO(
-                                    filtered_prot_universe, filtered_query_diff, ont,
-                                    'diff_'+enrich_str, out_dir, forced=kwargs.get('force_run'), **kwargs)
+
+                        print('number of enriched terms for ', ont, ': ', len(enrich_df))
+                            # #some extra analysis
+                            # if kwargs.get('enrichment_on') == 'top_paths':
+                            #     #enrichment on protein that are present only in top paths
+                            #     filtered_query_diff = go_prep_utils.keep_prots_min_1_ann\
+                            #         (prots_dif_in_top_paths,go_category[ont],direct_prot_goids_by_c)
+                            #     enrich_df, out_file = enrichment.run_clusterProfiler_GO(
+                            #         filtered_prot_universe, filtered_query_diff, ont,
+                            #         'diff_'+enrich_str, out_dir, forced=kwargs.get('force_run'), **kwargs)
                         print('Running enrichgo done: ', term, ' ', alg)
 
 

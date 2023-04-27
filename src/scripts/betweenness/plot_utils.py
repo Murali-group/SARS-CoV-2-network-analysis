@@ -8,8 +8,7 @@ from src.utils.plot_utils import *
 
 def plot_hypergeom_pval(all_criteria_overlap_pvals_topks, interesting_in_pos, interesting_in_top,
                         interesting_in_net, title, filename, ks=[],
-                        rank_criteria=['betweenness','contr_pathlen_2',
-                        'contr_pathlen_3','contr_pathlen_4']):
+                        rank_criteria=['betweenness']):
     '''
         frac_overlap_hypergeom_pvals_topks is a dict. Where, k=each k in topks
         and the value is a tuple(x,y)=> x is fraction of overlapping prots in topk and interesting prot,

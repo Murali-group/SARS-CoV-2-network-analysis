@@ -270,7 +270,7 @@ def build_graph_and_post(prededges, sources, targets,top_targets, uniprot_to_gen
         graph_attr, attr_desc = gs_base.readGraphAttr(graph_attr_file)
 
     # get the evidence supporting each edge
-    evidence, edge_types, edge_dir = gs_utils.getEvidence(list(prededges.keys()), evidence_file=ev_file)
+    evidence, edge_types, edge_dir = gs_utils.getEvidence(list(prededges.keys()),evidence_file=ev_file)
 
     # Now post to graphspace!
     #G = gs.constructGraph(pred_edges, node_labels=uniprot_to_gene, graph_attr=graph_attr, popups=popups)
@@ -588,7 +588,7 @@ def constructGraph(
         edge_popup = buildEdgePopup(u,v, evidence, uniprot_to_gene, k=k_value)
         # G.add_edge(gene_name_u,gene_name_v,directed=edge_dir[(u,v)],popup=edge_popup,k=k_value)
         #Nure: TODO for undirected edge give directed=False
-        G.add_edge(gene_name_u,gene_name_v,directed=True,popup=edge_popup,k=k_value)
+        G.add_edge(gene_name_u,gene_name_v, directed=True,popup=edge_popup,k=k_value)
 
         attr_dict = {}
 
@@ -693,7 +693,7 @@ def buildEdgePopup(t, h, evidence, uniprot_to_gene, PPIWEIGHTS=None, k=None, fam
             annotation += '<hr /><h><b>Sources of Evidence</b></h>'
             annotation += gs_utils.evidenceToHTML(t,h,family_ppi_evidence[(t,h)])
     else:
-        annotation += '<hr /><h><b>Sources of Evidence</b></h>'
+        # annotation += '<hr /><h><b>Sources of Evidence</b></h>'
         annotation += gs_utils.evidenceToHTML(t,h,evidence[(t,h)])
 
     return annotation

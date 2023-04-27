@@ -11,8 +11,6 @@ import networkx as nx
 import copy
 import time
 from scipy.sparse import eye, diags
-
-
 import subprocess
 import logging
 

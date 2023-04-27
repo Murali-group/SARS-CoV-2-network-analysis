@@ -73,6 +73,46 @@ def run_clusterProfiler_GO(
     #return non-simplified enriched terms and the filename where they are saved
     return df, out_file
 
+
+
+def run_clusterProfiler_KEGG(
+        prot_universe, prots_to_test, enrichment_str, out_dir, forced=False,  **kwargs):
+    """
+    parameters: prots_to_test: the list of predicted proteins(UniprotID)
+                out_dir: Directory to write the output i.e. enrichment results
+                prot_universe: List of background proteins or protein universe(UniprotID)
+                forced: True means overwrite already existing results,
+                False means use the existing results
+                **kwargs: The clusterProfiler result only includes geneID, so
+                 for geneNames we are passing the 'uniprot_to_gene map' via kwargs.
+                This uniprotID to geneName mapping has to created outside this function.
+    *returns*: a list of DataFrames of the enrichement of KEGG
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    out_file = "%s/enrich-KEGG-%s-%s.csv" % (out_dir, enrichment_str,
+                                           str(kwargs.get('pval_cutoff')).replace('.','_'))
+    if ((forced==False) and (os.path.isfile(out_file))):
+        print("\t%s already exists. Use --force-run to overwrite enrich GO term files" % (out_file))
+        df = pd.read_csv(out_file, sep=',', index_col=None)
+    else:
+        print("Running enrichKEGG from clusterProfiler")
+
+        out_file1 = "%s/enrich-temp-%s-%s.csv" % \
+                    (out_dir, enrichment_str, str(kwargs.get('pval_cutoff')).replace('.', '_'))
+        ekegg = clusterProfiler.enrichKEGG(
+            gene          = StrVector(list(prots_to_test)),
+            universe      = StrVector(list(prot_universe)),
+            keyType       = "uniprot",
+            organism      = "hsa",
+            pAdjustMethod = "BH",
+            pvalueCutoff  = kwargs.get('pval_cutoff'),
+            qvalueCutoff  = kwargs.get('qval_cutoff'),
+        )
+
+        utils_package.write_table(ekegg,out_file1, sep=",")
+        df = process_r_output_into_df(out_file1, out_file, **kwargs)
+    return df, out_file
+
 def process_r_output_into_df(r_out_file, out_file, **kwargs):
     df = pd.read_csv(r_out_file, index_col=0)
     # get geneNames from geneIDs

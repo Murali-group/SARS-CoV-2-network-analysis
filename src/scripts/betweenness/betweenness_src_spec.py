@@ -36,7 +36,7 @@ def setup_opts():
     # general parameters
     group = parser.add_argument_group('Main Options')
     group.add_argument('--config', type=str, default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                        "fss_inputs/config_files/provenance/biogrid_y2h_s12.yaml"
+                        "fss_inputs/config_files/provenance/string700_biogrid_physical_biogrid_y2h_s1.yaml"
                        , help="Configuration file used when running FSS. ")
     group.add_argument('--master-config', type=str, default="/data/tasnina/Provenance-Tracing/"
                         "SARS-CoV-2-network-analysis/config-files/master-config.yaml"
@@ -55,7 +55,7 @@ def setup_opts():
 
     group.add_argument('--viral-prot-file', type=str,
                        default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
-                               "fss_inputs/viral-prots/HVIDB.csv",
+                        "fss_inputs/viral-prots/HVIDB.csv",
                        help="This file should contain the essential genes for corresponding species")
     # group.add_argument('--pleiotropic-prot-file', type=str,
     #                    default="/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
@@ -68,7 +68,7 @@ def setup_opts():
     group.add_argument('--run-algs', type=str, action='append', default=[])
     group.add_argument('--force-download', action='store_true', default=False,
                        help="Force re-downloading and parsing of the input files")
-    group.add_argument('--force-run', action='store_true', default=False,
+    group.add_argument('--force-run', action='store_true', default=True,
                        help="If true Compute betweenness even if it was computed before.")
     #Nure: removing balancing_alpha_only as I will always pick balancing alpha
     # group.add_argument('--balancing-alpha-only', action='store_true', default=True,
@@ -165,18 +165,20 @@ def main(config_map, master_config_map, **kwargs):
 
                         #compute and plot how many new prots appear with nonzero betweenness
                         # as we consider path lens of 2, 3, and 4. Did not filter out sources and top tragets yet
-                        new_prots_appearing_at_each_pathlens = \
-                            btns_utils.find_new_prots_appearing_at_each_pathlens(sorted_src_spec_btns_df)
-                        n_prots_appearing_at_each_pathlens['network'].append(dataset_name)
-                        n_prots_appearing_at_each_pathlens['term'].append(term)
-                        n_prots_appearing_at_each_pathlens['alg'].append(alg_name)
-                        n_prots_appearing_at_each_pathlens['alpha'].append(alpha)
-                        n_prots_appearing_at_each_pathlens['pathlen_2'].append(new_prots_appearing_at_each_pathlens['pathlen_2'])
-                        n_prots_appearing_at_each_pathlens['pathlen_3'].append(new_prots_appearing_at_each_pathlens['pathlen_3'])
-                        n_prots_appearing_at_each_pathlens['pathlen_4'].append(new_prots_appearing_at_each_pathlens['pathlen_4'])
 
-                        # btns_plot_utils.plot_prots_appearing_at_each_pathlens(n_prots_appearing_at_each_pathlens,
-                        #                                                       filename=output_dir + '/betweenness/' + 'new_appering_prots.pdf')
+                        #TODO: Uncomment later
+                        # new_prots_appearing_at_each_pathlens = \
+                        #     btns_utils.find_new_prots_appearing_at_each_pathlens(sorted_src_spec_btns_df)
+                        # n_prots_appearing_at_each_pathlens['network'].append(dataset_name)
+                        # n_prots_appearing_at_each_pathlens['term'].append(term)
+                        # n_prots_appearing_at_each_pathlens['alg'].append(alg_name)
+                        # n_prots_appearing_at_each_pathlens['alpha'].append(alpha)
+                        # n_prots_appearing_at_each_pathlens['pathlen_2'].append(new_prots_appearing_at_each_pathlens['pathlen_2'])
+                        # n_prots_appearing_at_each_pathlens['pathlen_3'].append(new_prots_appearing_at_each_pathlens['pathlen_3'])
+                        # n_prots_appearing_at_each_pathlens['pathlen_4'].append(new_prots_appearing_at_each_pathlens['pathlen_4'])
+                        #
+                        # # btns_plot_utils.plot_prots_appearing_at_each_pathlens(n_prots_appearing_at_each_pathlens,
+                        # #                                                       filename=output_dir + '/betweenness/' + 'new_appering_prots.pdf')
 
 
                         #Now get the top predicted proteins

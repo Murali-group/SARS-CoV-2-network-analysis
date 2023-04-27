@@ -9,6 +9,7 @@ import networkx as nx
 import copy
 import time
 import scipy.sparse as sp
+from pandas import DataFrame
 from scipy.sparse import eye, diags
 from scipy.linalg import inv
 from scipy.stats import ttest_ind, wilcoxon, mannwhitneyu, describe
@@ -338,6 +339,47 @@ def compute_src_spec_btns(M, alg_name, a_d_norm_inv, idx_to_prot, pos_nodes_idx)
     return sorted_src_spec_betweenness_score_df
 
 
+def compute_src_spec_btns_simplified(M, alg_name, a_d_norm_inv, idx_to_prot, pos_nodes_idx):
+    '''
+    Input: 1) Matrix, M. In M graph, cost of a path
+    (multiplication of edge costs) from s to t means, source s's contribution to t's score.
+    2) list, pos_nodes_index. Contains the index of positive nodes in the network
+
+    Function: 1) This will compute the contribution going via each node in the network from
+    all known source nodes to a target node. So, we will get each node's contribution
+    as an intermediate node to each target node's score.
+    2) Then we will take average contribution going via a node to a target node.
+
+    Note: So far, I can consider paths of maximum length of 4.
+    '''
+
+    # Also take transpose of M to make the computation clearer i.e. after transpose
+    # along the row I have u and along column I have v for every (u,v) edge.
+    N = M.shape[0]
+    I = eye(N)
+    X = inv(I - M)
+    X1 = np.diag(np.sum(X[ :, pos_nodes_idx ], axis=1))  # column vector
+
+    if alg_name=='genemaniaplus':
+        X2=(np.matmul(a_d_norm_inv, X)).T
+    else:
+        X2=X.T
+
+    X3 = (np.matmul(X1, X2))
+    src_spec_betweenness = np.sum(X3[:,:], axis=1)
+
+    del X, X1, X2, I
+
+    # compute the average contribution of an intermediate node to a target i.e. betweeness score
+    # sort nodes according to their betweenness score
+    sorted_src_spec_betweenness_score = pd.Series(src_spec_betweenness).sort_values(ascending=False)
+    sorted_src_spec_betweenness_score_df: DataFrame = pd.DataFrame({'node_idx': list(sorted_src_spec_betweenness_score.index),
+                    'betweenness': sorted_src_spec_betweenness_score.values,
+                    'prot': [idx_to_prot[x] for x in
+                    list(sorted_src_spec_betweenness_score.index)]})
+
+    return sorted_src_spec_betweenness_score_df
+
 def handle_src_spec_btns(M_pathmtx_loginv, prots, betweenness_score_file,
                          pos_nodes_idx, alg_name, a_d_norm_inv, force_run=False):
     if (not os.path.exists(betweenness_score_file) or force_run==True):
@@ -347,6 +389,8 @@ def handle_src_spec_btns(M_pathmtx_loginv, prots, betweenness_score_file,
         # they are as intermediate node considering all source target pairs.
         sorted_src_spec_btns_scores_df = \
             compute_src_spec_btns(M_pathmtx_loginv,alg_name, a_d_norm_inv,  prots, pos_nodes_idx)
+        # sorted_src_spec_btns_scores_df = \
+        #     compute_src_spec_btns_simplified(M_pathmtx_loginv, alg_name, a_d_norm_inv, prots, pos_nodes_idx)
         sorted_src_spec_btns_scores_df['percent_rank'] = sorted_src_spec_btns_scores_df['betweenness'].rank(pct=True)
 
         # save betweenness score in file
@@ -468,7 +512,7 @@ def find_new_prots_appearing_at_each_pathlens(sorted_scores_df, criteria = ['con
     return new_prots_appearing_at_each_pathlens
 
 def handle_Fishers_exact_test_in_topks(sorted_btns_scores_df, interesting_uniprots, topks,
-            ranking_criteria = ['betweenness','contr_pathlen_2','contr_pathlen_3','contr_pathlen_4']):
+            ranking_criteria = ['betweenness']):
     '''
     Input: A sorted_btns_scores_df is a dataframe which is sorted according to the column 'betweenness'
     But it is not necessary to send a sorted sorted_btns_scores_df anymore.
@@ -479,6 +523,8 @@ def handle_Fishers_exact_test_in_topks(sorted_btns_scores_df, interesting_unipro
     y is the pvalue of that overlap.
     Outer dict: keys are each criterion for ranking proteins i.e. betweenness,
     contr_as_intermediate_node_only_via_pathlen2 and so on.
+
+    ranking_criteria=['contr_pathlen_2','contr_pathlen_3','contr_pathlen_4']
     '''
     #in sorted_btns_scores_df we have all the porteins for which we are considering the betweenness scores.
     #protein_universe should be only the proteins in  sorted_btns_scores_df
@@ -493,13 +539,11 @@ def handle_Fishers_exact_test_in_topks(sorted_btns_scores_df, interesting_unipro
     #by betweenness_score, contr_as_intermediate_node_only_via_pathlen2, contr_as_intermediate_node_only_via_pathlen3,
     #contr_as_intermediate_node_only_via_pathlen4 and so on.
 
-
     all_criteria_frac_overlap_pval_topks={x:{} for x in ranking_criteria }
 
     for ranking_criteron in ranking_criteria:
         frac_overlap_pval_topks = {} #the value will be tuple(x,y)=> x is fraction of overlapping prots in topk and interesting prot.
                                                 #y is the pvalue of that overlap
-
         # remove nodes having corresponding ranking_criteron value==0(i.e. 'betweenness','contr_pathlen_2','contr_pathlen_3', or 'contr_pathlen_4' )
         sorted_scores_df = scores_df[~(scores_df[ranking_criteron] == 0)]
         #sort prots in btns_scores_df according to the ranking_criterion
@@ -525,14 +569,12 @@ def handle_Fishers_exact_test_in_topks(sorted_btns_scores_df, interesting_unipro
 
         #correct for multiple hypothesis test
         _, corrected_pvals, _, _ = multipletests(pvals, alpha=0.01, method='fdr_bh')
-
         #now replace pval with corrected pval in frac_overlap_pval_topks
         count=0
         final_ks = list(frac_overlap_pval_topks.keys())
         for k in final_ks:
             frac_overlap_pval_topks[k] = (frac_overlap_pval_topks[k][0],corrected_pvals[count])
             count+=1
-
         all_criteria_frac_overlap_pval_topks[ranking_criteron] = frac_overlap_pval_topks
     return all_criteria_frac_overlap_pval_topks
 

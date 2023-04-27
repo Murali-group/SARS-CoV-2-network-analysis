@@ -46,7 +46,8 @@ def setup_opts():
     group.add_argument('--id-mapping-file', type=str, default = "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
                         "datasets/mappings/human/uniprot-reviewed-status.tab.gz",
                        help="Table downloaded from UniProt to map to gene names. Expected columns: 'Entry', 'Gene names', 'Protein names'")
-    group.add_argument('--evidence-file', help='File containing the evidence for each edge in the interactome.')
+    group.add_argument('--evidence-file', default = "/data/tasnina/Provenance-Tracing/SARS-CoV-2-network-analysis/"
+                        "datasets/networks/signor-cc/all_data_22_12_22.tsv", help='File containing the evidence for each edge in the interactome.')
     group.add_argument('--k-to-test', '-k', type=int, action='append', default=[332],
                        help="k-value(s) for which to get the top-k predictions to test. " +
                             "If not specified, will check the config file.")
@@ -88,7 +89,7 @@ def setup_opts():
                        help="Options: 'top_paths_enrich_GO'/ 'top_paths'. "
                             "top_paths_enrich_GO: show the proteins in cluster under enriched GO terms on top paths."
                             "top_paths: show the most contributing paths (nodes and edges)  " )
-    group.add_argument('--n-go', type=int, default=2,
+    group.add_argument('--n-go', type=int, default=20,
                        help="How many enriched GO terms to visualize")
     group.add_argument('--freq-cutoff', type=float, default=0.5,
                        help="Apply this frequency cutoff on REVIGO simplified GO terms. More frequency"
@@ -334,8 +335,7 @@ def main(config_map, k, **kwargs):
                                 path_enrich_dict = path_enrich_df.to_dict(orient='index')
 
                                 sorted_go_terms = list(path_enrich_df.index)
-                                count=54
-
+                                count=0
 
                                 while (((count+n_go)<len(list(path_enrich_dict.keys()))) and count<100) :
                                     selected_goids = sorted_go_terms[count:count+n_go]
